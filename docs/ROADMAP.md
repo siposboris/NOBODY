@@ -172,6 +172,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.30 source snapshot | Conservative Rust IR type checking, N1001 mismatch diagnostic, CLI `typecheck`, eight unit and two integration tests, CI smoke | **Build/tests unverified; unknown types deferred** |
 | 0.31 source snapshot | Rust lexical scope checks N1003/N1004, duplicate parameter detection, six unit tests and exact repair docs | **Rust build/tests unverified** |
 | 0.32 source snapshot | N1005 known function arity checking, recursive call tests, CLI regression fixtures and CI smoke | **Build and tests unverified** |
+| 0.33 source snapshot | Canonical profile test-key fix, arity invalidation on reassignment, two tests, non-mutating CI formatting gate | **Cargo build / CI still unverified** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 - [x] Correct Rust IR symbol lowering so declarations shadow builtins only after their initializer, and function names remain visible for recursive references. Three regression tests authored; compilation remains unverified.
@@ -181,6 +182,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 
 - [x] Implement conservative Rust lexical scope diagnostics for undeclared assignments (N1003), duplicate declarations and repeated function parameters (N1004); allow nested block shadowing and enclosing-scope assignment. Six additional unit tests authored, **not executed**.
 - [x] Add conservative Rust IR function-call arity checking (N1005) for known direct calls, recursive calls, lexical parameter shadowing and nested expressions; six unit and two CLI tests authored. **Build/test execution unverified.**
+- [x] Repair Rust regression tests that used non-canonical capitalized profile keys (`True`, `None` instead of `true`, `none`); prevent stale N1005 arity assumptions after a function variable is reassigned. Add two regression tests. **Build/test execution unverified.**
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
