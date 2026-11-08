@@ -7,7 +7,7 @@ Nobody aims to be a configurable multilingual programming language with a common
 ## Non-negotiable language rules
 
 1. **One human language of syntax per source file.** No mixed keyword languages inside one file. Language is configured explicitly; translation must preserve program meaning.
-2. **ASCII lowercase syntax and identifiers** (a-z, 0-9, underscore where grammatically valid). No diacritics or uppercase in keywords/built-in names/identifiers. Unicode is allowed inside strings and comments.
+2. **Lowercase syntax in the selected language's native writing system.** Latin-based profiles generally keep ASCII-friendly spelling (Vietnamese uses lowercase native diacritics); other scripts use original glyphs instead of romanization. Strings and comments may contain arbitrary Unicode. See [22 syntax languages](LANGUAGES.md).
 3. **Nobody source → Nobody source.** A source translator must not silently output Python. A future native backend may produce executable machine code, but its *compiler implementation* should ultimately be written in Nobody.
 4. No pretend switches: implemented configurations must change real behavior; unsupported configurations must produce explicit errors.
 5. Never claim self-hosting, sandboxing, hard RAM guarantees, or native compilation before independently repeatable tests prove them.
@@ -17,7 +17,7 @@ Nobody aims to be a configurable multilingual programming language with a common
 
 ### Phase 0 — Foundation (v0.1–v0.7 prototype history; partially implemented, not independently re-audited in GitHub)
 - [x] Experimental Python-based interpreter and Nobody syntax prototypes exist in earlier local release bundles.
-- [x] Basic SK/EN/CS/DE keyword sets and Nobody → Nobody rewriting were prototyped.
+- [x] Basic multilingual keyword sets and Nobody → Nobody rewriting were prototyped.
 - [x] Configuration catalog of 22 option groups was prototyped; many choices are unsupported.
 - [x] Preliminary typed declarations and restricted immutable-only checks were prototyped.
 - [ ] Import exact tested v0.7 sources, examples and test suite to this repository; rerun CI before marking a GitHub release.
@@ -127,3 +127,12 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Finish complete grammar: typed declarations, reassignments, indentation syntax, richer expressions, unambiguous tokens and structured error recovery.
 - [ ] Import complete interpreter/compiler bootstrap and all previous tests to GitHub.
 - [ ] Implement execution/code generation from the independent AST, replacing Python syntax translation.
+
+
+### Multilingual roadmap update — 2026-11-08
+- [x] Commit syntax dictionaries for **22 human languages**, including native Chinese, Japanese, Arabic, Urdu, Russian, Hindi, Bengali, Korean, Tamil and Thai glyphs and Vietnamese accented Latin spelling. [Full language list](LANGUAGES.md).
+- [x] Commit Unicode-aware lexical scanning and a Nobody-to-Nobody keyword translator with regression tests.
+- [ ] Obtain native-speaker and grammar reviews for all profiles; ensure no hidden romanization remains.
+- [ ] Formalize script-aware identifier rules, normalization, keyword boundaries, Unicode security and bidirectional display for Arabic/Urdu.
+- [ ] Add end-to-end parser/runtime tests, language-specific diagnostics and complete compiler/runtime source import.
+- [ ] Add further languages only after profile tests, documentation and native-speaker review.
