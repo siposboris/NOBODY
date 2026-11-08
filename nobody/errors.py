@@ -32,6 +32,7 @@ ENTRIES=[
 (3007,'PARSE_PROFILE','Nepodporovaný jazykový profil Rust parsera','Nový čiastočný Rust parser zatiaľ pozná iba profily sk, en a ai.','Spusti nobody-rs parse sk, en alebo ai so správnym súborom; ďalšie profily zatiaľ používa len starý referenčný prototyp.'),
 (3008,'RETURN_CONTEXT','Return mimo funkcie','Príkaz return/vrat/ai_return sa nachádza mimo tela deklarovanej funkcie.','Presuň return do funkcie alebo ho odstráň; na najvyššej úrovni súboru sa return nepoužíva.'),
 (3009,'LOOP_CONTROL_CONTEXT','Break alebo continue mimo cyklu','Príkaz break/continue sa nenachádza vo vnútri cyklu while/for aktuálnej funkcie.','Presuň príkaz do cyklu tej istej funkcie. Cyklus okolo definície vnorenej funkcie sa nepočíta.'),
+(3010,'AI_LEGACY_SYNTAX','Zastaralá AI syntax s predponami','Zdrojový súbor s profilom ai obsahuje staré kľúčové slovo napríklad ai_let alebo ai_if, ktoré nová Rust syntax nepoužíva.','Preveď súbor príkazom nobody-rs migrate-ai stary.nbd > novy.nbd; nová ai syntax používa let, fn, if, return, true, false.'),
 (4001,'RUN_NAME','Neexistujúce meno','Počas vykonávania premenná nie je dostupná v aktuálnom rozsahu.','Deklaruj ju pred použitím alebo ju odovzdaj ako parameter.'),
 (4002,'RUN_TYPE','Typová chyba za behu','Dynamicky vypočítaná hodnota sa nezhoduje s požadovaným typom.','Skontroluj typ pri deklarácii aj skutočnú hodnotu výrazu.'),
 (4003,'RUN_LIMIT','Prekročený limit vykonávania','Prekročený počet krokov alebo hĺbka rekurzívnych volaní.','Skontroluj ukončenie cyklu/rekurzie, až potom zváž zvýšenie limitu.'),
