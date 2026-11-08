@@ -13,7 +13,9 @@ cargo test --manifest-path rust/Cargo.toml --all-targets
 cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings
 cargo run --manifest-path rust/Cargo.toml -- lex examples/hello_sk.nbd
 cargo run --manifest-path rust/Cargo.toml -- check examples/hello_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
+cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd
+cargo run --manifest-path rust/Cargo.toml -- parse en rust/examples/basic_en.nbd
+cargo run --manifest-path rust/Cargo.toml -- parse ai rust/examples/basic_ai.nbd
 ```
 
 **Build status:** Source committed, but local compilation **not verified** in the authoring environment (no `cargo`/`rustc`). The GitHub workflow must confirm compatibility before this is a completed migration stage.
@@ -36,7 +38,7 @@ cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
 - Variable reassignment, basic arithmetic/comparison, parenthesized expressions and function-call **syntax** (not execution).
 - `Expr`, `Statement` and `Program` are Rust typed enums/structs, with no Python dependency.
 
-**Still unsupported:** `if`/`else`, loops, function *declarations*, returns, collections, imports, Python-legacy feature parity, typed analysis, source translation, code generation and execution.
+**Important:** The older `examples/hello_sk.nbd` and `examples/hello_ai.nbd` contain function or condition declarations not supported by this new small parser; use the `rust/examples/basic_*.nbd` fixtures above for the `parse` command.\n\n**Still unsupported:** `if`/`else`, loops, function *declarations*, returns, collections, imports, Python-legacy feature parity, typed analysis, source translation, code generation and execution.
 
 ## Error numbers
 
