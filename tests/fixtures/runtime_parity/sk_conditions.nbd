@@ -1,0 +1,2 @@
+nech cislo = 7
+ak cislo > 3 { vypis("velke") } inak { vypis("male") }
