@@ -185,3 +185,19 @@ See [Rust migration acceptance criteria](RUST_MIGRATION.md). The project **must 
 | Rust interpreter/native backend and Python removal | Not implemented | Planned |
 
 The Python reference remains experimental and is **not** the target runtime. See [Rust migration contract](RUST_MIGRATION.md).
+
+
+## Rust 0.24 AST parsing capabilities
+
+| Capability | State |
+|---|---|
+| SK / EN / AI tokenization and basic AST | Rust source implementation, unverified build |
+| Branching: if, else-if, else | Rust parser source implemented |
+| While and for loops | Rust parser source implemented |
+| Function declarations, return, break, continue | Rust parser source implemented |
+| Runtime execution of these Rust AST nodes | Not implemented |
+| All 39 human syntax profiles in Rust | Not implemented |
+| Static typing, bytecode, native backend and self-hosting | Not implemented |
+| CI and compilation | Workflow updated, successful run **not yet confirmed** |
+
+The complete [English development roadmap](ROADMAP.md) is the source of truth for remaining work.
