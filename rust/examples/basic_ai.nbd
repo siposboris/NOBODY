@@ -1,3 +1,3 @@
-ai_let age: ai_int = 30
+let age: int = 30
 age = age + 1
-ai_print(age)
+print(age)
