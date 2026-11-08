@@ -50,7 +50,10 @@ pub fn translate_source(source:&str,from:&str,to:&str)->Result<String,Diagnostic
                 None
             }
         }else{None};
-        output.push_str(translated.unwrap_or(&source[token.start..token.end]));
+        match translated {
+            Some(spelling)=>output.push_str(spelling),
+            None=>output.push_str(&source[token.start..token.end]),
+        }
         cursor=token.end;
     }
     output.push_str(&source[cursor..]);
