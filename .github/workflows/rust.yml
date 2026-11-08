@@ -28,3 +28,5 @@ jobs:
           cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd
           cargo run --manifest-path rust/Cargo.toml -- parse en rust/examples/basic_en.nbd
           cargo run --manifest-path rust/Cargo.toml -- parse ai rust/examples/basic_ai.nbd
+          cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
+          cargo run --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
