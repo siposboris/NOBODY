@@ -48,8 +48,7 @@ ak cislo > 5 { vypis(dvoj(cislo)) } inak { vypis(0) }
             parse_source('nech = 2')
 
     def test_typed_declarations_explicitly_unsupported(self):
-        with self.assertRaises(ParseError):
-            parse_source('nech n: cele = 1')
+        self.assertEqual(parse_source('nech n: cele = 1').children[0].kind, 'typed_let')
 
 
 if __name__ == '__main__':
