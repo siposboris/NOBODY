@@ -1,6 +1,7 @@
 name: Nobody Rust frontend
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'rust/**'
@@ -61,3 +62,6 @@ jobs:
             echo "Expected N1005 arity rejection" >&2
             exit 1
           fi
+
+      - name: Unified Rust verification gate
+        run: bash scripts/verify-rust.sh
