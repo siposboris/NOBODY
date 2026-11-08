@@ -19,7 +19,7 @@ class BidiTests(unittest.TestCase):
 
     def test_unknown_language_rejected(self):
         with self.assertRaises(ValueError):
-            direction_for_language('he')
+            direction_for_language('unknown-rtl')
 
     def test_no_reordering_round_trip(self):
         source = 'nech pocet = 3\nak pocet > 1 {\n vypis("Ahoj (3) مرحبا")\n}\n'
