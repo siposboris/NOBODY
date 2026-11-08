@@ -1,9 +1,9 @@
 use std::{env,fs,process};
-use nobody::{migrate_legacy_ai,parse,parse_validated,scan,TokenKind};
+use nobody::{migrate_legacy_ai,parse,parse_validated,scan,translate_source,TokenKind};
 use nobody::profiles::PROFILES;
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -12,6 +12,7 @@ fn main() {
         Some("parse"|"validate") if arguments.len()==4 => true,
         Some("list-languages") if arguments.len()==2 => true,
         Some("migrate-ai") if arguments.len()==3 => true,
+        Some("translate") if arguments.len()==5 => true,
         _ => false
     };
     if !valid {usage();process::exit(2);}
@@ -28,6 +29,13 @@ fn main() {
             process::exit(1);
         }
     };
+    if command=="translate" {
+        match translate_source(&source,&arguments[2],&arguments[3]) {
+            Ok(result)=>print!("{result}"),
+            Err(error)=>{eprintln!("{error}");process::exit(1);}
+        }
+        return;
+    }
     if command=="migrate-ai" {
         match migrate_legacy_ai(&source) {
             Ok(migrated)=>print!("{migrated}"),
