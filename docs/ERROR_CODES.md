@@ -512,6 +512,10 @@ add(1, 2)
 **Expanded narrow constant checking:** N1008 additionally evaluates exact integer-only expressions built from literals, unary `+`/`-` and binary `+`/`-`/`*`, using checked `i128` arithmetic. For example, `10 / (5 - 5)` now reports N1008. This does not execute source code or perform general constant folding. Integer overflows, floating-point arithmetic, division inside the divisor, variables and function calls remain unknown rather than being guessed. Literal zero remains recognized for decimal fractions and exponent notation. A successful static check is **not** a runtime guarantee against division by zero. Type errors such as `"text" / 0` retain N1002 priority; this is part of `typecheck`, not the lexer-only check.
 
 
+### N4006 — Zero range step at runtime (experimental Rust evaluator)
+
+The opt-in Rust `run` command rejects `for i in range(start, stop, 0)` with N4006. **Cause:** the third integer argument of `range` is zero, which cannot advance the iterator. **Repair:** supply a nonzero step; for descending sequences, use a negative step. This does not imply support for arbitrary iterables, generators, or complete Python-like semantics.
+
 ## Rust evaluator prototype (0.39): N4001–N4005
 
 These diagnostics apply to the explicitly invoked `nobody-rs run PROFILE FILE` command, not to source-checking commands. This limited Rust evaluator is not a complete interpreter or compiler. Runtime IR locations are not yet available.

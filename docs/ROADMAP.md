@@ -245,6 +245,8 @@ Roadmap checklist progress is **44/112 (39%)** as of this update. It counts mark
 
 **While-loop execution slice (2026-11-08, verified):** The optional Rust `run` evaluator implements bounded `while` loops with boolean conditions, iteration-local lexical scopes and nested `break`/`continue`. Nine new integration tests cover AI/Slovak behavior, nested loop control and exhausted budgets; one legacy regression was updated for the newly supported feature. Full [Rust CI #42512435569](https://github.com/siposboris/NOBODY/actions/runs/42512435569) and all three other workflows passed, and changes merged in [PR #9](https://github.com/siposboris/NOBODY/pull/9). This remains partial runtime work; `for`, functions, native compilation, differential Python parity and secure resource isolation are not complete.
 
+**Range-based for-loop execution slice (2026-11-08, pending CI):** The Rust `run` evaluator adds bounded `for` over 1–3-argument unshadowed `range`, positive and negative steps, lexical per-iteration variable scope, nested `break`/`continue`, and N4006 for zero step. Nine new integration tests cover these behaviors and iteration overflow/budget guards. This is an incremental Phase 4 capability: generators, arbitrary iterables, functions, native compilation, full Python parity, and hard sandboxing remain open. CI status must be recorded after verification.
+
 ### Following slices — only after the 0.39 gate
 
 1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.

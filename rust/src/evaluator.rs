@@ -38,7 +38,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     error(
         4004,
         detail,
-        "Use only the documented Rust evaluator subset: basic values, declarations, assignments, conditionals, arithmetic and print.",
+        "Use only the documented Rust evaluator subset: basic values, declarations, assignments, conditionals, bounded loops, arithmetic and print.",
     )
 }
 fn literal_text(raw: &str) -> Result<String, Diagnostic> {
@@ -369,6 +369,75 @@ impl Evaluator {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
                     }
+                }
+                Ok(Flow::Next)
+            }
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
+                // Only the canonical, unshadowed range built-in is supported
+                // in the initial Rust for-loop slice. Range arguments are
+                // evaluated once, in the enclosing lexical environment.
+                let IrExpr::Call { callee, args } = iterable else {
+                    return Err(unsupported("For loops currently require range(...)"));
+                };
+                if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
+                    return Err(unsupported(
+                        "For loops currently require unshadowed range(...)",
+                    ));
+                }
+                if !(1..=3).contains(&args.len()) {
+                    return Err(unsupported(
+                        "range requires one, two or three integer arguments",
+                    ));
+                }
+                let mut numbers = Vec::with_capacity(args.len());
+                for arg in args {
+                    let RuntimeValue::Int(value) = self.eval(arg, 1)? else {
+                        return Err(unsupported("range arguments must be integers"));
+                    };
+                    numbers.push(value);
+                }
+                let (mut current, stop, step) = match numbers.as_slice() {
+                    [stop] => (0, *stop, 1),
+                    [start, stop] => (*start, *stop, 1),
+                    [start, stop, step] => (*start, *stop, *step),
+                    _ => unreachable!("range argument count validated"),
+                };
+                if step == 0 {
+                    return Err(error(
+                        4006,
+                        "range step cannot be zero",
+                        "Use a nonzero step argument for range(start, stop, step).",
+                    ));
+                }
+                while if step > 0 {
+                    current < stop
+                } else {
+                    current > stop
+                } {
+                    // An empty body is still charged for each iteration.
+                    self.tick(0)?;
+                    self.scopes.push(BTreeMap::new());
+                    self.scopes
+                        .last_mut()
+                        .expect("loop iteration scope exists")
+                        .insert(variable.clone(), RuntimeValue::Int(current));
+                    let result = self.block(body);
+                    self.scopes.pop();
+                    match result? {
+                        Flow::Break => break,
+                        Flow::Next | Flow::Continue => {}
+                    }
+                    // Last-value overflow can occur near i128 bounds; when
+                    // that happens, the next value is beyond the supported
+                    // integer domain, so the range terminates safely.
+                    let Some(next) = current.checked_add(step) else {
+                        break;
+                    };
+                    current = next;
                 }
                 Ok(Flow::Next)
             }

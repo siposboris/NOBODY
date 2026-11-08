@@ -29,6 +29,12 @@ still does not invoke Python or online services at runtime. A checked-in `Cargo.
 CI verifies it with `--locked`. This does not yet constitute a tagged,
 reproducible release artifact or supply-chain audit.
 
+## Rust evaluator for-range slice (experimental)
+
+The opt-in `nobody-rs run PROFILE FILE` command now supports `for` loops over the **unshadowed** `range(...)` built-in with 1–3 integer arguments: `range(stop)`, `range(start, stop)` and `range(start, stop, step)` (both positive and negative steps). Arguments are evaluated once, and iteration variables live in a fresh lexical scope for each iteration. `break` and `continue` work inside nested conditions and loops. Invalid zero steps report **N4006**. Huge loops consume the existing N4005 step budget.
+
+Other iterables, lists, arbitrary function calls and generators are **not** implemented. Integer steps use checked i128 arithmetic and stop cleanly at numeric limits; the runtime is not a sandbox. Python reference behavior is not yet fully parity-tested.
+
 ## Rust evaluator while-loop slice (experimental)
 
 `nobody-rs run` now executes `while` loops with strict boolean conditions,
