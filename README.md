@@ -47,3 +47,7 @@ The new [AST parser](nobody/parser.py), [tests](tests/test_parser.py) and [front
 ## Languages (experimental)
 
 Nobody now defines **22 syntax profiles** with original writing systems, not romanized Chinese, Japanese, Russian or Arabic. See [the complete list and examples](docs/LANGUAGES.md). The source-to-source translation module is committed as [nobody/translator.py](nobody/translator.py), and [test_native_scripts.py](tests/test_native_scripts.py) checks round trips. The full compiler/runtime is still being imported; this does not establish production readiness.
+
+## Experimental Nobody 0.12 — right-to-left syntax support
+
+Arabic (`ar`) and Urdu (`ur`) now have explicit **RTL direction metadata** in [nobody/bidi.py](nobody/bidi.py), and lexical scanning blocks hidden Unicode bidi-override controls. The source remains in logical character order. [RTL specification and limitations](docs/RTL.md), [regression tests](tests/test_bidi.py). **A direction-aware editor is not yet implemented.** The complete local development tree passed 86 tests; GitHub CI status is not implied by that number.
