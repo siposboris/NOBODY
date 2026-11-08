@@ -1,4 +1,4 @@
-use nobody::profiles::{direction, PROFILES};
+use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, evaluate_source, lower_source, migrate_legacy_ai, parse, parse_validated,
     same_ir, scan, translate_source, TokenKind,
@@ -6,7 +6,7 @@ use nobody::{
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -14,7 +14,7 @@ fn main() {
         Some("lex" | "check" | "direction") if arguments.len() == 3 => true,
         Some("parse" | "validate" | "ir" | "typecheck" | "run") if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
-        Some("list-languages" | "languages" | "info") if arguments.len() == 2 => true,
+        Some("list-languages" | "languages" | "info" | "audit-languages") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
         Some("translate") if arguments.len() == 5 => true,
         _ => false,
@@ -34,6 +34,17 @@ fn main() {
         println!(r#"  "self_hosted": false,"#);
         println!(r#"  "python_required_for_rust_cli": false"#);
         println!("}}");
+        return;
+    }
+    if command == "audit-languages" {
+        let problems = audit_profiles();
+        println!("Nobody Rust profile audit: {} active syntax profiles; {} structural errors", PROFILES.len(), problems.len());
+        for problem in &problems {
+            eprintln!("{problem}");
+        }
+        if !problems.is_empty() {
+            process::exit(1);
+        }
         return;
     }
     if command == "list-languages" || command == "languages" {
