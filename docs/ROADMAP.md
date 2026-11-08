@@ -168,7 +168,10 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.26 source snapshot | All 39 human keyword tables in Rust; redesigned familiar `ai` syntax, old-prefix migration, 40-profile source translator and test fixtures | **Rust build and parity checks unverified** |
 | 0.27 source snapshot | Rust translator rejects target keyword collisions (N3011), five new integration tests, precise repair docs | Rust build / CI **not yet verified** |
 | 0.28 source snapshot | Canonical IR v1 and CLI `ir`/`compare-ir`, eight unit tests and four integration tests | **Build and CI unverified; structure comparison is not semantics proof** |
+| 0.29 source snapshot | Sequential builtin-shadowing in Rust IR, recursive function symbol handling and three authored regression tests | Rust build and tests **not verified** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
+
+- [x] Correct Rust IR symbol lowering so declarations shadow builtins only after their initializer, and function names remain visible for recursive references. Three regression tests authored; compilation remains unverified.
 
 ## Immediate priorities (in dependency order)
 
