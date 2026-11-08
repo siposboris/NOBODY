@@ -19,6 +19,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Toolchain versions
+        run: |
+          rustc --version
+          cargo --version
+          rustfmt --version
+          cargo clippy --version
+      - name: Unified Rust verification gate
+        run: |
+          set -o pipefail
+          bash scripts/verify-rust.sh 2>&1 | tee rust-verification.log
+      - name: Upload Rust verification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nobody-rust-verification
+          path: rust-verification.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Format Rust sources
         run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
       - name: Compile and unit tests
@@ -65,5 +85,3 @@ jobs:
             exit 1
           fi
 
-      - name: Unified Rust verification gate
-        run: bash scripts/verify-rust.sh
