@@ -18,6 +18,7 @@
 | **N2003** | `LEX_COMBINING` | Osamotená diakritická značka |
 | **N2004** | `LEX_CHARACTER` | Nepovolený znak |
 | **N2005** | `LEX_BIDI` | Skrytý riadiaci znak smeru |
+| **N2006** | `LEX_NUMBER` | Neplatný desiatkový číselný literál |
 | **N3001** | `PARSE_EXPECT` | Chýbajúci prvok |
 | **N3002** | `PARSE_BLOCK` | Nesprávne zátvorky bloku |
 | **N3003** | `PARSE_IDENTIFIER` | Neplatný názov |
@@ -463,3 +464,9 @@ add(1, 2)
 **Correct:** `let x = -3` or `let x = +2.5`.
 
 **Repair:** Use an integer or floating-point value, or explicitly convert the input to a numeric type. Unknown/dynamic values are deferred rather than assumed invalid. The Rust IR checker currently lacks statement source spans; N1006 does not invent a line number.
+
+### N2006 — Neplatný desiatkový číselný literál (Rust lexer)
+
+**Príčina:** Číselný token obsahuje neplatné znaky alebo nesprávne umiestnené oddeľovače, napríklad `12abc`, `1__2`, `1e+` alebo `0xFF`. Súčasný Rust lexer podporuje iba desiatkové celé a desatinné čísla, s voliteľným exponentom a podčiarkovníkmi medzi číslicami.
+
+**Oprava:** Použi `12`, `12.5`, `1_000` alebo `1e-3`. Ak má nasledovať identifikátor, oddeľ ho podľa gramatiky; hexadecimálne literály zatiaľ nie sú podporované. Chyba hlási riadok a stĺpec začiatku číselného tokenu. **Úspešná kompilácia a Rust CI ešte nie sú overené.**
