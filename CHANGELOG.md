@@ -103,3 +103,11 @@ Do not confuse these historical notes with published and verified tags.
 - Added bounded function call depth and eight regression tests.
 - Local complete source tree: **124 tests passed**; GitHub CI not yet confirmed.
 - Limitations: Python bootstrap and object memory semantics, incomplete grammar, no native machine code, no hard resource isolation or compiler self-hosting.
+
+
+## Nobody 0.18 experimental milestone (2026-11-08)
+- Added conservative AST static type checker to diagnose primitive type mismatches and invalid known-type operators **before execution**.
+- Added undeclared assignment detection, lexical-scope awareness and diagnostic codes `E_TYPE`, `E_BINARY`, `E_UNDECLARED`, etc.
+- Introduced `type-check` CLI and ten tests; the complete local 0.18 archive passed **134 tests**.
+- Unknown function results, control-flow merges and generic types remain uncertain; static success is **not** a proof that runtime execution cannot fail.
+- GitHub Actions outcome and complete historical bootstrap import have not yet been verified.
