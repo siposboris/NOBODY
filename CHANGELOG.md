@@ -46,3 +46,10 @@ Do not confuse these historical notes with published and verified tags.
 - Updated README, roadmap, parser and lexer docs and full [language catalog](docs/LANGUAGES.md).
 - **80 local prototype tests passed** after adding five tests. The complete Python bootstrap remains an experimental prototype; The full local Nobody-written bootstrap compiler also round-tripped all 22 profiles (using the temporary Python bootstrap). GitHub CI outcome has not been verified.
 - Native translations need native-speaker review; neither Unicode security nor full compiler integration is complete.
+
+## Experimental Nobody 0.12 — RTL language safety (2026-11-08)
+- Added Arabic/Urdu RTL display metadata with logical order guarantees.
+- Added bidi-control validation to the Unicode lexical scanner, protecting against hidden source direction overrides.
+- Added CLI `direction` in the complete local prototype and new regression tests.
+- Local complete prototype: **86 tests passing**, including RTL scenarios; **no confirmed full GitHub CI result**.
+- Added [RTL documentation](docs/RTL.md). External RTL editor integration remains a future milestone.
