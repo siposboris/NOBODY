@@ -43,7 +43,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Assign numbered Rust lexer diagnostics N2001–N2005 for string, case, combining-mark, unsupported-glyph and bidi-control errors.
 - [ ] Complete the Rust lexer against Unicode normalization, combining characters, RTL, confusables, token boundaries and reference regression fixtures.
 - [ ] Port all 39 human syntax profiles and one `ai` profile into Rust, preserving original script, lowercase rules, conflict handling and deterministic language selection.
-- [ ] Build a full Rust recursive-descent/Pratt parser with source spans, precedence, diagnostics and structured AST. **A small incremental Rust parser subset is the next development target; it is not full grammar support.**
+- [x] Commit a **limited** Rust recursive-descent/precedence AST parser for `sk`, `en`, `ai`: declarations, optional primitive annotations, reassignment, expression operators, literals and call syntax. Its code and seven authored unit tests exist, but a passing Rust build is **not yet verified**.
+- [ ] Expand that Rust parser to complete language grammar, all syntax profiles, robust spans, type analysis and runtime semantics. **The current subset is not full frontend parity.**
 - [x] Implement a limited Python-reference AST parser for declarations, assignments, expressions, functions, loops, calls and blocks, with experimental 0.10–0.21 extensions.
 - [x] Implement JSON `nobody.ast.v1` export/import validation and Nobody-source re-emission for a subset in the Python reference.
 - [ ] Port language-neutral typed AST/IR, JSON AST validator and deterministic source emitter into Rust, including round-trip equivalence checks.
@@ -152,12 +153,13 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.16–0.17 | Python-reference AST JSON import/emitter and lexical closures | Subset only; still Python |
 | 0.18–0.21 | Python-reference type checker, branch joins, numbered errors and return-type inference | Static analysis remains conservative |
 | 0.22 | Rust crate, partial lexer and CLI, GitHub Rust workflow | Source committed; **local Rust build unverified** |
-| Next | Verified Rust CI, incremental parser, syntax profile port, differential tests | Incomplete |
+| 0.23 source snapshot | Small Rust AST parser, SK/EN/AI fixtures, numbered N3006/N3007 errors | **Uncompiled/unverified locally; CI outcome pending** |
+| Next | Verified Rust CI, full profile tables and differential tests | Incomplete |
 
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks.
-2. Add a **small, tested Rust AST parser** for explicitly selected `sk`, `en` and `ai` syntax, with numbered errors and explicit unsupported features. **Do not mistake this subset for completed frontend parity.**
+2. **Build and verify** the newly committed small Rust AST parser for `sk`, `en`, and `ai`, with numbered N3001/N3003/N3005/N3006/N3007 diagnostics. Confirm all seven authored parser unit tests and three CLI smoke fixtures actually pass. **Do not mistake this subset for completed frontend parity.**
 3. Bring all language tables and Unicode lexer behavior into Rust; run automated fixture comparisons with the Python reference.
 4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
 5. Remove superseded Python modules in separate changes after parity is demonstrated.
