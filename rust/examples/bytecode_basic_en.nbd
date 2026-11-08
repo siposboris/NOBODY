@@ -1,0 +1,5 @@
+let value = 7
+let factor = 3
+print(value * factor)
+value = value - 2
+print(value, factor)
