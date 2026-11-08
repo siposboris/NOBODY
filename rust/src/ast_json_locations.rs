@@ -14,7 +14,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
         line: 0,
         column: 0,
         detail: detail.into(),
-        repair: "Use the supported, unparenthesized AST JSON subset, or wait for the fully spanned Rust syntax parser.",
+        repair: "Use the supported AST JSON subset; a fully spanned Rust syntax parser is still planned.",
     }
 }
 
@@ -42,6 +42,7 @@ struct Cursor<'a> {
     tokens: Vec<Token>,
     at: usize,
     language: &'a str,
+    group_depth: usize,
 }
 
 impl Cursor<'_> {
@@ -109,6 +110,38 @@ impl Cursor<'_> {
     }
 
     fn expression(&mut self, input: &Expr) -> Result<Lines, Diagnostic> {
+        // The Rust parser discards grouping parentheses. Try treating a
+        // leading '(' as a wrapper around this whole AST expression first.
+        // If it actually wraps only the left subexpression, restore the
+        // cursor and let the structural visitor handle that child instead.
+        // Preserve the expression's inner source line, just as Python does.
+        if self
+            .tokens
+            .get(self.at)
+            .is_some_and(|token| token.value == "(")
+        {
+            if self.group_depth >= 64 {
+                return Err(unsupported(
+                    "Nested grouping exceeds AST source-line budget",
+                ));
+            }
+            let saved = self.at;
+            self.at += 1;
+            self.group_depth += 1;
+            let grouped = self.expression(input);
+            self.group_depth -= 1;
+            if let Ok(lines) = grouped {
+                if self
+                    .tokens
+                    .get(self.at)
+                    .is_some_and(|token| token.value == ")")
+                {
+                    self.at += 1;
+                    return Ok(lines);
+                }
+            }
+            self.at = saved;
+        }
         match input {
             Expr::Number(value) => {
                 let token = self.exact(value)?;
@@ -310,6 +343,7 @@ pub fn source_lines(
             .collect(),
         at: 0,
         language,
+        group_depth: 0,
     };
     let mut roots = Vec::with_capacity(statements.len());
     for statement in statements {
@@ -341,14 +375,19 @@ mod tests {
     }
 
     #[test]
-    fn refuses_to_guess_parenthesized_expression_positions() {
+    fn maps_grouped_expressions_without_inventing_lines() {
         let source = "nech x = (\n 1 + 2\n)";
         let tree = parse_validated(source, "sk").unwrap();
-        assert_eq!(
-            source_lines(source, "sk", &tree.statements)
-                .unwrap_err()
-                .code,
-            4004
-        );
+        let lines = source_lines(source, "sk", &tree.statements).unwrap();
+        assert_eq!(lines, vec![2, 2, 2, 1, 1]);
+    }
+
+    #[test]
+    fn maps_parenthesized_left_operand_and_nested_call() {
+        let source = "let x = (3 + 4) * 2\nprint((x))";
+        let tree = parse_validated(source, "en").unwrap();
+        let lines = source_lines(source, "en", &tree.statements).unwrap();
+        assert!(lines.contains(&2));
+        assert_eq!(lines.last(), Some(&1));
     }
 }
