@@ -29,6 +29,19 @@ still does not invoke Python or online services at runtime. A checked-in `Cargo.
 CI verifies it with `--locked`. This does not yet constitute a tagged,
 reproducible release artifact or supply-chain audit.
 
+## Rust evaluator while-loop slice (experimental)
+
+`nobody-rs run` now executes `while` loops with strict boolean conditions,
+lexically scoped bodies, and `break`/`continue` (including when nested inside
+`if` blocks). An empty infinite loop cannot run without a budget error: each
+iteration consumes the same finite evaluator step budget. A nested `break`
+terminates only the innermost loop. The language profile is chosen once per
+source file, and identical AI/Slovak examples have regression tests.
+
+These counters are **software checks, not hard limits**: untrusted Nobody
+programs must not be executed. `for`, functions, recursion and full
+Python-reference runtime parity are still unsupported.
+
 ## Rust evaluator conditional slice (experimental)
 
 `nobody-rs run` now supports conditional blocks (`if`, `else if`, `else`), comparisons of integers (`<`, `>`, `<=`, `>=`), equality and inequality, boolean `not`, `and`, and `or`. Boolean `and`/`or` short-circuit without evaluating the skipped expression. Branch-local declarations are lexical: they do not leak outside the branch, while assignment can update a visible outer binding.
