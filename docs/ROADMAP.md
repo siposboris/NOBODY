@@ -42,7 +42,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Implement a native UTF-8 token scanner *prototype* in Rust for names, literals, symbols and comments, with byte spans and native-script letters; expose `nobody-rs lex` and lexer-only `check`.
 - [x] Assign numbered Rust lexer diagnostics N2001–N2005 for string, case, combining-mark, unsupported-glyph and bidi-control errors.
 - [ ] Complete the Rust lexer against Unicode normalization, combining characters, RTL, confusables, token boundaries and reference regression fixtures.
-- [ ] Port all 39 human syntax profiles and one `ai` profile into Rust, preserving original script, lowercase rules, conflict handling and deterministic language selection.
+- [x] Port the **source keyword tables** for all 39 human syntax profiles and a redesigned `ai` profile into Rust, including original Unicode spellings, direct profile selection and preliminary native-script parser tests.
+- [ ] Verify all 40 Rust profiles pass compiled lexer/parser tests, native-speaker review, Unicode normalization checks, reserved-word collisions and parity with historical behavior.
 - [x] Commit a **limited** Rust recursive-descent/precedence AST parser for `sk`, `en`, `ai`: declarations, optional primitive annotations, reassignment, expression operators, literals and call syntax. Its source exists, but a passing Rust build is **not yet verified**.
 - [x] Extend the **Rust AST parser source** with `if/elif/else`, `while`, `for ... in`, named function declarations, `return`, `break`, `continue` and nested brace blocks for `sk/en/ai`. Rust source and tests committed; successful compilation remains unverified.
 - [ ] Expand to complete language grammar, all syntax profiles, static semantic checks, proper spans and runtime behavior. **The current parser is not full frontend parity and does not execute programs.**
@@ -50,7 +51,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Implement JSON `nobody.ast.v1` export/import validation and Nobody-source re-emission for a subset in the Python reference.
 - [ ] Port language-neutral typed AST/IR, JSON AST validator and deterministic source emitter into Rust, including round-trip equivalence checks.
 - [x] Implement a prototype Nobody-to-Nobody translation tool in the Python reference that preserves strings and comments.
-- [ ] Port source translation to Rust; test reserved-word collisions, escaped literals, filenames, identifiers and round trips across all supported syntax profiles.
+- [x] Implement preliminary Rust **Nobody-to-Nobody** keyword translation using token spans, preserving strings and comments, with roundtrip unit tests across selected native-script profiles.
+- [ ] Extend Rust translation to be syntax-aware for identifiers, keyword collisions and scopes; verify all 40 profile combinations and full program semantic equivalence.
 - [ ] Finish complete grammar: declarations, types, assignments, functions, lexical scope, collections, structured data, imports and modules.
 - [ ] Build formatter, useful source diagnostics and parser error recovery.
 
@@ -114,7 +116,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [ ] Define floating-point and reproducibility profiles.
 - [ ] Implement AI/ML integration with clear hardware, resource and security limitations.
 - [x] Prototype an `ai` **keyword profile** plus a versioned JSON AST interchange format in the Python reference.
-- [ ] Port and validate `ai` syntax + AST interchange in Rust; benchmark whether they actually help AI coding tools.
+- [x] Replace the prefix-based `ai_` dialect in the **Rust frontend** with familiar `let`, `fn`, `if`, `return`, `true`, `false`, `null` and other conventional keywords. Implement token-aware conversion of old AI examples and stable diagnostic N3010.
+- [ ] Port full canonical AST JSON exchange to Rust and independently benchmark syntax familiarity against LLM coding accuracy and token costs. Do not claim that `ai` is objectively superior without evidence.
 - [ ] Provide safe developer-agent APIs without claiming that source syntax grants AI autonomy or consciousness.
 
 ## Phase 8 — Advanced language design and formal verification
@@ -160,13 +163,14 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.24 source snapshot | Rust AST grammar extended with conditionals, loops, function declarations, returns and nested blocks; new unit tests and smoke coverage | **Build and execution unverified** |
 | 0.25 source snapshot | Rust AST contextual validator, new numbered errors N3008/N3009, CLI `validate`, test cases | **Unverified Rust build/CI** |
 | 0.25 source snapshot | Rust contextual validator, N3008/N3009 errors, native `validate` CLI and authored integration tests | Rust compilation/CI **unverified** |
-| Next | Verified Rust CI, remaining profiles and differential tests | Incomplete |
+| 0.26 source snapshot | All 39 human keyword tables in Rust; redesigned familiar `ai` syntax, old-prefix migration, 40-profile source translator and test fixtures | **Rust build and parity checks unverified** |
+| Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Current unverified Rust tests include the parser and contextual validator.**
 2. **Compile, test and verify** the expanded Rust AST parser for `sk`, `en`, and `ai`, with numbered syntax errors including N3002 and N3006. Confirm the authored Rust unit tests and CLI smoke fixtures run successfully. **Parsing is not execution, and the subset is not full frontend parity.**
-3. Bring all language tables and Unicode lexer behavior into Rust; run automated fixture comparisons with the Python reference.
+3. **Compile and verify** the now-committed 40 Rust language tables, AI migration and source translation using the complete Rust test suite; then compare fixture outputs against the Python reference.
 4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
 5. Remove superseded Python modules in separate changes after parity is demonstrated.
 6. Develop bytecode/native backends, then self-host the compiler in Nobody.
