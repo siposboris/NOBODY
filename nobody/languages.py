@@ -1,56 +1,69 @@
-"""Spelling tables for syntax in exactly one human language per file.
+"""Native-script syntax dictionaries for Nobody (experimental, review required).
 
-Canonical values are internal compiler concepts, not mixed-language syntax.
+Native writing systems are preserved. Latin-based profiles use lowercase
+words, Vietnamese uses lowercase Vietnamese orthography and accents.
+Exactly one selected language per source file.
+The words have NOT been professionally reviewed by native speakers.
 """
+CANONICAL = ["if","else","elif","while","for","in","def","return","True","False","None","and","or","not","break","continue","let","print","range","len","sum","min","max","abs","round","int","float","str","bool"]
+PROFILE_WORDS = {
+  "sk": "ak inak inak_ak pokial pre v funkcia vrat pravda nepravda nic a_zaroven alebo nie prerus pokracuj nech vypis rozsah dlzka sucet minimum maximum absolutne zaokruhli cele desatinne text logicke",
+  "en": "if else elif while for in function return true false none and or not break continue let print range len sum min max abs round int float str bool",
+  "cs": "pokud jinak jinak_pokud dokud pro v funkce vrat pravda nepravda nic a_zaroven nebo ne prerus pokracuj necht vypis rozsah delka soucet minimum maximum abs round int float str bool",
+  "de": "wenn sonst sonst_wenn solange fur in funktion zuruck wahr falsch nichts und oder nicht abbruch weiter sei ausgeben bereich lange summe minimum maximum abs round int float str bool",
+  "es": "si sino sino_si mientras para en funcion devolver verdadero falso nulo y o no romper continuar dejar imprimir rango longitud suma minimo maximo absoluto redondear entero decimal texto booleano",
+  "fr": "si sinon sinon_si tantque pour dans fonction retourner vrai faux rien et ou non arreter continuer soit afficher intervalle longueur somme minimum maximum absolu arrondir entier decimal texte booleen",
+  "pt": "se senao senao_se enquanto para em funcao retornar verdadeiro falso nulo e ou nao parar continuar deixe mostrar intervalo comprimento soma minimo maximo absoluto arredondar inteiro decimal texto booleano",
+  "ru": "если иначе иначе_если пока для в функция вернуть истина ложь ничего и или не прервать продолжить пусть печать диапазон длина сумма минимум максимум модуль округлить целое дробное строка логическое",
+  "zh": "如果 否则 否则如果 当 对于 在 函数 返回 真 假 空 并且 或者 非 跳出 继续 设 打印 范围 长度 求和 最小 最大 绝对值 四舍五入 整数 小数 文本 布尔",
+  "hi": "अगर अन्यथा अन्यथा_अगर जबतक केलिए में कार्य लौटाओ सत्य असत्य शून्य और या नहीं तोड़ो जारी मानो छापो सीमा लंबाई योग न्यूनतम अधिकतम निरपेक्ष गोल पूर्णांक दशमलव पाठ तार्किक",
+  "ar": "إذا وإلا وإلا_إذا طالما لكل في دالة أرجع صحيح خطأ لاشيء و أو ليس اكسر تابع دع اطبع مدى طول مجموع أصغر أكبر مطلق قرب عدد_صحيح عشري نص منطقي",
+  "bn": "যদি নাহলে নাহলে_যদি যতক্ষণ জন্য মধ্যে ফাংশন ফেরত সত্য মিথ্যা শূন্য এবং অথবা নয় থামো চালিয়ে_যাও ধরো ছাপাও পরিসর দৈর্ঘ্য যোগফল সর্বনিম্ন সর্বোচ্চ পরম গোল পূর্ণসংখ্যা দশমিক পাঠ্য যুক্তি",
+  "id": "jika lainnya lainnya_jika selama untuk dalam fungsi kembali benar salah kosong dan atau bukan henti lanjut misal cetak rentang panjang jumlah minimum maksimum mutlak bulatkan bilangan desimal teks logika",
+  "ur": "اگر ورنہ ورنہ_اگر جبतक کےلیے میں عمل واپس سچ جھوٹ خالی اور یا نہیں توڑو جاری مانو چھاپو حد لمبائی مجموعہ کمترین زیادہترین مطلق گول صحیح_عدد اعشاری متن منطقی",
+  "ja": "もし それ以外 それ以外_もし あいだ ため なか 関数 戻す 真 偽 なし かつ または 否定 抜ける 続ける 置く 表示 範囲 長さ 合計 最小 最大 絶対 丸める 整数 小数 文字列 論理",
+  "ko": "만약 아니면 아니면_만약 동안 위해 안에 함수 반환 참 거짓 없음 그리고 또는 아님 중단 계속 두기 출력 범위 길이 합계 최소 최대 절댓값 반올림 정수 소수 문자열 논리",
+  "tr": "eger degilse degilse_eger iken icin icinde islev dondur dogru yanlis bos ve veya degil kir devam olsun yazdir aralik uzunluk toplam enkucuk enbuyuk mutlak yuvarla tamsayi ondalik metin mantiksal",
+  "vi": "nếu nếu_không nếu_không_nếu trong_khi cho trong hàm trả_về đúng sai rỗng và hoặc không dừng tiếp_tục đặt in phạm_vi độ_dài tổng nhỏ_nhất lớn_nhất tuyệt_đối làm_tròn số_nguyên số_thực văn_bản luận_lý",
+  "ta": "எனில் இல்லையெனில் இல்லையெனில்_எனில் வரை ஒவ்வொரு இல் செயல்பாடு திருப்பு உண்மை பொய் இல்லை மற்றும் அல்லது அல்ல நிறுத்து தொடர் வை அச்சிடு வரம்பு நீளம் கூட்டுத்தொகை குறைந்தது அதிகபட்சம் முழுமதிப்பு வட்டமிடு முழுஎண் தசமம் உரை தருக்கம்",
+  "it": "se altrimenti altrimenti_se mentre per in funzione ritorna vero falso nulla e oppure non interrompi continua sia stampa intervallo lunghezza somma minimo massimo assoluto arrotonda intero decimale testo booleano",
+  "th": "ถ้า มิฉะนั้น มิฉะนั้น_ถ้า ขณะที่ สำหรับ ใน ฟังก์ชัน คืนค่า จริง เท็จ ไม่มี และ หรือ ไม่ หยุด ต่อไป ให้ พิมพ์ ช่วง ความยาว ผลรวม ต่ำสุด สูงสุด ค่าสัมบูรณ์ ปัดเศษ จำนวนเต็ม ทศนิยม ข้อความ ตรรกะ",
+  "pl": "jezeli inaczej inaczej_jezeli dopoki dla w funkcja zwroc prawda falsz nic oraz lub nie przerwij kontynuuj niech wypisz zakres dlugosc suma minimum maksimum bezwzgledna zaokraglij calkowita dziesietna tekst logiczna"
+}
 ALIASES = {
-    'sk': {
-        'ak':'if','inak':'else','inak_ak':'elif','pokial':'while','kym':'while',
-        'pre':'for','v':'in','funkcia':'def','vrat':'return','pravda':'True',
-        'nepravda':'False','nic':'None','a_zaroven':'and','alebo':'or','nie':'not',
-        'prerus':'break','pokracuj':'continue','nech':'let',
-        'vypis':'print','rozsah':'range','dlzka':'len','sucet':'sum',
-        'minimum':'min','maximum':'max','absolutne':'abs','zaokruhli':'round',
-        'cele':'int','desatinne':'float','text':'str','logicke':'bool'
-    },
-    'en': {
-        'if':'if','else':'else','elif':'elif','while':'while','for':'for','in':'in',
-        'function':'def','def':'def','return':'return','true':'True','false':'False',
-        'none':'None','and':'and','or':'or','not':'not','break':'break',
-        'continue':'continue','let':'let','print':'print','range':'range',
-        'len':'len','sum':'sum','min':'min','max':'max','abs':'abs',
-        'round':'round','int':'int','float':'float','str':'str','bool':'bool'
-    },
-    'cs': {
-        'pokud':'if','jinak':'else','jinak_pokud':'elif','dokud':'while',
-        'pro':'for','v':'in','funkce':'def','vrat':'return','pravda':'True',
-        'nepravda':'False','nic':'None','a_zaroven':'and','nebo':'or','ne':'not',
-        'prerus':'break','pokracuj':'continue','necht':'let','vypis':'print',
-        'rozsah':'range','delka':'len','soucet':'sum','minimum':'min','maximum':'max'
-    },
-    'de': {
-        'wenn':'if','sonst':'else','sonst_wenn':'elif','solange':'while',
-        'fur':'for','in':'in','funktion':'def','zuruck':'return','wahr':'True',
-        'falsch':'False','nichts':'None','und':'and','oder':'or','nicht':'not',
-        'abbruch':'break','weiter':'continue','sei':'let','ausgeben':'print',
-        'bereich':'range','lange':'len','summe':'sum','minimum':'min','maximum':'max'
-    }
+    lang: dict(zip(words.split(), CANONICAL))
+    for lang, words in PROFILE_WORDS.items()
 }
-CANONICAL = {'if','else','elif','while','for','in','def','return','True','False','None',
-             'and','or','not','break','continue','let','print','range','len','sum',
-             'min','max','abs','round','int','float','str','bool'}
-PREFERRED = {
-    'sk': {
-        'if':'ak','else':'inak','elif':'inak_ak','while':'pokial','for':'pre','in':'v',
-        'def':'funkcia','return':'vrat','True':'pravda','False':'nepravda',
-        'None':'nic','and':'a_zaroven','or':'alebo','not':'nie','break':'prerus',
-        'continue':'pokracuj','let':'nech','print':'vypis','range':'rozsah',
-        'len':'dlzka','sum':'sucet','min':'minimum','max':'maximum',
-        'abs':'absolutne','round':'zaokruhli','int':'cele',
-        'float':'desatinne','str':'text','bool':'logicke'
-    }
-}
-for language in ('en','cs','de'):
+ALIASES["sk"]["kym"] = "while"
+ALIASES["en"]["def"] = "def"
+PREFERRED = {}
+for lang, aliases in ALIASES.items():
     preferred = {}
-    for spelling, canonical in ALIASES[language].items():
+    for spelling, canonical in aliases.items():
         preferred.setdefault(canonical, spelling)
-    PREFERRED[language] = preferred
+    PREFERRED[lang] = preferred
+LANGUAGE_NAMES = {
+  "sk": "Slovak",
+  "en": "English",
+  "cs": "Czech",
+  "de": "German",
+  "es": "Spanish",
+  "fr": "French",
+  "pt": "Portuguese",
+  "ru": "Russian",
+  "zh": "Mandarin Chinese",
+  "hi": "Hindi",
+  "ar": "Arabic",
+  "bn": "Bengali",
+  "id": "Indonesian",
+  "ur": "Urdu",
+  "ja": "Japanese",
+  "ko": "Korean",
+  "tr": "Turkish",
+  "vi": "Vietnamese",
+  "ta": "Tamil",
+  "it": "Italian",
+  "th": "Thai",
+  "pl": "Polish"
+}
+NATIVE_SCRIPT_PROFILES = ("ru", "zh", "hi", "ar", "bn", "ur", "ja", "ko", "ta", "th", "vi")
