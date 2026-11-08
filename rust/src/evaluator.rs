@@ -244,6 +244,26 @@ mod tests {
         assert_eq!(evaluate_source("fn f() { return 1 }", "ai").unwrap_err().code, 4004);
     }
     #[test]
+    fn floor_division_and_modulo_keep_python_sign_rules() {
+        assert_eq!(
+            evaluate_source("print(-7 // 3, -7 % 3, 7 // -3, 7 % -3)", "ai").unwrap(),
+            "-3 2 -3 -2\n"
+        );
+    }
+    #[test]
+    fn true_division_is_explicitly_deferred() {
+        assert_eq!(evaluate_source("print(3 / 2)", "ai").unwrap_err().code, 4004);
+    }
+    #[test]
+    fn integer_overflow_is_numbered() {
+        assert_eq!(
+            evaluate_source("print(170141183460469231731687303715884105727 + 1)", "ai")
+                .unwrap_err()
+                .code,
+            4003
+        );
+    }
+    #[test]
     fn text_and_boolean_literals() {
         assert_eq!(evaluate_source("print(\"hello\", true, null)", "ai").unwrap(), "hello true null\n");
     }
