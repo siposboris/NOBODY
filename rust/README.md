@@ -16,11 +16,18 @@ Nobody itself. **Parsing does not mean running or native compilation.**
 - A token-preserving converter for old `ai_` source in `src/ai_migration.rs`.
 - Stable Nxxxx diagnostic categories for known source problems.
 
-**Important:** Rust compilation and the complete 40-profile test matrix are
-**not yet independently verified** in this authoring environment. Individual
-profiles may still contain Unicode or translation problems; native-speaker
-reviews are outstanding. The Python reference remains in the repository until
-complete behavioral parity has been demonstrated.
+**Verified:** Rust compilation, tests, formatting, Clippy and 40×40 representative
+IR profile matrix passed GitHub Actions. Unicode N2008 normalization checks
+passed in [Rust CI #42503823825](https://github.com/siposboris/NOBODY/actions/runs/42503823825).
+This is not proof of full frontend or runtime parity: native-speaker reviews,
+Unicode confusables beyond the N2007 subset and full grammar remain open.
+The Python reference remains until complete behavioral parity is demonstrated.
+
+**Dependency change:** NFC validation uses the pinned `unicode-normalization = "=0.1.24"`
+crate. The Rust frontend is no longer third-party-dependency-free, although it
+still does not invoke Python or online services at runtime. A checked-in
+`Cargo.lock` is not yet present, so a fully locked dependency graph remains
+follow-up release work.
 
 ## Build and check
 
