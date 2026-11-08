@@ -37,7 +37,7 @@ class Scopes017(unittest.TestCase):
         execute(code,output=lambda *a:output.append(a))
         self.assertEqual(output,[(0,)])
         with self.assertRaisesRegex(ExecutionError,'call depth'):
-            execute(code,max_steps=100000,output=lambda *a:None)
+            execute(code,max_steps=100000,max_call_depth=3,output=lambda *a:None)
 
     def test_ai_syntax_closure(self):
         src='funkcia maker(x) { funkcia get() { vrat x }\nvrat get }\nnech f = maker(9)\nvypis(f())'
