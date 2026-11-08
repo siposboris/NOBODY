@@ -113,7 +113,13 @@ fn lower_block(
         let lowered = match statement {
             Statement::Let { name, type_name, expr } => IrStatement::Let {
                 name: name.clone(),
-                type_name: type_name.clone(),
+                // Normalize localized primitive annotations into canonical IR.
+                // Unknown annotation names remain unchanged for future validation.
+                type_name: type_name.as_ref().map(|name|
+                    profiles::semantic(language, name)
+                        .filter(|semantic| matches!(*semantic, "int"|"float"|"str"|"bool"))
+                        .unwrap_or(name.as_str()).to_string()
+                ),
                 expr: expression(expr, language, &visible),
             },
             Statement::Assign { name, expr } => IrStatement::Assign {
@@ -260,6 +266,26 @@ mod tests {
     fn invalid_profile_keeps_numbered_error() {
         let err = lower_source("let n = 1", "zz").unwrap_err();
         assert_eq!(err.code, 3007);
+    }
+
+    #[test]
+    fn localized_primitive_annotation_is_canonical() {
+        let sk=lower_source("nech vek: cele = 3","sk").unwrap();
+        let ai=lower_source("let vek: int = 3","ai").unwrap();
+        assert_eq!(sk,ai);
+        let IrStatement::Let{type_name,..}=&sk.statements[0] else {panic!("expected let")};
+        assert_eq!(type_name.as_deref(),Some("int"));
+    }
+
+    #[test]
+    fn canonical_annotations_match_all_profiles() {
+        let source="nech vek: cele = 3";
+        let base=lower_source(source,"sk").unwrap();
+        for profile in profiles::PROFILES {
+            let converted=translate_source(source,"sk",profile.code).unwrap();
+            let other=lower_source(&converted,profile.code).unwrap();
+            assert_eq!(base,other,"profile {}",profile.code);
+        }
     }
 
     #[test]
