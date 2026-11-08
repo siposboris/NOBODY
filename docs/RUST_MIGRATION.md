@@ -17,11 +17,15 @@ The compiled **`nobody` Rust executable** is the primary user-facing command for
 
 The older inventory below records original migration planning and is **historical**, not a current source-code status table. No complete Python module has yet passed every removal criterion. Do not delete Python reference files until their exact supported semantics and tests have been replaced; delete module by module after a dedicated review.
 
+## Parenthesized AST JSON expressions (2026-11-08, pending CI)
+
+The token-aligned Rust JSON source-line visitor now supports parenthesized/grouped expressions, including nested grouping and grouped left operands, without changing the immutable syntax AST. It uses a bounded (64 levels) source-token backtracking attempt when determining whether the grouping encloses a complete expression or only a subexpression. Three additional SK/EN differential fixtures compare the resulting JSON byte-for-byte against the Python reference. The Rust `run` implementation itself is unchanged. This is another subset improvement; true source spans, JSON import/validation/emission and full Python parity remain outstanding.
+
 ## Multiline AST JSON source-line bridge (2026-11-08, verified narrow subset)
 
 The Rust `ast-json` exporter extends its exact legacy `nobody.ast.v1` serializer to a conservatively supported **multiline subset**, using original UTF-8 lexer token line positions to annotate the already-validated Rust AST. This source-line mapping is independent of Python at runtime. New exact-output fixtures cover Slovak and English calls, branching, loops, and functions across physical source lines. All four workflows passed in [Rust CI #42521825341](https://github.com/siposboris/NOBODY/actions/runs/42521825341); merged via [PR #21](https://github.com/siposboris/NOBODY/pull/21).
 
-The Rust parser still does **not** retain a general source-span-bearing AST. To prevent false location claims, the mapping rejects unsupported constructions (including grouped/parenthesized expressions spanning lines) with N4004 rather than guessing; one-line export remains backward compatible. Full AST JSON deserialization, schema validation, source re-emission, indexed/list expressions, and full grammar parity remain open. Do not remove Python AST modules yet.
+The Rust parser still does **not** retain a general source-span-bearing AST. To prevent false location claims, the mapping rejects unsupported constructions (including syntax shapes not yet mapped or incompatible with the Python reference) with N4004 rather than guessing; one-line export remains backward compatible. Full AST JSON deserialization, schema validation, source re-emission, indexed/list expressions, and full grammar parity remain open. Do not remove Python AST modules yet.
 
 ## AST JSON source migration (2026-11-08, verified single-line subset)
 
