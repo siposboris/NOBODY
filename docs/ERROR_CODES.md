@@ -501,3 +501,12 @@ add(1, 2)
 **Repair:** Use a recognized type keyword or remove the annotation if inference / unknown typing is intended. Unannotated dynamic expressions remain conservatively accepted.
 
 **Location and limitations:** The Rust parser reports N1007 at the unknown annotation token with its actual line and Unicode-scalar column. The lower-level IR type checker also rejects unrecognized explicit annotations with N1007, but standalone IR v1 does not carry source locations and therefore does not invent them. Custom types, generics, aliases and modules are **not yet implemented**; this restriction is not permanent. The change does not provide a sound whole-program type checker.
+
+
+### N1008 — Definitely zero numeric literal divisor (Rust static checker)
+
+**Exact cause:** A division, floor division or remainder operator (`/`, `//`, `%`) receives a divisor that is syntactically certain to be the numeric literal zero. Examples: `let x = 5 / 0`, `let x = 5 // -0.0`, `let x = 5 % 0e10`.
+
+**Repair:** Replace the literal zero with a nonzero divisor. If the value comes from input or calculation, guard it before division. The diagnostic explicitly identifies the operator but, since IR v1 has no expression source spans, it does not invent a line or column.
+
+**Deliberate limits:** No constant folding is performed. `5 / (1 - 1)` and `5 / variable` are deferred; a successful static check is **not** a runtime guarantee against division by zero. The detector examines decimal mantissa digits directly and does not misclassify nonzero source literals that underflow in floating-point conversion. Type errors such as `"text" / 0` retain N1002 priority. This applies to the existing Rust typecheck command, not the lexer-only check.
