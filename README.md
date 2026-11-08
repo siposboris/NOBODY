@@ -197,3 +197,7 @@ The `nobody-rs validate sk|en|ai FILE` command combines parsing and these specif
 ## Rust 0.27 — safer source translation
 
 An additional Rust translation pass detects destination-keyword collisions (**N3011**), instead of producing incorrect Nobody source. For example, Slovak identifier `fn` conflicts with redesigned AI `fn`. The Rust translator reports the exact problem and recommends renaming in source; strings and comments remain untouched. [Precise examples and limitations](docs/TRANSLATION_SAFETY.md). Five new Rust integration tests are committed; a successful Rust build remains **unverified**.
+
+## Rust 0.30 — typed declarations and assignment checking
+
+A conservative Rust IR checker now rejects known type mismatches with N1001. Run `cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd`. It does not execute programs and cannot yet prove safety for unknown function results or flow-dependent types. Eight unit tests and two CLI tests are authored, but a successful Rust build/CI is **not yet verified**.
