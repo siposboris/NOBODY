@@ -25,6 +25,8 @@
 | **N3005** | `PARSE_EXPRESSION` | Neplatný výraz |
 | **N3006** | `PARSE_UNSUPPORTED` | Rust subset parser does not implement this statement |
 | **N3007** | `PARSE_PROFILE` | Rust parser does not support the requested syntax profile |
+| **N3008** | `RETURN_CONTEXT` | Return outside a function body |
+| **N3009** | `LOOP_CONTROL_CONTEXT` | Break or continue outside a loop in the current function |
 | **N4001** | `RUN_NAME` | Neexistujúce meno |
 | **N4002** | `RUN_TYPE` | Typová chyba za behu |
 | **N4003** | `RUN_LIMIT` | Prekročený limit vykonávania |
@@ -262,3 +264,42 @@ Rozsahy: 1000–1999 typy a diagnostiky, 2000–2999 lexer/Unicode, 3000–3999 
 **Exact cause:** The selected `--lang` equivalent for the current Rust CLI is not one of `sk`, `en`, `ai`. Other human languages exist in the Python reference but have not been ported into the Rust parser.
 **How to fix:** Use `nobody-rs parse sk FILE`, `nobody-rs parse en FILE` or `nobody-rs parse ai FILE` with matching source. Do not silently reinterpret the file as another language.
 **Example:** `nobody-rs parse ja program.nbd` produces N3007.
+
+### N3008 — Return outside a function
+
+**Exact cause:** The `vrat` (`return`, `ai_return`) instruction appears at the top level or in a top-level conditional/loop rather than in the body of a function. A return can terminate a function call, not a whole source file.
+
+**How to fix:** Move the return statement inside a named function definition, or remove it if the top-level code should simply finish.
+
+**Incorrect example:**
+```nobody
+nech x = 3
+vrat x
+```
+
+**Correct example:**
+```nobody
+funkcia get_x() { vrat 3 }
+```
+
+The Rust `validate` command reports `N3008` while leaving a precise explanation and remedy.
+
+### N3009 — Break or continue outside a loop in the current function
+
+**Exact cause:** `prerus` / `pokracuj` (`break` / `continue`, `ai_break` / `ai_continue`) is not lexically nested in a `while` or `for` loop belonging to the same function. **A surrounding loop does not count for a separately declared nested function**, since that function may be invoked after the loop ends.
+
+**How to fix:** Move the instruction inside a `while` or `for` loop defined within the same function. Do not place it in a function merely defined in an outer loop.
+
+**Incorrect example:**
+```nobody
+funkcia f() { prerus }
+```
+
+**Correct example:**
+```nobody
+funkcia f() {
+    pokial pravda { prerus }
+}
+```
+
+**Known diagnostic limitation:** Rust parser AST nodes do not yet retain their original line and column. The validator therefore reports the N-code and cause without inventing a source location. Accurate diagnostic spans remain an open roadmap task.
