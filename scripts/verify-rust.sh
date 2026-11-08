@@ -64,7 +64,7 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- ru
 fi
 printf '%s\n' '== Nobody Phase 4: control-flow bytecode parity =='
 for lang in ai sk en; do
-  source="rust/examples/bytecode_control_{lang}.nbd"
+  source="rust/examples/bytecode_control_${lang}.nbd"
   ast_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run "$lang" "$source")
   vm_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode "$lang" "$source")
   if [[ "$ast_output" != "$vm_output" || "$vm_output" != "$(printf '8\ntrue')" ]]; then
