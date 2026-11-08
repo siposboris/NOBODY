@@ -193,6 +193,14 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 - [x] Canonicalize primitive type annotations (`int`, `float`, `str`, `bool`) when lowering localized declarations into Rust IR v1; add cross-profile structural equivalence and Slovak typed declaration regression tests. **Rust execution still unverified.**
 - [x] Add conservative Rust N1006 numeric unary operand checks, five unit tests, actionable diagnostic documentation; ensure verifier-script edits trigger Rust GitHub Actions. **Build/test execution unverified.**
 - [x] Conservatively invalidate known Rust function arity after potential reassignment in conditional branches and loops, without leaking local shadowing or iterator bindings; add four regression tests. **Build/test execution unverified.**
+## Current acceptance-gate evidence (2026-11-08)
+
+**Rust compilation / formatting / Clippy / test success: NOT VERIFIED.** The authoring environment has no Cargo, rustc or rustfmt and cannot access GitHub through its local shell. The GitHub connector used for source edits does not expose ordinary push-triggered Actions runs via its commit workflow lookup. No CI success is inferred from a committed workflow.
+
+The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly configured Rust toolchain and retains `rust-verification.log` as a downloadable artifact even if the gate fails. The gate is deliberately strict and must not be marked complete without a successful result. A targeted source review also corrected a preexisting arity-tracking error where lexical shadowing inside branches could discard an outer function signature; four new regression tests are authored but not yet executed.
+
+**Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. Close the Phase 0 Rust verification item only after the full CI job succeeds and its run URL/logs have been inspected. Until then the totals remain **40 checked / 69 open**.
+
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
