@@ -87,3 +87,21 @@ For each of the 22 profiles, native speakers should inspect the spelling and nat
 ## RTL display and source ordering
 
 Arabic (`ar`) and Urdu (`ur`) now carry explicit RTL direction metadata in [bidi.py](../nobody/bidi.py). Their original script is retained; source is never byte-reversed or character-reversed. Hidden bidi override/isolation controls are rejected in lexer input. **Editor rendering is not automated yet.** See [RTL guide](RTL.md).
+
+
+## Expanded scope: 249 entries, 28 experimental syntax dictionaries (2026-11-08)
+
+The 22 rows above remain the **original working experimental profiles**, not a full listing of all language variants in Google Translate. Six experimental profiles have been added:
+
+| Code | Language | Native script / case | Conditional keyword |
+|---|---|---|---|
+| `he` | Hebrew | Hebrew, RTL | `אם` |
+| `el` | Greek | Greek lowercase | `αν` |
+| `uk` | Ukrainian | Cyrillic lowercase | `якщо` |
+| `fa` | Persian | Persian script, RTL | `اگر` |
+| `sw` | Swahili | Latin lowercase | `ikiwa` |
+| `nl` | Dutch | Latin lowercase | `als` |
+
+[Full catalogue of 249 variant names](../nobody/data/google_translate_249.txt). The catalogue includes dialects and script variants, so it must **not** be described as 249 fully supported syntax languages. All other 221 entries are planned, not functional. This reference is based on a publicly reported August 2026 Google Translate list; project status is not affiliated with Google.
+
+The source-code profiles are provisional and still require native-speaker review and collision testing. Each file uses one syntax language. Text and comments are not translated.
