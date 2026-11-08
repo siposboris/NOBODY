@@ -63,6 +63,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [ ] Port scopes, closures, type analysis, return inference and all applicable **Nxxxx** diagnostics to Rust.
 - [ ] Implement strict, inferred and gradual typing modes with explicit boundaries and stable semantics.
 - [x] Add a Rust **AST contextual validation pass** rejecting return outside a function (N3008) and break/continue outside a loop in the current function (N3009), including nested-function boundaries. Implemented in source with ten authored unit tests; successful Rust compilation is **not yet verified**.
+- [x] Commit Rust AST **control-flow context validation** (return only inside functions; break/continue only inside a loop in the current function), with new documented N3008/N3009 diagnostics and native Rust CLI integration tests. Source exists; cargo compilation and CI success remain **unverified**.
 - [ ] Implement function parameter/return annotations, type inference for dynamic values, control-flow narrowing and union/optional/result/error types.
 - [ ] Implement generics, algebraic data types, enums, pattern matching, traits and interfaces.
 - [ ] Implement deep immutability, safe aliasing, borrow/move semantics and fully specified mutability.
@@ -158,6 +159,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.23 source snapshot | Small Rust AST parser, SK/EN/AI fixtures, numbered N3006/N3007 errors | **Uncompiled/unverified locally; CI outcome pending** |
 | 0.24 source snapshot | Rust AST grammar extended with conditionals, loops, function declarations, returns and nested blocks; new unit tests and smoke coverage | **Build and execution unverified** |
 | 0.25 source snapshot | Rust AST contextual validator, new numbered errors N3008/N3009, CLI `validate`, test cases | **Unverified Rust build/CI** |
+| 0.25 source snapshot | Rust contextual validator, N3008/N3009 errors, native `validate` CLI and authored integration tests | Rust compilation/CI **unverified** |
 | Next | Verified Rust CI, remaining profiles and differential tests | Incomplete |
 
 ## Immediate priorities (in dependency order)
