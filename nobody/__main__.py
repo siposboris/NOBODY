@@ -13,10 +13,14 @@ from .translator import translate
 from .ast_vm import execute
 from .parser import parse_source
 from .bidi import direction_for_language, editor_advice
-from .errors import CATALOG,BY_NUMBER,render_exception
+from .errors import CATALOG,BY_NUMBER,render_exception,format_diagnostic
+
+class NumberedArgumentParser(argparse.ArgumentParser):
+    def error(self,message):
+        self.exit(2,format_diagnostic('CLI_INPUT',message)+'\n')
 
 def main(argv=None):
-    p=argparse.ArgumentParser(prog='nobody')
+    p=NumberedArgumentParser(prog='nobody')
     sub=p.add_subparsers(dest='command',required=True)
     langs=sub.add_parser('languages',help='Show 249 reference variants and their status')
     langs.add_argument('--json',action='store_true')
