@@ -28,6 +28,8 @@ ENTRIES=[
 (3003,'PARSE_IDENTIFIER','Neplatný názov','Parser očakával identifikátor a našiel neplatný token.','Po nech/funkcia uveď platný názov, ktorý nie je rezervované slovo.'),
 (3004,'PARSE_LANGUAGE','Cudzie kľúčové slovo','Príkaz patrí inému než nakonfigurovanému jazyku súboru.','Použi preklad kľúčového slova pre aktuálne --lang.'),
 (3005,'PARSE_EXPRESSION','Neplatný výraz','Výraz má neplatný začiatok alebo chýbajúci operand.','Skontroluj operand a zátvorky pred miestom chyby.'),
+(3006,'PARSE_UNSUPPORTED','Nepodporovaná konštrukcia v Rust parseri','Rust parser zatiaľ nerozpoznáva uvedený príkaz, napríklad podmienku ak alebo funkciu.','Použi podporovanú deklaráciu, priradenie alebo výraz; na ostatné konštrukcie počkaj na port parsera.'),
+(3007,'PARSE_PROFILE','Nepodporovaný jazykový profil Rust parsera','Nový čiastočný Rust parser zatiaľ pozná iba profily sk, en a ai.','Spusti nobody-rs parse sk, en alebo ai so správnym súborom; ďalšie profily zatiaľ používa len starý referenčný prototyp.'),
 (4001,'RUN_NAME','Neexistujúce meno','Počas vykonávania premenná nie je dostupná v aktuálnom rozsahu.','Deklaruj ju pred použitím alebo ju odovzdaj ako parameter.'),
 (4002,'RUN_TYPE','Typová chyba za behu','Dynamicky vypočítaná hodnota sa nezhoduje s požadovaným typom.','Skontroluj typ pri deklarácii aj skutočnú hodnotu výrazu.'),
 (4003,'RUN_LIMIT','Prekročený limit vykonávania','Prekročený počet krokov alebo hĺbka rekurzívnych volaní.','Skontroluj ukončenie cyklu/rekurzie, až potom zváž zvýšenie limitu.'),
