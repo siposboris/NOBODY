@@ -226,14 +226,30 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 - **Phase 0 Rust verification (still open):** The container has neither `cargo` nor `rustc`, and its network cannot resolve the official Rust toolchain host. No claim of a successful build, formatting gate, Clippy or GitHub Actions run is made. Do not remove the existing acceptance gate.
 - **Accounting:** Existing roadmap totals stay unchanged. Fixes to partial work are not new completed milestones.
 
-## Immediate priorities (in dependency order)
+## Next engineering milestones — prioritized acceptance plan (updated 2026-11-08)
 
-1. **Completed initial verification gate:** Rust crate compiles; formatting, unit/integration tests, Clippy, and smoke pass on GitHub run #42501364426. Continue enforcing this gate on every future Rust change; do not infer full language parity.
-2. Extend the now-compiled Rust parser beyond its currently tested subset and independently verify full frontend parity across profiles. **Parsing is not execution.**
-3. **Compile and verify** the now-committed 40 Rust language tables, AI migration and source translation using the complete Rust test suite; then compare fixture outputs against the Python reference.
-4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
-5. Remove superseded Python modules in separate changes after parity is demonstrated.
-6. Develop bytecode/native backends, then self-host the compiler in Nobody.
+Roadmap checklist progress is **44/112 (39%)** as of this update. It counts marked checklist entries, including historical prototypes, and **must not** be treated as a percentage of a working language or production readiness. The README bar is generated from checkbox bullets by `scripts/update-roadmap-progress.py` and checked in CI. Counting is deliberately *unweighted*; do not claim that a checked lexer item is equivalent in engineering effort to a native backend or self-hosting.
+
+### 0.39 target — small Rust evaluator foundation (not yet implemented)
+
+1. Add a **separate, opt-in Rust AST/IR evaluator**, initially for integer/string/boolean/null literals, arithmetic, `let` bindings and `print`, with stdout capture for tests. Keep `parse`, `validate`, `typecheck` and `check` as non-executing commands.
+2. Define deterministic runtime-value and runtime-error types, including numbered Nxxxx diagnostics for division by zero, missing variables and unsupported operations. Avoid inventing source spans where IR does not contain them.
+3. Add execution tests for a simple Slovak and `ai` program with identical observable results; cross-check supported fixtures against the legacy Python AST evaluator. Output must match while keyword syntax remains one language per file.
+4. Before a new `run` CLI can claim support, verify guarded step/recursion budgets and document that these are **not** a security sandbox or hard memory/CPU caps.
+5. **Gate:** `cargo fmt --check`, `cargo test --locked --all-targets`, strict Clippy, CLI smoke and Python-vs-Rust fixture comparison must pass in GitHub Actions. Mark the evaluator partial until every claimed behavior has tests. Do **not** delete Python.
+
+### Following slices — only after the 0.39 gate
+
+1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.
+2. Extend flow-sensitive types (branch joins and loop writes) conservatively, with regression tests for false positive/false negative boundaries.
+3. Add source-span-bearing AST/IR, semantic roundtrips and deterministic AST JSON interchange; keep unknown operations explicitly unsupported.
+4. Introduce bytecode specification, verifier and deterministic Rust VM, **then** native Linux x86-64 compilation. Both remain planned.
+5. Compare reference and Rust behavior across the declared subset of all 40 experimental profiles, including RTL/Unicode fixtures, before considering a legacy Python component for removal.
+6. After a mature Nobody runtime exists, attempt repeatable Nobody-written bootstrap stages 1 → 2 → 3. Native self-hosting is not claimed today.
+
+## Progress accounting and refresh
+
+Run `python3 scripts/update-roadmap-progress.py` after changing a checked or unchecked roadmap entry. CI runs `python3 scripts/update-roadmap-progress.py --check` to prevent README drift. The denominator may grow as requirements are split or newly discovered; percent changes are **not** a speed or quality metric. Build/test verification and release acceptance remain separate gates.
 
 ## Release acceptance criteria
 

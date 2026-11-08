@@ -4,7 +4,30 @@
 
 Nobody aims to enable programming in original human writing systems, with optional language/runtime features, while preserving a common semantic core. It is **not** an official OpenAI product.
 
-## Current Rust 0.26 source milestone: 40 syntax profiles and redesigned AI syntax
+<!-- roadmap-progress:start -->
+### Roadmap checklist progress — 39%
+
+**44 / 112 roadmap checklist items marked complete** (68 still open)
+
+`████████░░░░░░░░░░░░` **39%**
+
+This measures **completed checklist entries**, not the percentage of a working compiler, feature parity, quality, or production readiness. Some checked items are historical prototypes or partial milestones. Nobody is experimental; its Rust runtime, native compiler and self-hosting are not complete.
+
+See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `python3 scripts/update-roadmap-progress.py`.
+<!-- roadmap-progress:end -->
+
+## Current verified Rust milestone — 0.38 (November 8, 2026)
+
+- 39 experimental human syntax profiles and one canonical `ai` profile; no mixing syntax languages in a source file.
+- Rust lexer, limited parser, source translator, versioned in-memory IR and conservative static type checking exist.
+- Error checks include invalid primitive annotations (N1007), literal-zero divisors and a conservative exact-integer constant-expression subset (N1008). This is not a complete runtime, interpreter, native compiler or security sandbox.
+- Rust formatting, locked builds, Clippy, unit/integration tests and CLI smoke passed in [GitHub Actions #42509584371](https://github.com/siposboris/NOBODY/actions/runs/42509584371). Python remains a comparison reference.
+
+Run the Rust verification locally with `bash scripts/verify-rust.sh`, or inspect [the detailed roadmap](docs/ROADMAP.md).
+
+
+
+## Historical Rust 0.26 milestone: 40 syntax profiles and redesigned AI syntax
 
 The Rust compiler frontend now contains **39 experimental human-language keyword
 profiles + one redesigned `ai` profile** (40 total) in
@@ -28,9 +51,9 @@ cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy
 cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
 ```
 
-**Verification:** Rust source code and tests are committed, but `cargo`/`rustc`
-are not available in the current authoring environment and successful Rust
-compilation/CI has **not** been confirmed. Keyword tables and translation do
+**Historical verification note for the 0.26 snapshot:** Rust compilation was
+not yet confirmed when this section was written. Later 0.38 builds and tests
+are verified in the current milestone above. Keyword tables and translation do
 not imply all runtime semantics or native compilation have been ported. No
 Python modules have been deleted. [AI syntax specification](docs/AI_SYNTAX.md)
 · [English roadmap](docs/ROADMAP.md) · [Rust migration gates](docs/RUST_MIGRATION.md).
