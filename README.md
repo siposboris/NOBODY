@@ -135,3 +135,14 @@ V úplnom lokálnom balíku 0.20 prešlo **156 testov**, z toho 12 nových testo
 The existing Python implementation is **temporarily frozen as a reference**. It has not been deleted because the Rust frontend does **not yet** replace the full parser, translator, analyzer or runtime. Python files will be removed one at a time only after Rust equivalents pass behavior-parity tests. The eventual goal is to rewrite the compiler itself in Nobody and verify self-hosting. [Migration plan and exact deletion gates](docs/RUST_MIGRATION.md).
 
 The Rust toolchain was unavailable in the code-generation environment, so a successful local Rust compilation **has not been verified**. No claim of full Rust migration, native compilation or Python independence is made yet.
+
+
+## Rust milestone 0.23: small AST parser and English roadmap
+
+The [entire roadmap is now maintained in English](docs/ROADMAP.md), with checkboxes that distinguish committed prototypes from unimplemented end-to-end capabilities.
+
+A new [Rust parser module](rust/src/syntax.rs) builds a typed AST for a **limited** subset of Slovak (`sk`), English (`en`) and AI (`ai`) source. It handles variable declarations, primitive annotations, reassignment, literals, basic expressions and function-call *syntax*. It **does not** yet parse function declarations, conditions, loops or the other 37 experimental profiles.
+
+The executable command is `cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd` (substitute `en` or `ai` and their matching fixtures). N3006 explains a not-yet-supported construct and N3007 explains a requested profile that is not yet ported to Rust. Both have [specific solutions in the error catalogue](docs/ERROR_CODES.md).
+
+**Rust compilation and tests are not yet verified** in this environment because `rustc` and `cargo` are unavailable; only source and test files have been committed. The older Python reference remains untouched until parity tests justify deletion. This is not a complete compiler or an official tested release.
