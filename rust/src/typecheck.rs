@@ -109,9 +109,7 @@ fn definitely_zero_literal(expr: &IrExpr) -> bool {
             }
             has_digit
         }
-        IrExpr::Unary { op, value } if op == "+" || op == "-" => {
-            definitely_zero_literal(value)
-        }
+        IrExpr::Unary { op, value } if op == "+" || op == "-" => definitely_zero_literal(value),
         _ => false,
     }
 }
