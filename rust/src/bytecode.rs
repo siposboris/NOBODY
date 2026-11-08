@@ -610,8 +610,8 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_control_flow_is_explicitly_rejected() {
-        let err = compile_source("if true { print(1) }", "ai").unwrap_err();
+    fn unsupported_range_loop_is_explicitly_rejected() {
+        let err = compile_source("for n in range(3) { print(n) }", "ai").unwrap_err();
         assert_eq!(err.code, 4004);
     }
 
@@ -635,6 +635,85 @@ mod tests {
     fn localized_unicode_names_compile() {
         let source = "nech číslo = 12\nvypis(číslo - 5)";
         assert_eq!(execute_source(source, "sk").unwrap(), "7\n");
+    }
+
+    #[test]
+    fn if_while_break_continue_match_existing_runtime() {
+        let source = "let i = 0
+let total = 0
+while i < 5 {
+  i = i + 1
+  if i == 2 { continue }
+  if i == 5 { break }
+  total = total + i
+}
+print(total)
+if total >= 8 { print(true) } else { print(false) }";
+        let bytecode_output = execute_source(source, "ai").unwrap();
+        assert_eq!(bytecode_output, "8\ntrue\n");
+        assert_eq!(bytecode_output, crate::evaluate_source(source, "ai").unwrap());
+    }
+
+    #[test]
+    fn branch_and_loop_scopes_can_shadow_variables() {
+        let source = "let x = 4
+if true { let x = 9 print(x) }
+print(x)
+while x < 7 {
+  let temporary = x + 1
+  x = temporary
+  print(x)
+}";
+        let bytecode_output = execute_source(source, "ai").unwrap();
+        assert_eq!(bytecode_output, "9\n4\n4\n5\n6\n7\n".replace("4\n4", "4\n5"));
+        assert_eq!(bytecode_output, crate::evaluate_source(source, "ai").unwrap());
+    }
+
+    #[test]
+    fn malformed_jumps_and_uninitialized_branches_are_rejected() {
+        let outside = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![Instruction::Jump(9), Instruction::Halt],
+        };
+        assert_eq!(verify(&outside).unwrap_err().code, 4004);
+        let uninitialized = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 1,
+            code: vec![
+                Instruction::PushBool(false),
+                Instruction::JumpIfFalse(4),
+                Instruction::Push(1),
+                Instruction::Define(0),
+                Instruction::Load(0),
+                Instruction::Drop,
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&uninitialized).unwrap_err().code, 4004);
+        let mismatched = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![
+                Instruction::PushBool(true),
+                Instruction::JumpIfFalse(3),
+                Instruction::Push(5),
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&mismatched).unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn infinite_empty_while_stops_at_step_budget() {
+        let error = execute_source("while true { }", "ai").unwrap_err();
+        assert_eq!(error.code, 4005);
+    }
+
+    #[test]
+    fn non_boolean_conditions_fail_without_truthiness() {
+        let error = execute_source("if 1 { print(2) }", "ai").unwrap_err();
+        assert_eq!(error.code, 4004);
     }
 
     #[test]
