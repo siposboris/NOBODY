@@ -157,3 +157,13 @@ Do not confuse these historical notes with published and verified tags.
 - Extended GitHub Actions smoke tests to parse the existing `examples/hello_sk.nbd` and `examples/hello_ai.nbd`, as well as the smaller Rust fixtures.
 - Updated the canonical English roadmap and error-code explanation to match the newly supported grammar.
 - **Verification limitation:** the environment has neither Cargo nor rustc; compilation and GitHub Actions success are unconfirmed. This is **Rust parser source progress**, not a verified Rust compiler release.
+
+
+## Nobody Rust 0.25 — contextual AST validation (2026-11-08)
+
+- Added an independent Rust validation pass for function and loop-control context, without executing the program.
+- Numbered new errors `N3008` (return outside function) and `N3009` (break/continue outside loop in current function); added precise causes, fixes and examples to the error catalogue.
+- Added Rust `validate <sk|en|ai> FILE` CLI action, ten unit tests and four command-line integration tests with intentionally invalid Nobody fixtures.
+- Improved diagnostics to avoid printing fabricated line 0 for AST nodes that do not yet carry source spans.
+- Updated the English roadmap and CI smoke commands. **No Rust compilation or passing test run is claimed yet**, since toolchain/CI results are not confirmed.
+- Python code has not been removed; parity gates still apply.
