@@ -6,6 +6,8 @@
 use std::fmt;
 
 pub mod syntax;
+pub mod validate;
+pub use validate::{parse_validated,validate_program};
 pub use syntax::{parse, Expr, Language, Program, Statement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
