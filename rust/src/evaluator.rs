@@ -49,6 +49,9 @@ fn literal_text(raw: &str) -> Result<String, Diagnostic> {
     if !matches!(first, '"' | '\'') || !raw.ends_with(first) {
         return Err(unsupported("Multiline and nonstandard string delimiters are not supported yet"));
     }
+    if raw.starts_with("\"\"\"") || raw.starts_with("'''") {
+        return Err(unsupported("Triple-quoted strings are not yet supported"));
+    }
     let inner = &raw[1..raw.len() - 1];
     let mut result = String::new();
     let mut chars = inner.chars();
@@ -68,6 +71,17 @@ fn literal_text(raw: &str) -> Result<String, Diagnostic> {
         }
     }
     Ok(result)
+}
+// Floor division/remainder agree with the sign convention used in the
+// Python reference, rather than Rust's truncation-toward-zero semantics.
+fn floor_div_rem(a: i128, b: i128) -> Option<(i128, i128)> {
+    let quotient = a.checked_div(b)?;
+    let remainder = a.checked_rem(b)?;
+    if remainder != 0 && ((remainder < 0) != (b < 0)) {
+        Some((quotient.checked_sub(1)?, remainder.checked_add(b)?))
+    } else {
+        Some((quotient, remainder))
+    }
 }
 struct Evaluator {
     vars: BTreeMap<String, RuntimeValue>,
@@ -128,8 +142,9 @@ impl Evaluator {
                             "/" | "//" | "%" if b == 0 => return Err(error(
                                 4002, "Division by zero at runtime", "Ensure the divisor is nonzero before dividing.",
                             )),
-                            "/" | "//" => a.checked_div(b),
-                            "%" => a.checked_rem(b),
+                            "/" => return Err(unsupported("Nonzero true division requires floating-point runtime support")),
+                            "//" => floor_div_rem(a, b).map(|(q, _)| q),
+                            "%" => floor_div_rem(a, b).map(|(_, r)| r),
                             _ => return Err(unsupported(format!("Unsupported numeric operator {op:?}"))),
                         };
                         number.map(RuntimeValue::Int).ok_or_else(|| error(
