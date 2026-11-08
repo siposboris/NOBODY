@@ -163,3 +163,15 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Build a native code backend; independently verify self-hosting. No milestone date is guaranteed.
 
 - [x] Add [language-profile auditing](../nobody/profile_validator.py) with completeness, Unicode normalization and lowercase checks; 95 tests pass locally. Native linguistic quality still needs human review.
+
+
+## Milestone Nobody 0.14 — expanded profiles and AST assignment
+
+- [x] Six additional candidate syntax dictionaries: Bulgarian `bg`, Romanian `ro`, Swedish `sv`, Finnish `fi`, Armenian `hy`, Georgian `ka`. **34 experimental profiles**, **215 catalogue variants still unavailable**.
+- [x] Update both the standalone Github translator and local Nobody-authored bootstrap keyword tables for all six; validate round-trip translations.
+- [x] Support assignment to existing variables in the experimental AST parser and evaluator (`pocet = pocet + 1`) and reject assignment to undeclared variables.
+- [x] Add regression tests and GitHub CI configuration; **104 local tests passed**, separate from any GitHub CI result.
+- [ ] Check assignment against annotated type/mutability policies and add lexical block scopes.
+- [ ] Add full bootstrap sources to GitHub; finish self-hosting independently of Python.
+- [ ] Review translation quality with native speakers; resolve cross-language keyword/identifier collisions and Unicode security cases.
+- [ ] Implement the remaining catalogue entries, one profile at a time with full test coverage.
