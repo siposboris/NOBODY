@@ -25,9 +25,9 @@ The Python reference remains until complete behavioral parity is demonstrated.
 
 **Dependency change:** NFC validation uses the pinned `unicode-normalization = "=0.1.24"`
 crate. The Rust frontend is no longer third-party-dependency-free, although it
-still does not invoke Python or online services at runtime. A checked-in
-`Cargo.lock` is not yet present, so a fully locked dependency graph remains
-follow-up release work.
+still does not invoke Python or online services at runtime. A checked-in `Cargo.lock` now pins the entire resolved dependency graph, and
+CI verifies it with `--locked`. This does not yet constitute a tagged,
+reproducible release artifact or supply-chain audit.
 
 ## Build and check
 
@@ -140,3 +140,14 @@ Rust `typecheck` now rejects known nonnumeric values with unary `+` and `-` as N
 ## 0.38 — control-flow arity tracking
 
 Rust type checking now conservatively drops known function arities after potential reassignment in `if` and loop bodies. Local declarations and loop iterator shadowing do not replace outer signatures. Four regression tests were authored. **This is source-level work; successful Rust compilation and CI are not yet verified.**
+
+## Locked Rust dependencies — verified
+
+The repository commits `rust/Cargo.lock` produced by Cargo on GitHub Actions. The
+verification script and workflow run `cargo metadata --locked`, `cargo test --locked`,
+`cargo clippy --locked` and `cargo run --locked`. This prevents CI from
+silently updating resolved dependency versions. [GitHub Actions run
+#42504352399](https://github.com/siposboris/NOBODY/actions/runs/42504352399)
+passed all Rust gates using the checked-in lockfile. The separate Python and
+lexer workflows also passed on the same code commit. This is an input-locking
+guarantee, not bit-for-bit reproducible native binary output.
