@@ -4,7 +4,38 @@
 
 Nobody aims to enable programming in original human writing systems, with optional language/runtime features, while preserving a common semantic core. It is **not** an official OpenAI product.
 
-## Progress — 2026-11-08
+## Current Rust 0.26 source milestone: 40 syntax profiles and redesigned AI syntax
+
+The Rust compiler frontend now contains **39 experimental human-language keyword
+profiles + one redesigned `ai` profile** (40 total) in
+[`rust/src/profiles.rs`](rust/src/profiles.rs). The new `ai` profile is based on
+familiar programming syntax: `let`, `fn`, `if`, `else`, `return`,
+`true`, `false`, `null`, `print`. It **does not require `ai_` prefixes**.
+This design has not been independently benchmarked against LLM coding accuracy.
+
+A new [Rust source-to-source translator](rust/src/translator.rs) rewrites
+keyword tokens between profiles and preserves strings/comments. A
+[token-based migration command](rust/src/ai_migration.rs) converts historical
+prefixed AI code. The former `ai_` syntax remains accessible in the **Python
+reference only** and in [the legacy sample](examples/hello_ai_legacy.nbd)
+until it can be retired safely.
+
+```bash
+cargo test --manifest-path rust/Cargo.toml --all-targets
+cargo run --manifest-path rust/Cargo.toml -- list-languages
+cargo run --manifest-path rust/Cargo.toml -- translate sk ai examples/hello_sk.nbd
+cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
+```
+
+**Verification:** Rust source code and tests are committed, but `cargo`/`rustc`
+are not available in the current authoring environment and successful Rust
+compilation/CI has **not** been confirmed. Keyword tables and translation do
+not imply all runtime semantics or native compilation have been ported. No
+Python modules have been deleted. [AI syntax specification](docs/AI_SYNTAX.md)
+· [English roadmap](docs/ROADMAP.md) · [Rust migration gates](docs/RUST_MIGRATION.md).
+
+## Historical Python-reference progress — 2026-11-08
 - **249 language/script variants** recorded in a [reference catalogue](nobody/data/google_translate_249.txt), following a publicly reported August 2026 Google Translate list. This is a *planning catalogue*, not 249 implemented syntax translations.
 - **39 experimental human syntax dictionaries** and **one machine-friendly `ai` profile** with source-to-source translation (Nobody → Nobody). **210 human catalogue entries remain planned**. Five native-script profiles and `ai` were added in 0.15.
 - One language profile per file; original writing systems; no mixed-language keyword syntax. Lowercase writing where that distinction exists. Latin-script profiles generally use ASCII-friendly forms, but Vietnamese retains accents.
@@ -25,8 +56,8 @@ python3 -m nobody languages --json
 python3 -m nobody ast-run examples/hello_sk.nbd --lang sk
 python3 -m nobody translate examples/hello_sk.nbd --from-lang sk --to he
 python3 -m nobody direction fa
-python3 -m nobody ast-run examples/hello_ai.nbd --lang ai
-python3 -m nobody ast-json examples/hello_ai.nbd --lang ai
+python3 -m nobody ast-run examples/hello_ai_legacy.nbd --lang ai
+python3 -m nobody ast-json examples/hello_ai_legacy.nbd --lang ai
 python3 -m unittest discover -s tests -p 'test_013_catalog_vm.py' -v
 ```
 
