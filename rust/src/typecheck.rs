@@ -114,6 +114,39 @@ fn definitely_zero_literal(expr: &IrExpr) -> bool {
     }
 }
 
+/// Evaluate a deliberately narrow subset of exact integer constants.
+/// Overflow, names, calls, decimal fractions, exponents and division remain
+/// unknown rather than risking false positive diagnostics.
+fn exact_integer_constant(expr: &IrExpr) -> Option<i128> {
+    match expr {
+        IrExpr::Number(value) => {
+            if !value.bytes().all(|ch| ch.is_ascii_digit() || ch == b'_') {
+                return None;
+            }
+            value.replace('_', "").parse::<i128>().ok()
+        }
+        IrExpr::Unary { op, value } => {
+            let n = exact_integer_constant(value)?;
+            match op.as_str() {
+                "+" => Some(n),
+                "-" => n.checked_neg(),
+                _ => None,
+            }
+        }
+        IrExpr::Binary { op, lhs, rhs } => {
+            let a = exact_integer_constant(lhs)?;
+            let b = exact_integer_constant(rhs)?;
+            match op.as_str() {
+                "+" => a.checked_add(b),
+                "-" => a.checked_sub(b),
+                "*" => a.checked_mul(b),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
 /// Reject only definitely incompatible primitive arithmetic.
 /// Dynamic values are intentionally deferred.
 fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(), Diagnostic> {
@@ -137,10 +170,12 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
                     format!("Operator {op:?} cannot combine known types {a:?} and {b:?}"),
                     "Use compatible numeric operands for arithmetic, or two strings for text concatenation with '+'."));
             }
-            if matches!(op.as_str(), "/" | "//" | "%") && definitely_zero_literal(rhs) {
+            if matches!(op.as_str(), "/" | "//" | "%")
+                && (definitely_zero_literal(rhs) || exact_integer_constant(rhs) == Some(0))
+            {
                 return Err(diagnostic(
                     1008,
-                    format!("Operator {op:?} uses a literal zero divisor"),
+                    format!("Operator {op:?} uses a provably zero constant divisor"),
                     "Replace the zero divisor with a nonzero value, or validate dynamic divisors before division.",
                 ));
             }
