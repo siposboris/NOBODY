@@ -178,3 +178,11 @@ Do not confuse these historical notes with published and verified tags.
 - Added full-profile keyword and native-script parsing tests, AI migration tests and CLI/CI smoke commands.
 - Expanded Tamil combining-mark support in Rust UTF-8 lexer.
 - **Verification:** The Rust crate could not be compiled in the authoring environment (`cargo`/`rustc` absent). No passing Rust test count is claimed. Full Unicode normalization, reserved-word semantics, interpreter/runtime and Python removal remain pending.
+
+## Nobody Rust 0.27 — keyword collision safety (2026-11-08)
+
+- Rust source translator now rejects non-keyword source identifiers that become reserved words in the target syntax, instead of emitting silently corrupted source.
+- Introduced stable error **N3011**, containing the exact identifier, target profile, line, column and a direct rename repair.
+- Added five Rust integration tests covering all 40 syntax profiles, lexical positions, false-positive avoidance for comments/strings and AI syntax translation.
+- Added [translation-safety specification](docs/TRANSLATION_SAFETY.md) and updated the English roadmap.
+- **Verification:** Cargo/rustc unavailable locally; Rust CI and actual test execution remain unconfirmed. Python reference retained pending parity.
