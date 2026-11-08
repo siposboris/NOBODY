@@ -29,6 +29,17 @@ still does not invoke Python or online services at runtime. A checked-in `Cargo.
 CI verifies it with `--locked`. This does not yet constitute a tagged,
 reproducible release artifact or supply-chain audit.
 
+## 0.39 development slice — explicitly opt-in Rust evaluator (experimental)
+
+The new `nobody-rs run PROFILE FILE` command executes a **small** Nobody IR subset directly in Rust, not Python. Implemented initially: `let` declarations without type annotations, assignment, integer `+`, `-`, `*`, floor division `//`, remainder `%`, simple text concatenation, boolean/null literals, and unshadowed `print`. The evaluator does not support functions, loops, conditionals, user-defined calls, floating-point execution or true division `/` with a nonzero divisor. Unsupported constructs fail with N4004 instead of silently generating wrong results. Runtime errors N4001–N4005 are documented in [the error catalogue](../docs/ERROR_CODES.md).
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml -- run ai rust/examples/eval_basic_ai.nbd
+cargo run --locked --manifest-path rust/Cargo.toml -- run sk rust/examples/eval_basic_sk.nbd
+```
+
+Both demonstration programs should print `9` and then `8` on separate lines. This is **not** the full 0.39 milestone: full typing, lexical closures, evaluator parity and runtime security remain open. Its step and output checks are software budgets, not hard OS resource isolation. **Never execute untrusted Nobody programs**. Existing `lex`, `check`, `parse`, `validate` and `typecheck` commands do not execute source code.
+
 ## Build and check
 
 With the stable Rust toolchain installed:

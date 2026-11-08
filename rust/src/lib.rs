@@ -6,6 +6,8 @@
 use std::fmt;
 use unicode_normalization::is_nfc;
 
+pub mod evaluator;
+pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
 pub mod ir;
 pub mod profiles;
 pub mod typecheck;

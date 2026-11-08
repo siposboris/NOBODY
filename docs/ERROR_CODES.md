@@ -510,3 +510,16 @@ add(1, 2)
 **Repair:** Replace the literal zero with a nonzero divisor. If the value comes from input or calculation, guard it before division. The diagnostic explicitly identifies the operator but, since IR v1 has no expression source spans, it does not invent a line or column.
 
 **Expanded narrow constant checking:** N1008 additionally evaluates exact integer-only expressions built from literals, unary `+`/`-` and binary `+`/`-`/`*`, using checked `i128` arithmetic. For example, `10 / (5 - 5)` now reports N1008. This does not execute source code or perform general constant folding. Integer overflows, floating-point arithmetic, division inside the divisor, variables and function calls remain unknown rather than being guessed. Literal zero remains recognized for decimal fractions and exponent notation. A successful static check is **not** a runtime guarantee against division by zero. Type errors such as `"text" / 0` retain N1002 priority; this is part of `typecheck`, not the lexer-only check.
+
+
+## Rust evaluator prototype (0.39): N4001–N4005
+
+These diagnostics apply to the explicitly invoked `nobody-rs run PROFILE FILE` command, not to source-checking commands. This limited Rust evaluator is not a complete interpreter or compiler. Runtime IR locations are not yet available.
+
+- **N4001 — Unknown variable:** A variable was read or assigned before declaration. Declare it first.
+- **N4002 — Zero divisor:** Integer division or remainder received zero. Check the divisor.
+- **N4003 — Integer overflow:** Signed 128-bit arithmetic or integer literal exceeds the supported range. Use smaller values.
+- **N4004 — Unsupported runtime feature:** A parsed statement or expression is not in the evaluator subset. Functions, loops, typed declarations and floating-point execution remain unsupported.
+- **N4005 — Resource counter reached:** The evaluator has exceeded its step, nesting, text, or output budget. These limits are not an operating-system sandbox or complete resource isolation.
+
+The `run` command supports integer arithmetic, basic text/boolean/null values, simple declarations, assignments and unshadowed `print` only. Parsing and type-checking do not execute programs.
