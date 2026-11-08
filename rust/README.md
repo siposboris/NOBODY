@@ -101,3 +101,7 @@ The check preserves strings/comments and reports source line/column, but full sc
 ## 0.30 — Rust static type checks
 
 `cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd` checks known primitive types and declarations without executing the program. `typecheck_bad_ai.nbd` intentionally fails with documented **N1001**. Unknown expressions are deferred; this is not a sound whole-program checker. The source is committed but Cargo tests/CI remain **unverified**. See [error catalogue](../docs/ERROR_CODES.md).
+
+## 0.31 — lexical scope diagnostics
+
+The Rust `typecheck` command now also reports **N1003** (assignment to undeclared name) and **N1004** (duplicate declaration or repeated function parameter). Nested blocks may shadow enclosing names. Source and six additional tests are committed; Rust compilation/CI results remain unverified. IR statement source spans, imports and full closure semantics are not yet implemented.
