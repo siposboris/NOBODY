@@ -1,0 +1,16 @@
+[package]
+name = "nobody"
+version = "0.22.0"
+edition = "2021"
+license = "MIT"
+description = "Nobody experimental Rust compiler frontend"
+
+[lib]
+name = "nobody"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nobody-rs"
+path = "src/main.rs"
+
+[dependencies]
