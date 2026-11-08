@@ -3,6 +3,7 @@
 This is not yet a complete grammar parser.
 """
 from dataclasses import dataclass
+import unicodedata
 
 
 class LexError(ValueError):
@@ -68,18 +69,18 @@ def scan(source: str) -> list[Token]:
             result.append(Token('string', source[start:j], tok_line, tok_col, start, j))
             advance(j)
             continue
-        if c.isascii() and (c.isalpha() or c == '_'):
+        if c.isalpha() or c == '_':
             end = pos + 1
-            while end < length and source[end].isascii() and (source[end].isalnum() or source[end] == '_'):
+            while end < length and (source[end].isalnum() or source[end] == '_' or unicodedata.category(source[end]).startswith('M')):
                 end += 1
             word = source[start:end]
-            if any('A' <= ch <= 'Z' for ch in word):
+            if word != word.lower():
                 raise LexError(f'Identifier/keyword {word!r} at {tok_line}:{tok_col} must be lowercase ascii')
             result.append(Token('name', word, tok_line, tok_col, start, end))
             advance(end)
             continue
-        if c.isalpha() or c == '_':
-            raise LexError(f'Non-ascii identifier at {tok_line}:{tok_col}; use lowercase ascii')
+        if unicodedata.category(c).startswith('M'):
+            raise LexError(f'Unexpected combining mark at {tok_line}:{tok_col}')
         if c.isdigit():
             end = pos + 1
             while end < length and (source[end].isascii() and (source[end].isalnum() or source[end] in '._')):
