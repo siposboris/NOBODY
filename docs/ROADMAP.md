@@ -234,3 +234,16 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Confirm GitHub CI passes on a complete source import. Python remains the implementation language for this phase; native/self-hosted compiler still pending.
 
 **Local archive:** 134 tests passed (124 previous + 10 new). Successful analysis does **not** guarantee runtime type safety. Unknown/dynamic expression types are not assumed to be safe.
+
+
+## Nobody 0.19 — conservative control-flow type analysis (2026-11-08)
+
+- [x] Improve the experimental static type checker to evaluate `if/elif/else` alternatives independently and **merge inferred types only when all possible paths agree**. Include the no-branch path for conditionals without `else`.
+- [x] Apply conservative zero-iteration joins for `while` and `for` loops, avoiding unjustified assumptions that a loop body must execute.
+- [x] Detect wrong argument counts for direct calls to statically known user-defined functions, including nested lexical functions. Emit `E_ARITY`.
+- [x] Add ten [new regression tests](../tests/test_019_flow_types.py), expand GitHub Actions frontend workflow, and retain all earlier human-language profiles plus `ai`.
+- [ ] Add sound function return-type inference, parameter types, union types and flow-sensitive narrowing; dynamic function values and unknown names remain uncertain.
+- [ ] Improve cross-language reserved keyword conflicts and per-profile identifiers. The letter `y`, for example, is a reserved keyword in a different supported profile, which currently prevents using it as a Slovak variable.
+- [ ] Implement checked modules/namespaces, independent compiler IR, native backend and the pending complete bootstrap source import; verify GitHub CI before official releases.
+
+**Verification:** 144 unit tests passed in the complete local 0.19 tree (134 from 0.18 + 10 new). GitHub Actions run result is not yet verified. This remains a conservative partial analyzer, not proof of type soundness.
