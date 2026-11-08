@@ -277,6 +277,8 @@ The Rust `run` evaluator now has verified basic assignments, conditionals, bound
 
 **Safety constraint:** Do not delete the Python reference or claim self-hosting based on a small fixture suite. The top-level roadmap percentage remains based on the existing checklist items, not a measure of these stages.
 
+**AST JSON v1 Rust export subset (2026-11-08, pending CI):** The native `nobody ast-json PROFILE FILE` command now exports the existing deterministic `nobody.ast.v1` JSON schema for **single-line source programs only**, with six English/Slovak Python-reference differential fixtures. Rust AST nodes currently do **not** retain per-node source spans; this exporter intentionally refuses multiline source (N4004) instead of inventing line numbers. AST JSON import, validation, source re-emission, full expression grammar and multiline interchange **remain Python-only**. A green exact-output test would demonstrate only the documented single-line subset, not enough for removal of `nobody/ai_ir.py` or `nobody/ast_format.py`. The native CLI requires no Python; differential CI uses Python as the comparison baseline.
+
 ### Following slices — only after the 0.39 gate
 
 1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.
