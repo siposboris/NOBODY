@@ -255,3 +255,10 @@ Do not confuse these historical notes with published and verified tags.
 - Lexical shadowing and loop iterator bindings are not propagated to enclosing scopes.
 - Four new Rust regression tests cover branches, loops and shadowing.
 - **Cargo build, formatting, Clippy and GitHub CI success remain unverified.**
+
+## Unreleased Rust fixes — toward existing roadmap acceptance gates (2026-11-08)
+
+- Corrected lexical-shadowing handling in static function arity analysis. Added four regression tests for nested branches, loops and function-body boundaries.
+- Added strict decimal literal validation to the Rust lexer with N2006 and actionable documentation. Added three unit tests, a malformed-number fixture and two CLI integration tests.
+- Improved GitHub Actions to preserve verification logs when the Rust gate fails.
+- **No roadmap acceptance item was closed.** The authoring environment has no Rust toolchain and GitHub Actions success has not been independently verified; these are source snapshots, not a certified build.
