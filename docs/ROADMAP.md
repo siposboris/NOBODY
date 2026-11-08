@@ -175,3 +175,19 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Add full bootstrap sources to GitHub; finish self-hosting independently of Python.
 - [ ] Review translation quality with native speakers; resolve cross-language keyword/identifier collisions and Unicode security cases.
 - [ ] Implement the remaining catalogue entries, one profile at a time with full test coverage.
+
+
+## Nobody 0.15 (2026-11-08) — five human scripts + machine-friendly syntax + runtime typing
+
+- [x] Add five provisional native-script syntax profiles: Nepali `ne`, Marathi `mr`, Gujarati `gu`, Kannada `kn`, Telugu `te`.
+- [x] Add `ai` canonical syntax profile: keyword names prefixed `ai_`; same semantics as the other human syntaxes. [Specification](AI_SYNTAX.md).
+- [x] Add a stable, versioned, deterministic AST JSON exporter `nobody.ast.v1` for coding tools.
+- [x] Check primitive explicit type annotations on reassignment in the AST interpreter (initial declaration and later assignments).
+- [x] Add six regression tests in version 0.15 (110 tests passing in the full **local** archive).
+- [ ] Implement full native-speaker terminology review for all human profiles, correct collisions and Unicode normalization.
+- [ ] Implement a schema validator and AST-to-Nobody source re-emitter with semantic roundtrip tests.
+- [ ] Fix lexical scopes, closure captures, type inference and generics; ensure typed variables retain annotations through all scopes.
+- [ ] Import previous complete Nobody-language bootstrap compiler and test it on GitHub Actions.
+- [ ] Complete real Python-independent runtime and native compiler, with externally reproducible proof of self-hosting.
+
+**Current scope:** 39 human syntax profiles + AI profile = **40** total; **249** human language/script entries in reference catalogue, **210** still without a Nobody syntax dictionary. The `ai` profile is not a Google Translate language.
