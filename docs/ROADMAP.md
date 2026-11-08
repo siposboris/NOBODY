@@ -191,3 +191,16 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Complete real Python-independent runtime and native compiler, with externally reproducible proof of self-hosting.
 
 **Current scope:** 39 human syntax profiles + AI profile = **40** total; **249** human language/script entries in reference catalogue, **210** still without a Nobody syntax dictionary. The `ai` profile is not a Google Translate language.
+
+
+## Nobody 0.16 — AST validation and source regeneration (2026-11-08)
+
+- [x] Implement [AST v1 JSON schema validation and import](../nobody/ast_format.py) with explicit allowed node types and fields, structured child checks, depth/node limits, and version rejection.
+- [x] Implement `emit_source(tree, language)`: generate valid **Nobody** source for the supported AST subset, in the selected language. No Python source is generated.
+- [x] Add [regression tests](../tests/test_016_ast_format.py) for multilingual round-trips, deterministic output and malformed AST rejection.
+- [x] Add `ast-validate` and `ast-emit` CLI commands to the GitHub frontend; update GitHub Actions test configuration.
+- [ ] Design a complete typed AST specification and ensure cross-language semantic identity for built-ins and identifiers.
+- [ ] Complete the entire expression/statement grammar, lexical scoping and closures, and a formally verified emitter.
+- [ ] Validate GitHub CI results and import the rest of the historical Nobody bootstrap source. The implementation still requires Python.
+
+**Local full-project test run:** 116 tests passed on 2026-11-08; this is not a GitHub Actions result. Full AST round-trips only apply to the currently supported syntax subset. The complete native compiler remains unimplemented.
