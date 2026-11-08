@@ -13,7 +13,14 @@ def _node(node):
     return {'kind':node.kind,'line':node.line,'value':value,
             'children':[_node(child) for child in node.children]}
 
+def node_data(node):
+    """Convert an immutable AST node into the public AST v1 data mapping.
+
+    Shared by JSON export and source re-emission, without evaluating source.
+    """
+    return _node(node)
+
 def to_json(source,language='sk'):
     tree=parse_source(source,language)
-    return json.dumps({'schema':SCHEMA,'ast':_node(tree)},ensure_ascii=False,
+    return json.dumps({'schema':SCHEMA,'ast':node_data(tree)},ensure_ascii=False,
                       sort_keys=True,separators=(',',':'))
