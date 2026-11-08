@@ -186,3 +186,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added five Rust integration tests covering all 40 syntax profiles, lexical positions, false-positive avoidance for comments/strings and AI syntax translation.
 - Added [translation-safety specification](docs/TRANSLATION_SAFETY.md) and updated the English roadmap.
 - **Verification:** Cargo/rustc unavailable locally; Rust CI and actual test execution remain unconfirmed. Python reference retained pending parity.
+
+## Rust 0.29 — IR declaration visibility (source snapshot, 2026-11-08)
+
+- Fixed Rust IR lowering so a variable declaration does not shadow a builtin **before** its initializer or declaration position.
+- Function names are visible inside their own bodies, including recursive references, while previous statements keep their earlier bindings.
+- Added three Rust unit tests for before/after shadowing, initializer lookup and recursion.
+- **Verification:** cargo/rustc unavailable in the authoring container; tests have not been executed. This remains a partial static IR, not a runtime or a semantic equivalence guarantee.
