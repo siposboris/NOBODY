@@ -156,3 +156,18 @@ Full local source archive: 134 unit tests passed. GitHub CI status unconfirmed.
 | Lokalizované diagnostiky pre 39 ľudských profilov a `ai` | Plánované |
 
 Dokumentácia: [ERROR_CODES.md](ERROR_CODES.md). Kompletný lokálny zdrojový balík: 156 úspešných testov; stav GitHub CI neoverený.
+
+
+## Rust-first implementation status (2026-11-08)
+
+| Part | Rust status | Python retirement |
+|---|---|---|
+| UTF-8 lexical scanner | Partial source port; **build not yet verified** | Not permitted yet |
+| Original-script language tables | Not ported | No |
+| AST parser, validator and source emitter | Not ported | No |
+| Static types, closures and function semantics | Not ported | No |
+| Runtime and native compiler | Not ported | No |
+| Nxxxx diagnostics | N2001–N2005 included in Rust lexer | Partial |
+| AI `ai` profile | Not ported | No |
+
+See [Rust migration acceptance criteria](RUST_MIGRATION.md). The project **must not be described as Rust-only or Python-free** until parity gates pass.
