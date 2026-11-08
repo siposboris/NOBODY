@@ -5,6 +5,7 @@ Not the full legacy bootstrap interpreter or native compiler.
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 from .catalog import languages, status
 from .languages import ALIASES
@@ -65,7 +66,7 @@ def main(argv=None):
         for issue in audit_profiles():
             print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
-        print(json.dumps({'name':'Nobody','frontend_version':'0.18-experimental',
+        print(json.dumps({'name':'Nobody','frontend_version':'0.20-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
                           'native_compiler':False,'runtime':'Python bootstrap',
                           'all_249_syntax_implemented':False},indent=2))
@@ -101,4 +102,8 @@ def main(argv=None):
             execute(source,args.lang,max_steps=args.max_steps)
 
 if __name__=='__main__':
-    main()
+    try:
+        main()
+    except Exception as exc:
+        print(render_exception(exc),file=sys.stderr)
+        raise SystemExit(1)
