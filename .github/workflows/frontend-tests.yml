@@ -26,6 +26,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_013_profile_validator.py' -v
           python -m unittest discover -s tests -p 'test_014.py' -v
           python -m unittest discover -s tests -p 'test_015.py' -v
+          python -m unittest discover -s tests -p 'test_016_ast_format.py' -v
           python -m nobody ast-json examples/hello_sk.nbd --lang sk > /dev/null
           python -m nobody translate examples/hello_sk.nbd --from-lang sk --to ai > /dev/null
           python -m nobody audit-languages
