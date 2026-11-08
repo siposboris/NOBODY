@@ -1,9 +1,10 @@
 //! Nobody's Rust-native lexer foundation.
 //! Source offsets are UTF-8 byte offsets and line/column positions use Unicode
 //! scalar values. This is an experimental migration, not yet a full compiler.
-//! No dependencies on Python, third-party crates, or online services.
+//! No Python runtime dependency. Unicode NFC validation uses a pinned Rust crate.
 
 use std::fmt;
+use unicode_normalization::is_nfc;
 
 pub mod ir;
 pub mod profiles;
@@ -77,6 +78,7 @@ fn failure(code: u16, line: usize, column: usize, detail: impl Into<String>) -> 
         2005 => "Odstráň skrytý znak Unicode; RTL nastav v editore.",
         2006 => "Použi platný desiatkový literál, napríklad 12, 12.5 alebo 1e-3; oddeľ identifikátor medzerou.",
         2007 => "Použi v jednom identifikátore iba jedno z písiem latinka, gréčtina alebo cyrilika; skontroluj znaky, ktoré vyzerajú rovnako.",
+        2008 => "Zjednoť identifikátor do Unicode NFC; neupravuj textové literály ani komentáre.",
         _ => "Oprav uvedený zdrojový úsek.",
     };
     Diagnostic {
@@ -308,6 +310,14 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                     tok_line,
                     tok_col,
                     format!("Nazov {:?} obsahuje velke pismena", value),
+                ));
+            }
+            if !is_nfc(value) {
+                return Err(failure(
+                    2008,
+                    tok_line,
+                    tok_col,
+                    format!("Identifikator {:?} nie je v Unicode NFC", value),
                 ));
             }
             if let Some((offset, first, second)) = mixed_confusable_script(value) {
