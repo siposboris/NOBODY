@@ -134,5 +134,5 @@ Every release must include: source code, tests and reported results; supported v
 - [x] Commit Unicode-aware lexical scanning and a Nobody-to-Nobody keyword translator with regression tests.
 - [ ] Obtain native-speaker and grammar reviews for all profiles; ensure no hidden romanization remains.
 - [ ] Formalize script-aware identifier rules, normalization, keyword boundaries, Unicode security and bidirectional display for Arabic/Urdu.
-- [ ] Add end-to-end parser/runtime tests, language-specific diagnostics and complete compiler/runtime source import.
+- [x] Local Nobody-written bootstrap compiler tables expanded from 4 to 22 languages; native-script output round-tripped in the local Python bootstrap. Full bootstrap source is not yet published to this GitHub repository.\n- [ ] Add end-to-end parser/runtime tests, language-specific diagnostics and complete compiler/runtime source import.
 - [ ] Add further languages only after profile tests, documentation and native-speaker review.
