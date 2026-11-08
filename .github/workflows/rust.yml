@@ -32,3 +32,10 @@ jobs:
           cargo run --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
           cargo run --manifest-path rust/Cargo.toml -- validate sk examples/hello_sk.nbd
           cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
+      - name: All 40 syntax profiles and AI migration smoke
+        run: |
+          cargo run --manifest-path rust/Cargo.toml -- list-languages
+          cargo run --manifest-path rust/Cargo.toml -- translate sk ai examples/hello_sk.nbd > /tmp/translated_ai.nbd
+          cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/translated_ai.nbd
+          cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > /tmp/migrated_ai.nbd
+          cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/migrated_ai.nbd
