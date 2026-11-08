@@ -136,8 +136,9 @@ class Machine:
             else:
                 raise ExecutionError('Unsupported AST node: '+node.kind)
 
-def execute(source,language='sk',*,max_steps=10000,output=None):
+def execute(source,language='sk',*,max_steps=10000,output=None,max_call_depth=128):
     machine=Machine(language,max_steps,output)
+    machine.max_call_depth=max_call_depth
     tree=parse_source(source,language)
     frame=Scope()
     machine.block(tree.children,frame)
