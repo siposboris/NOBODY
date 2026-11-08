@@ -207,3 +207,10 @@ Do not confuse these historical notes with published and verified tags.
 - Inner block shadowing and assignments to enclosing declared variables remain valid.
 - Added six Rust unit tests; expanded numbered error documentation with exact fixes.
 - **Cargo compilation and tests not yet verified**; IR source spans and full closure semantics remain future work.
+
+## Rust 0.32 — known function arity validation (source snapshot, 2026-11-08)
+
+- Rust IR type checker reports N1005 for calls to known functions with incorrect positional argument counts.
+- Includes recursive calls, lexical parameter shadowing, nested expression traversal and deferred dynamic calls.
+- Six new Rust unit tests, two CLI integration tests, good/bad fixtures and GitHub Actions smoke coverage authored.
+- **Cargo build and CI remain unverified.** This does not implement full scope, closures, overloads or native runtime.
