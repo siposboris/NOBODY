@@ -64,9 +64,7 @@ fn expr(expr: &Expr) -> String {
             bare("call", children)
         }
         Expr::Unary { op, value } => node("unary", quoted(op), vec![expr(value)]),
-        Expr::Binary { op, lhs, rhs } => {
-            node("binary", quoted(op), vec![expr(lhs), expr(rhs)])
-        }
+        Expr::Binary { op, lhs, rhs } => node("binary", quoted(op), vec![expr(lhs), expr(rhs)]),
     }
 }
 
@@ -88,27 +86,21 @@ fn stmt(stmt: &Statement) -> String {
             ),
             None => node("let", quoted(name), vec![expr(value)]),
         },
-        Statement::Assign { name, expr: value } => {
-            node("assign", quoted(name), vec![expr(value)])
-        }
+        Statement::Assign { name, expr: value } => node("assign", quoted(name), vec![expr(value)]),
         Statement::If {
             branches,
             otherwise,
         } => {
             let mut children: Vec<_> = branches
                 .iter()
-                .map(|(condition, body)| {
-                    bare("branch", vec![expr(condition), block(body)])
-                })
+                .map(|(condition, body)| bare("branch", vec![expr(condition), block(body)]))
                 .collect();
             if let Some(body) = otherwise {
                 children.push(bare("else", body.iter().map(stmt).collect()));
             }
             bare("if", children)
         }
-        Statement::While { condition, body } => {
-            bare("while", vec![expr(condition), block(body)])
-        }
+        Statement::While { condition, body } => bare("while", vec![expr(condition), block(body)]),
         Statement::For {
             variable,
             iterable,
@@ -119,7 +111,10 @@ fn stmt(stmt: &Statement) -> String {
             parameters,
             body,
         } => {
-            let params = parameters.iter().map(|name| quoted(name)).collect::<Vec<_>>();
+            let params = parameters
+                .iter()
+                .map(|name| quoted(name))
+                .collect::<Vec<_>>();
             node(
                 "function",
                 format!("[{},[{}]]", quoted(name), params.join(",")),
@@ -137,7 +132,9 @@ fn stmt(stmt: &Statement) -> String {
 /// Returns N4004 for multiline input rather than manufacturing inaccurate line data.
 pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic> {
     if source.contains('\n') || source.contains('\r') {
-        return Err(unsupported("Multiline source spans are not available in Rust AST JSON yet"));
+        return Err(unsupported(
+            "Multiline source spans are not available in Rust AST JSON yet",
+        ));
     }
     let program = parse_validated(source, profile)?;
     let tree = bare("module", program.statements.iter().map(stmt).collect());
@@ -176,11 +173,8 @@ mod tests {
 
     #[test]
     fn nested_constructs_export_without_executing() {
-        let output = export_ast_json(
-            "function double(x) { return x * 2 } print(double(3))",
-            "en",
-        )
-        .unwrap();
+        let output =
+            export_ast_json("function double(x) { return x * 2 } print(double(3))", "en").unwrap();
         assert!(output.contains(r#""kind":"function""#));
         assert!(output.contains(r#""kind":"return""#));
         assert!(output.contains(r#""kind":"call""#));
