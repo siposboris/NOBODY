@@ -4,8 +4,8 @@
 
 | Capability | Status | Notes |
 |---|---|---|
-| Basic SK/EN/CS/DE syntax | Prototype | One language per file |
-| Lowercase ASCII keyword/identifier policy | Prototype | Strings/comments may use Unicode |
+| 22 human syntax profiles | Experimental | Native scripts for non-Latin languages; one syntax language per file. [List](LANGUAGES.md) |
+| Lowercase native-script syntax | Experimental | ASCII-friendly Latin spelling except Vietnamese accented lowercase; non-Latin scripts supported. Strings/comments keep Unicode |
 | Variables, conditions, loops, functions | Prototype | Limited core |
 | Nobody → Nobody source translation | Prototype | .nbd output |
 | Nobody-written compiler core | Prototype | Python bootstrap still required |
@@ -40,3 +40,8 @@ A local prototype now adds strict short foreign-keyword checks and validates bot
 - **Now committed:** [AST parser](../nobody/parser.py) for supported brace-syntax subset, [parser regression tests](../tests/test_parser.py), [frontend CI](../.github/workflows/frontend-tests.yml).
 - **Local tests:** 65 passed in the complete local 0.10 tree. **GitHub CI:** results not verified.
 - **Missing:** typed declarations in parser, assignments, indentation blocks, full grammar, complete interpreter/compiler import, native compilation and Python-free self-hosting.
+
+
+### Native-script translation implementation (experimental)
+
+The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, source-to-source translator and regression tests. Their precise keyword terminology still requires native-speaker review. See [LANGUAGES.md](LANGUAGES.md). GitHub CI run result is not yet verified.
