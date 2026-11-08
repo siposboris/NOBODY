@@ -12,8 +12,6 @@ fn audit_40_profiles_without_python() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(
-        String::from_utf8_lossy(&output.stdout)
-            .contains("40 active syntax profiles; 0 structural errors")
-    );
+    assert!(String::from_utf8_lossy(&output.stdout)
+        .contains("40 active syntax profiles; 0 structural errors"));
 }
