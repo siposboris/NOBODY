@@ -23,6 +23,8 @@
 | **N3003** | `PARSE_IDENTIFIER` | Neplatný názov |
 | **N3004** | `PARSE_LANGUAGE` | Cudzie kľúčové slovo |
 | **N3005** | `PARSE_EXPRESSION` | Neplatný výraz |
+| **N3006** | `PARSE_UNSUPPORTED` | Rust subset parser does not implement this statement |
+| **N3007** | `PARSE_PROFILE` | Rust parser does not support the requested syntax profile |
 | **N4001** | `RUN_NAME` | Neexistujúce meno |
 | **N4002** | `RUN_TYPE` | Typová chyba za behu |
 | **N4003** | `RUN_LIMIT` | Prekročený limit vykonávania |
@@ -248,3 +250,15 @@ Pri každej **novej kategórii** chýb: vybrať ďalšie voľné číslo v prís
 Rozsahy: 1000–1999 typy a diagnostiky, 2000–2999 lexer/Unicode, 3000–3999 parser, 4000–4999 vykonávanie, 5000–5999 AST a kompilátor, 9000–9999 CLI/neklasifikované.
 
 [Zdroj čísiel](../nobody/errors.py) · [Regresné testy](../tests/test_020_errors.py) · [Roadmap](ROADMAP.md).
+
+## Additional Rust parser errors (English, 0.23 experimental)
+
+### N3006 — Unsupported construct in the current Rust parser
+**Exact cause:** The Rust parser encountered a known but not-yet-implemented control-flow or function keyword, for example `ak` or `ai_if`. This is a **feature gap**, not an invalid Nobody program.
+**How to fix:** For now use `nech` / `let` / `ai_let`, reassignment and supported expressions. Do not use `if`, functions or loops with this partial Rust parser yet. Re-run when these statements are ported.
+**Example:** `nobody-rs parse sk program.nbd` with `ak pravda { vypis(1) }` produces N3006.
+
+### N3007 — Unsupported language profile in the current Rust parser
+**Exact cause:** The selected `--lang` equivalent for the current Rust CLI is not one of `sk`, `en`, `ai`. Other human languages exist in the Python reference but have not been ported into the Rust parser.
+**How to fix:** Use `nobody-rs parse sk FILE`, `nobody-rs parse en FILE` or `nobody-rs parse ai FILE` with matching source. Do not silently reinterpret the file as another language.
+**Example:** `nobody-rs parse ja program.nbd` produces N3007.
