@@ -44,5 +44,5 @@ Do not confuse these historical notes with published and verified tags.
 - Added Nobody-to-Nobody translation module, preserving string literals and comments.
 - Added multilingual round-trip regression tests and GitHub Actions test configuration.
 - Updated README, roadmap, parser and lexer docs and full [language catalog](docs/LANGUAGES.md).
-- **79 local prototype tests passed** after adding five tests. The complete Python bootstrap remains an experimental prototype; GitHub CI outcome has not been verified.
+- **80 local prototype tests passed** after adding five tests. The complete Python bootstrap remains an experimental prototype; The full local Nobody-written bootstrap compiler also round-tripped all 22 profiles (using the temporary Python bootstrap). GitHub CI outcome has not been verified.
 - Native translations need native-speaker review; neither Unicode security nor full compiler integration is complete.
