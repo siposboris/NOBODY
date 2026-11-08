@@ -5,6 +5,9 @@
 
 use std::fmt;
 
+pub mod syntax;
+pub use syntax::{parse, Expr, Language, Program, Statement};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind { Name, Number, String, Comment, Symbol }
 
