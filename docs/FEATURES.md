@@ -23,3 +23,8 @@
 | Hard resource isolation and security sandbox | Planned | |
 
 See [full roadmap](ROADMAP.md).
+
+
+## Experimental 0.8 progress
+
+A local prototype now adds strict short foreign-keyword checks and validates both ends of Nobody-to-Nobody source translation. 49 tests passed locally, but the complete code has not yet been imported here. See [0.8 notes](PROTOTYPE_0_8.md). This does not change the status of native compilation, runtime, memory safety or full self-hosting.
