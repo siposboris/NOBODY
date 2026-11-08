@@ -99,3 +99,15 @@ python3 -m nobody type-check examples/hello_sk.nbd --lang sk
 It also supports the `ai` syntax profile. Type inference and control-flow analysis are deliberately incomplete. An `OK` response means **no provable primitive errors were found**; it does not guarantee complete type safety. [Static checking tests](tests/test_018_static_types.py).
 
 Complete **local** Nobody 0.18 source passed **134 tests** (10 added). GitHub CI results have not been independently verified. No native compiler or independent Python-free runtime is claimed.
+
+
+## Nobody 0.19 — flow-aware static checks
+
+The experimental static checker now analyzes `if/elif/else` paths separately and merges inferred types only when possible paths agree. It also recognizes that loop bodies might not execute, and catches wrong argument counts for **direct calls to known user-defined functions** (`E_ARITY`).
+
+```text
+funkcia dvoj(x) { vrat x * 2 }
+vypis(dvoj(1, 2))  # E_ARITY — expected one argument
+```
+
+Use `python3 -m nobody type-check program.nbd --lang sk`. The complete local Nobody 0.19 tree passed **144 tests**. GitHub Actions verification remains unconfirmed. This is not a complete type checker, and the interpreter still requires Python. See [test_019_flow_types.py](tests/test_019_flow_types.py).
