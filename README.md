@@ -6,7 +6,7 @@ Nobody aims to enable programming in original human writing systems, with option
 
 ## Progress — 2026-11-08
 - **249 language/script variants** recorded in a [reference catalogue](nobody/data/google_translate_249.txt), following a publicly reported August 2026 Google Translate list. This is a *planning catalogue*, not 249 implemented syntax translations.
-- **28 experimental syntax dictionaries** with source-to-source translation (Nobody → Nobody), including Hebrew, Greek, Ukrainian, Persian, Swahili and Dutch added in milestone 0.13. **221 catalogue entries remain planned**.
+- **34 experimental syntax dictionaries** with source-to-source translation (Nobody → Nobody), including Hebrew, Greek, Ukrainian, Persian, Swahili and Dutch added in milestone 0.13. **215 catalogue entries remain planned**.
 - One language profile per file; original writing systems; no mixed-language keyword syntax. Lowercase writing where that distinction exists. Latin-script profiles generally use ASCII-friendly forms, but Vietnamese retains accents.
 - Arabic, Urdu, Hebrew and Persian have RTL direction metadata, with logical Unicode source order. No full direction-aware editor yet.
 - Basic [lexer](nobody/lexer.py), [AST parser](nobody/parser.py), [AST evaluator](nobody/ast_vm.py), [source translator](nobody/translator.py) and [CLI](nobody/__main__.py).
