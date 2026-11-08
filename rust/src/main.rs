@@ -1,14 +1,14 @@
 use std::{env,fs,process};
-use nobody::{parse,scan,TokenKind};
+use nobody::{parse,parse_validated,scan,TokenKind};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <sk|en|ai> <file.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <sk|en|ai> <file.nbd>\n  nobody-rs validate <sk|en|ai> <file.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
         Some("lex"|"check") if arguments.len()==3 => true,
-        Some("parse") if arguments.len()==4 => true,
+        Some("parse"|"validate") if arguments.len()==4 => true,
         _ => false
     };
     if !valid {usage();process::exit(2);}
@@ -21,9 +21,18 @@ fn main() {
             process::exit(1);
         }
     };
-    if command=="parse" {
-        match parse(&source,&arguments[2]) {
-            Ok(tree)=>println!("{:#?}",tree),
+    if command=="parse" || command=="validate" {
+        let parsed=if command=="validate" {
+            parse_validated(&source,&arguments[2])
+        } else {
+            parse(&source,&arguments[2])
+        };
+        match parsed {
+            Ok(tree)=>{
+                if command=="validate" {
+                    println!("AST context validation passed; {} top-level statements. Types and runtime NOT checked.",tree.statements.len());
+                } else { println!("{:#?}",tree); }
+            },
             Err(error)=>{eprintln!("{}",error);process::exit(1);}
         }
         return;
