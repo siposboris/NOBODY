@@ -12,7 +12,8 @@ fn ai_and_slovak_named_functions_match() {
 
 #[test]
 fn returns_from_nested_control_flow() {
-    let ai = "fn first() { let n=0 while n<5 { n=n+1 if n==3 { return n } } return 0 }\nprint(first())";
+    let ai =
+        "fn first() { let n=0 while n<5 { n=n+1 if n==3 { return n } } return 0 }\nprint(first())";
     assert_eq!(evaluate_source(ai, "ai").unwrap(), "3\n");
 }
 
