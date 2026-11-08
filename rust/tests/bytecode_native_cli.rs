@@ -61,9 +61,16 @@ fn unsupported_ast_is_not_silently_interpreted() {
 
 #[test]
 fn branching_and_loops_produce_real_jump_instructions() {
-    let file = format!("{}/examples/bytecode_control_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let file = format!(
+        "{}/examples/bytecode_control_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let output = launch(&["bytecode", "ai", &file]);
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let instructions = String::from_utf8(output.stdout).unwrap();
     assert!(instructions.contains("JumpIfFalse("));
     assert!(instructions.contains("Jump("));
@@ -73,7 +80,10 @@ fn branching_and_loops_produce_real_jump_instructions() {
 
 #[test]
 fn infinite_loop_terminates_with_step_budget_not_hang() {
-    let file = format!("{}/examples/bytecode_infinite_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let file = format!(
+        "{}/examples/bytecode_infinite_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let output = launch(&["run-bytecode", "ai", &file]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("N4005"));
