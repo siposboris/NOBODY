@@ -14,7 +14,11 @@ fn main() {
         Some("lex" | "check" | "direction") if arguments.len() == 3 => true,
         Some("parse" | "validate" | "ir" | "typecheck" | "run") if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
-        Some("list-languages" | "languages" | "info" | "audit-languages") if arguments.len() == 2 => true,
+        Some("list-languages" | "languages" | "info" | "audit-languages")
+            if arguments.len() == 2 =>
+        {
+            true
+        }
         Some("migrate-ai") if arguments.len() == 3 => true,
         Some("translate") if arguments.len() == 5 => true,
         _ => false,
@@ -38,7 +42,11 @@ fn main() {
     }
     if command == "audit-languages" {
         let problems = audit_profiles();
-        println!("Nobody Rust profile audit: {} active syntax profiles; {} structural errors", PROFILES.len(), problems.len());
+        println!(
+            "Nobody Rust profile audit: {} active syntax profiles; {} structural errors",
+            PROFILES.len(),
+            problems.len()
+        );
         for problem in &problems {
             eprintln!("{problem}");
         }
