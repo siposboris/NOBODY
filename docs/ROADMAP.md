@@ -62,6 +62,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Introduce an **append-only numbered error catalogue** in the Python frontend and [documentation with causes and repairs](ERROR_CODES.md).
 - [ ] Port scopes, closures, type analysis, return inference and all applicable **Nxxxx** diagnostics to Rust.
 - [ ] Implement strict, inferred and gradual typing modes with explicit boundaries and stable semantics.
+- [x] Add a Rust **AST contextual validation pass** rejecting return outside a function (N3008) and break/continue outside a loop in the current function (N3009), including nested-function boundaries. Implemented in source with ten authored unit tests; successful Rust compilation is **not yet verified**.
 - [ ] Implement function parameter/return annotations, type inference for dynamic values, control-flow narrowing and union/optional/result/error types.
 - [ ] Implement generics, algebraic data types, enums, pattern matching, traits and interfaces.
 - [ ] Implement deep immutability, safe aliasing, borrow/move semantics and fully specified mutability.
@@ -156,11 +157,12 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.22 | Rust crate, partial lexer and CLI, GitHub Rust workflow | Source committed; **local Rust build unverified** |
 | 0.23 source snapshot | Small Rust AST parser, SK/EN/AI fixtures, numbered N3006/N3007 errors | **Uncompiled/unverified locally; CI outcome pending** |
 | 0.24 source snapshot | Rust AST grammar extended with conditionals, loops, function declarations, returns and nested blocks; new unit tests and smoke coverage | **Build and execution unverified** |
+| 0.25 source snapshot | Rust AST contextual validator, new numbered errors N3008/N3009, CLI `validate`, test cases | **Unverified Rust build/CI** |
 | Next | Verified Rust CI, remaining profiles and differential tests | Incomplete |
 
 ## Immediate priorities (in dependency order)
 
-1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks.
+1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Current unverified Rust tests include the parser and contextual validator.**
 2. **Compile, test and verify** the expanded Rust AST parser for `sk`, `en`, and `ai`, with numbered syntax errors including N3002 and N3006. Confirm the authored Rust unit tests and CLI smoke fixtures run successfully. **Parsing is not execution, and the subset is not full frontend parity.**
 3. Bring all language tables and Unicode lexer behavior into Rust; run automated fixture comparisons with the Python reference.
 4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
