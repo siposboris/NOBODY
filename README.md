@@ -57,3 +57,16 @@ The AI profile is **not an artificial intelligence or a language with special po
 The frontend now exports a stable versioned JSON AST via `python3 -m nobody ast-json examples/hello_sk.nbd --lang sk`. The experimental AST interpreter rejects reassignments that violate a variable's explicitly declared primitive type. It still requires Python and is **not a security sandbox**.
 
 **110 local tests passed** in the full 0.15 development archive. GitHub CI success is not yet independently verified; the full earlier Nobody-written bootstrap compiler still needs importing to this repo.
+
+
+## 0.16 AST interoperability milestone
+
+The standalone GitHub frontend now includes an [AST JSON validator and Nobody source re-emitter](nobody/ast_format.py). AI-oriented workflows can emit JSON with `ast-json`, validate a `nobody.ast.v1` document with `ast-validate`, and generate source in a selected Nobody language with `ast-emit --lang ai`. The source emitter is limited to the current parser subset.
+
+```bash
+python3 -m nobody ast-json examples/hello_ai.nbd --lang ai > hello.json
+python3 -m nobody ast-validate hello.json
+python3 -m nobody ast-emit hello.json --lang sk
+```
+
+**116 tests passed locally** in the full 0.16 development tree. Do not interpret that as confirmed GitHub CI execution. The AST loader only validates a structure; it is not an execution sandbox. 39 experimental human syntax profiles and one `ai` profile remain unchanged. Native compiler/self-hosting is still planned.
