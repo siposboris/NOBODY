@@ -1,7 +1,7 @@
 """Bidirectional layout must not change source logic."""
 import unittest
 from nobody.bidi import direction_for_language, check_bidi_controls, editor_advice
-from nobody.compiler import translate_source
+from nobody.translator import translate as translate_source
 from nobody.lexer import scan
 from nobody.parser import parse_source
 
