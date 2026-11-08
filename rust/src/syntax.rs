@@ -44,6 +44,25 @@ impl Language {
             },
         }
     }
+    fn kw(self, semantic: &str, word: &str) -> bool {
+        match (self,semantic) {
+            (Self::Sk,"if") => word=="ak",
+            (Self::Sk,"elif") => word=="inak_ak",
+            (Self::Sk,"else") => word=="inak",
+            (Self::Sk,"while") => word=="pokial" || word=="kym",
+            (Self::Sk,"for") => word=="pre",
+            (Self::Sk,"in") => word=="v",
+            (Self::Sk,"def") => word=="funkcia",
+            (Self::Sk,"return") => word=="vrat",
+            (Self::Sk,"break") => word=="prerus",
+            (Self::Sk,"continue") => word=="pokracuj",
+            (Self::En,"def") => word=="def" || word=="function",
+            (Self::En,"if"|"elif"|"else"|"while"|"for"|"in"|"return"|"break"|"continue") =>
+                word==semantic,
+            (Self::Ai,_) => word==format!("ai_{semantic}"),
+            _ => false,
+        }
+    }
     fn is_unsupported_keyword(self, s: &str) -> bool {
         let common = ["ak", "inak", "pokial", "pre", "funkcia", "vrat",
                       "if", "else", "elif", "while", "for", "function", "def", "return",
@@ -67,6 +86,13 @@ pub enum Expr {
 pub enum Statement {
     Let { name: String, type_name: Option<String>, expr: Expr },
     Assign { name: String, expr: Expr },
+    If { branches: Vec<(Expr, Vec<Statement>)>, otherwise: Option<Vec<Statement>> },
+    While { condition: Expr, body: Vec<Statement> },
+    For { variable: String, iterable: Expr, body: Vec<Statement> },
+    Function { name: String, parameters: Vec<String>, body: Vec<Statement> },
+    Return(Expr),
+    Break,
+    Continue,
     Expression(Expr),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +101,7 @@ pub struct Program { pub language: Language, pub statements: Vec<Statement> }
 fn error(code: u16, line: usize, column: usize, detail: impl Into<String>) -> Diagnostic {
     let repair = match code {
         3001 => "Insert the required punctuation or value at the reported location.",
+        3002 => "Close the current block with a matching '}' brace.",
         3003 => "Use a valid lowercase variable name after the declaration keyword.",
         3005 => "Complete the expression with a valid literal, identifier or parenthesized expression.",
         3006 => "Use only declarations, assignments and expressions in the current Rust parser subset.",
@@ -207,7 +234,84 @@ impl Parser {
         }
         Ok(left)
     }
+    fn keyword(&self, semantic: &str) -> bool {
+        self.word().is_some_and(|word| self.language.kw(semantic,word))
+    }
+    fn block(&mut self)->Result<Vec<Statement>,Diagnostic> {
+        self.need("{")?;
+        let mut body=Vec::new();
+        loop {
+            if self.take_symbol("}") { return Ok(body); }
+            if self.peek().is_none() {
+                let (line,col)=self.location();
+                return Err(error(3002,line,col,"Unclosed block: missing '}'"));
+            }
+            body.push(self.statement()?);
+        }
+    }
     fn statement(&mut self)->Result<Statement,Diagnostic> {
+        if self.keyword("if") {
+            self.at+=1;
+            let condition=self.expression(0)?;
+            let body=self.block()?;
+            let mut branches=vec![(condition,body)];
+            while self.keyword("elif") {
+                self.at+=1;
+                let condition=self.expression(0)?;
+                branches.push((condition,self.block()?));
+            }
+            let otherwise=if self.keyword("else") {
+                self.at+=1;
+                Some(self.block()?)
+            }else{None};
+            return Ok(Statement::If{branches,otherwise});
+        }
+        if self.keyword("while") {
+            self.at+=1;
+            let condition=self.expression(0)?;
+            let body=self.block()?;
+            return Ok(Statement::While{condition,body});
+        }
+        if self.keyword("for") {
+            self.at+=1;
+            let variable=self.identifier()?;
+            if !self.keyword("in") {
+                return Err(self.expected("language-specific 'in' keyword"));
+            }
+            self.at+=1;
+            let iterable=self.expression(0)?;
+            let body=self.block()?;
+            return Ok(Statement::For{variable,iterable,body});
+        }
+        if self.keyword("def") {
+            self.at+=1;
+            let name=self.identifier()?;
+            self.need("(")?;
+            let mut parameters=Vec::new();
+            if !self.at_symbol(")") {
+                loop {
+                    let name=self.identifier()?;
+                    if parameters.contains(&name) {
+                        let (line,col)=self.location();
+                        return Err(error(3003,line,col,format!("Duplicate function parameter {name:?}")));
+                    }
+                    parameters.push(name);
+                    if !self.take_symbol(","){break;}
+                }
+            }
+            self.need(")")?;
+            let body=self.block()?;
+            return Ok(Statement::Function{name,parameters,body});
+        }
+        if self.keyword("return") {
+            self.at+=1;
+            let value=self.expression(0)?;
+            self.take_symbol(";");
+            return Ok(Statement::Return(value));
+        }
+        if self.keyword("break") { self.at+=1;self.take_symbol(";");return Ok(Statement::Break); }
+        if self.keyword("continue") { self.at+=1;self.take_symbol(";");return Ok(Statement::Continue); }
+
         if self.word()==Some(self.language.let_word()) {
             self.at+=1;
             let name=self.identifier()?;
@@ -280,9 +384,9 @@ mod tests {
         assert!(err.to_string().contains("sk, en, ai"));
     }
     #[test]
-    fn unsupported_control_flow_has_specific_number() {
-        let err=parse("ak pravda { vypis(1) }","sk").unwrap_err();
-        assert_eq!(err.code,3006);
+    fn control_flow_is_parsed() {
+        let prog=parse("ak pravda { vypis(1) } inak { vypis(2) }","sk").unwrap();
+        assert!(matches!(&prog.statements[0],Statement::If{..}));
     }
     #[test]
     fn malformed_let_has_actionable_number() {
@@ -295,4 +399,46 @@ mod tests {
         let program=parse("nech text = \"ak if ai_if\" # comment\nvypis(text)","sk").unwrap();
         assert_eq!(program.statements.len(),2);
     }
+    #[test]
+    fn sk_nested_function_and_return() {
+        let program=parse("funkcia dvojnasobok(x) { vrat x * 2 }\\nvypis(dvojnasobok(3))","sk").unwrap();
+        assert!(matches!(&program.statements[0], Statement::Function{parameters,..} if parameters.len()==1));
+    }
+    #[test]
+    fn sk_if_elif_else() {
+        let program=parse("ak pravda { vypis(1) } inak_ak nepravda { vypis(2) } inak { vypis(3) }","sk").unwrap();
+        assert!(matches!(&program.statements[0],Statement::If{branches,otherwise} if branches.len()==2 && otherwise.is_some()));
+    }
+    #[test]
+    fn ai_while_with_assignment() {
+        let program=parse("ai_let n = 0\\nai_while n < 3 { n = n + 1 }","ai").unwrap();
+        assert!(matches!(&program.statements[1],Statement::While{..}));
+    }
+    #[test]
+    fn english_for_range() {
+        let program=parse("for n in range(3) { print(n) }","en").unwrap();
+        assert!(matches!(&program.statements[0],Statement::For{variable,..} if variable=="n"));
+    }
+    #[test]
+    fn ai_function_return() {
+        let program=parse("ai_def make(x) { ai_return x }","ai").unwrap();
+        assert!(matches!(&program.statements[0],Statement::Function{name,..} if name=="make"));
+    }
+    #[test]
+    fn nested_blocks_with_loops() {
+        let program=parse("funkcia f(x) { pokial x > 0 { ak pravda { x = x - 1 } } vrat x }","sk").unwrap();
+        assert!(matches!(&program.statements[0],Statement::Function{body,..} if body.len()==2));
+    }
+    #[test]
+    fn missing_close_brace_numbered() {
+        let err=parse("ak pravda { vypis(1)","sk").unwrap_err();
+        assert_eq!(err.code,3002);
+        assert!(err.repair.contains("}"));
+    }
+    #[test]
+    fn duplicate_function_parameter_numbered() {
+        let err=parse("funkcia f(x,x) { vrat x }","sk").unwrap_err();
+        assert_eq!(err.code,3003);
+    }
+
 }
