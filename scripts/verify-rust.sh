@@ -32,16 +32,16 @@ for bad in rust/examples/typecheck_bad_ai.nbd rust/examples/arity_bad_ai.nbd; do
     exit 1
   fi
 done
-printf '%s\\n' '== Nobody Rust: opt-in evaluator smoke =='
+printf '%s\n' '== Nobody Rust: opt-in evaluator smoke =='
 ai_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml -- run ai rust/examples/eval_basic_ai.nbd)
 sk_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml -- run sk rust/examples/eval_basic_sk.nbd)
-expected=$(printf '9\\n8')
+expected=$(printf '9\n8')
 if [[ "$ai_output" != "$expected" || "$sk_output" != "$expected" ]]; then
-  printf 'Evaluator smoke output mismatch.\\n' >&2
+  printf 'Evaluator smoke output mismatch.\n' >&2
   exit 1
 fi
 if cargo run --locked --quiet --manifest-path rust/Cargo.toml -- run ai rust/examples/eval_bad_zero_ai.nbd; then
-  printf 'Evaluator accepted a zero divisor unexpectedly.\\n' >&2
+  printf 'Evaluator accepted a zero divisor unexpectedly.\n' >&2
   exit 1
 fi
 printf '%s\n' 'Nobody Rust verification passed.'
