@@ -500,4 +500,4 @@ add(1, 2)
 
 **Repair:** Use a recognized type keyword or remove the annotation if inference / unknown typing is intended. Unannotated dynamic expressions remain conservatively accepted.
 
-**Limitations:** Custom types, generics, aliases and modules are **not yet implemented** in the Rust checker. N1007 does not mean those facilities are permanently forbidden. Canonical IR v1 has no reliable source span for this check, so N1007 gives the variable and annotation but does not invent a line/column. This change does not provide a sound whole-program type checker.
+**Location and limitations:** The Rust parser reports N1007 at the unknown annotation token with its actual line and Unicode-scalar column. The lower-level IR type checker also rejects unrecognized explicit annotations with N1007, but standalone IR v1 does not carry source locations and therefore does not invent them. Custom types, generics, aliases and modules are **not yet implemented**; this restriction is not permanent. The change does not provide a sound whole-program type checker.
