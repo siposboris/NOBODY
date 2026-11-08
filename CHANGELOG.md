@@ -248,3 +248,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added five unit tests and an actionable diagnostic entry.
 - Rust workflow now triggers on changes to `scripts/verify-rust.sh`, as well as Rust sources and the workflow itself.
 - **Cargo build, Clippy and GitHub CI results remain unverified.**
+
+## Rust 0.38 — conservative control-flow function signature tracking (source snapshot, 2026-11-08)
+
+- Known function argument counts are invalidated if a branch or loop can reassign the binding, preventing stale N1005 diagnostics after control flow.
+- Lexical shadowing and loop iterator bindings are not propagated to enclosing scopes.
+- Four new Rust regression tests cover branches, loops and shadowing.
+- **Cargo build, formatting, Clippy and GitHub CI success remain unverified.**
