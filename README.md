@@ -70,3 +70,19 @@ python3 -m nobody ast-emit hello.json --lang sk
 ```
 
 **116 tests passed locally** in the full 0.16 development tree. Do not interpret that as confirmed GitHub CI execution. The AST loader only validates a structure; it is not an execution sandbox. 39 experimental human syntax profiles and one `ai` profile remain unchanged. Native compiler/self-hosting is still planned.
+
+
+## 0.17 — lexical scoping and closures
+
+The [experimental AST interpreter](nobody/ast_vm.py) now uses [lexical scope frames](nobody/scopes.py) instead of unscoped dictionaries. A declaration in a nested block is local to that block; assignment updates the nearest existing binding, and functions can capture variables from their definition scope. Type annotations remain checked when closures modify captured variables. The interpreter has a function-call depth guard and step budget; these are **not hard CPU/RAM sandbox limits**.
+
+```text
+funkcia maker(x) {
+    funkcia get() { vrat x }
+    vrat get
+}
+nech f = maker(7)
+vypis(f())
+```
+
+**124 tests passed in the complete local 0.17 tree.** GitHub CI success is not yet verified. Older bootstrap sources are still not fully mirrored to GitHub. The language remains an experimental, Python-hosted prototype. [Regression tests](tests/test_017_scopes.py) · [Roadmap](docs/ROADMAP.md).
