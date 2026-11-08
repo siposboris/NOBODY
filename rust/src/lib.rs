@@ -76,6 +76,7 @@ fn failure(code: u16, line: usize, column: usize, detail: impl Into<String>) -> 
         2004 => "Odstráň nepovolený znak alebo ho uzavri do textového literálu.",
         2005 => "Odstráň skrytý znak Unicode; RTL nastav v editore.",
         2006 => "Použi platný desiatkový literál, napríklad 12, 12.5 alebo 1e-3; oddeľ identifikátor medzerou.",
+        2007 => "Použi v jednom identifikátore iba jedno z písiem latinka, gréčtina alebo cyrilika; skontroluj znaky, ktoré vyzerajú rovnako.",
         _ => "Oprav uvedený zdrojový úsek.",
     };
     Diagnostic {
@@ -119,6 +120,36 @@ fn is_name_continue(c: char) -> bool {
 fn is_lowercase(c: char) -> bool {
     let lowered: String = c.to_lowercase().collect();
     lowered == c.to_string()
+}
+
+/// Narrow spoofing guard: Latin, Greek and Cyrillic have many look-alike
+/// letters. Do not apply the rule to other script combinations such as
+/// Japanese Han+Hiragana, and do not modify original Unicode input.
+fn confusable_script(c: char) -> Option<&'static str> {
+    match c as u32 {
+        0x0041..=0x005A | 0x0061..=0x007A | 0x00C0..=0x024F | 0x1E00..=0x1EFF
+            if c.is_alphabetic() => Some("Latin"),
+        0x0370..=0x03FF | 0x1F00..=0x1FFF if c.is_alphabetic() => Some("Greek"),
+        0x0400..=0x052F | 0x1C80..=0x1C8F | 0x2DE0..=0x2DFF | 0xA640..=0xA69F
+            if c.is_alphabetic() => Some("Cyrillic"),
+        _ => None,
+    }
+}
+
+/// Return the first mixed-script letter's 1-based scalar offset and the
+/// conflicting script names, without inspecting strings or comments.
+fn mixed_confusable_script(name: &str) -> Option<(usize, &'static str, &'static str)> {
+    let mut first = None;
+    for (index, ch) in name.chars().enumerate() {
+        if let Some(script) = confusable_script(ch) {
+            match first {
+                Some(previous) if previous != script => return Some((index + 1, previous, script)),
+                None => first = Some(script),
+                _ => {}
+            }
+        }
+    }
+    None
 }
 
 /// Numeric literals are intentionally decimal-only in the current lexer.
@@ -271,6 +302,14 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                     tok_line,
                     tok_col,
                     format!("Nazov {:?} obsahuje velke pismena", value),
+                ));
+            }
+            if let Some((offset, first, second)) = mixed_confusable_script(value) {
+                return Err(failure(
+                    2007,
+                    tok_line,
+                    tok_col + offset - 1,
+                    format!("Identifikator {:?} miesa pismo {} a {}", value, first, second),
                 ));
             }
             (TokenKind::Name, end)
