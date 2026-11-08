@@ -418,8 +418,10 @@ mod tests {
     }
     #[test]
     fn rejects_duplicate_function_parameter() {
+        // Duplicate parameter names are rejected by the parser as N3003
+        // before the IR type-checking pass can run.
         let err = check_source("fn f(x,x) { return x }", "ai").unwrap_err();
-        assert_eq!(err.code, 1004);
+        assert_eq!(err.code, 3003);
     }
     #[test]
     fn rejects_function_and_variable_same_block() {
