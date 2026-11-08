@@ -27,6 +27,7 @@
 | **N3007** | `PARSE_PROFILE` | Rust parser does not support the requested syntax profile |
 | **N3008** | `RETURN_CONTEXT` | Return outside a function body |
 | **N3009** | `LOOP_CONTROL_CONTEXT` | Break or continue outside a loop in the current function |
+| **N3010** | `AI_LEGACY_SYNTAX` | Old prefixed `ai_` keyword in the redesigned Rust AI syntax |
 | **N4001** | `RUN_NAME` | Neexistujúce meno |
 | **N4002** | `RUN_TYPE` | Typová chyba za behu |
 | **N4003** | `RUN_LIMIT` | Prekročený limit vykonávania |
@@ -303,3 +304,20 @@ funkcia f() {
 ```
 
 **Known diagnostic limitation:** Rust parser AST nodes do not yet retain their original line and column. The validator therefore reports the N-code and cause without inventing a source location. Accurate diagnostic spans remain an open roadmap task.
+
+### N3010 — Legacy prefixed AI keyword
+
+**Exact cause:** Source selected as Rust syntax profile `ai` contains a recognized keyword from the original Python-reference AI dialect, such as `ai_let`, `ai_def`, `ai_if` or `ai_print`. The redesigned Rust-first AI dialect instead uses familiar keywords `let`, `fn`, `if` and `print`.
+
+**How to fix:** Convert the file with the token-aware migration command, which preserves quoted text and comments:
+
+```bash
+cargo run --manifest-path rust/Cargo.toml -- migrate-ai old_ai.nbd > new_ai.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai new_ai.nbd
+```
+
+**Incorrect:** `ai_let n: ai_int = 3`
+
+**Correct:** `let n: int = 3`
+
+The converter writes to standard output and does **not** overwrite the original file. This message does not imply that Rust execution or whole-program parity is implemented.
