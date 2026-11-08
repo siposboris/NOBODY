@@ -17,9 +17,9 @@ The compiled **`nobody` Rust executable** is the primary user-facing command for
 
 The older inventory below records original migration planning and is **historical**, not a current source-code status table. No complete Python module has yet passed every removal criterion. Do not delete Python reference files until their exact supported semantics and tests have been replaced; delete module by module after a dedicated review.
 
-## Multiline AST JSON source-line bridge (2026-11-08, pending CI)
+## Multiline AST JSON source-line bridge (2026-11-08, verified narrow subset)
 
-The Rust `ast-json` exporter extends its exact legacy `nobody.ast.v1` serializer to a conservatively supported **multiline subset**, using original UTF-8 lexer token line positions to annotate the already-validated Rust AST. This source-line mapping is independent of Python at runtime. New exact-output fixtures cover Slovak and English calls, branching, loops, and functions across physical source lines.
+The Rust `ast-json` exporter extends its exact legacy `nobody.ast.v1` serializer to a conservatively supported **multiline subset**, using original UTF-8 lexer token line positions to annotate the already-validated Rust AST. This source-line mapping is independent of Python at runtime. New exact-output fixtures cover Slovak and English calls, branching, loops, and functions across physical source lines. All four workflows passed in [Rust CI #42521825341](https://github.com/siposboris/NOBODY/actions/runs/42521825341); merged via [PR #21](https://github.com/siposboris/NOBODY/pull/21).
 
 The Rust parser still does **not** retain a general source-span-bearing AST. To prevent false location claims, the mapping rejects unsupported constructions (including grouped/parenthesized expressions spanning lines) with N4004 rather than guessing; one-line export remains backward compatible. Full AST JSON deserialization, schema validation, source re-emission, indexed/list expressions, and full grammar parity remain open. Do not remove Python AST modules yet.
 
