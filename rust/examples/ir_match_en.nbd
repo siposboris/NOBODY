@@ -1,0 +1,3 @@
+let vek: int = 30
+vek = vek + 1
+print(vek)
