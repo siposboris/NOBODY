@@ -91,6 +91,29 @@ fn infer(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Type {
         }
     }
 }
+/// Check only syntactically certain zero numeric literals, including unary
+/// signs. Do not use floating-point parsing: nonzero values such as 1e-9999
+/// could underflow to zero in f64 without being a literal zero.
+fn definitely_zero_literal(expr: &IrExpr) -> bool {
+    match expr {
+        IrExpr::Number(value) => {
+            let mantissa = value.split(['e', 'E']).next().unwrap_or(value);
+            let mut has_digit = false;
+            for ch in mantissa.chars() {
+                match ch {
+                    '0' => has_digit = true,
+                    '.' | '_' => {}
+                    '1'..='9' => return false,
+                    _ => return false,
+                }
+            }
+            has_digit
+        }
+        IrExpr::Unary { op, value } if op == "+" || op == "-" => definitely_zero_literal(value),
+        _ => false,
+    }
+}
+
 /// Reject only definitely incompatible primitive arithmetic.
 /// Dynamic values are intentionally deferred.
 fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(), Diagnostic> {
@@ -113,6 +136,13 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
                 return Err(diagnostic(1002,
                     format!("Operator {op:?} cannot combine known types {a:?} and {b:?}"),
                     "Use compatible numeric operands for arithmetic, or two strings for text concatenation with '+'."));
+            }
+            if matches!(op.as_str(), "/" | "//" | "%") && definitely_zero_literal(rhs) {
+                return Err(diagnostic(
+                    1008,
+                    format!("Operator {op:?} uses a literal zero divisor"),
+                    "Replace the zero divisor with a nonzero value, or validate dynamic divisors before division.",
+                ));
             }
         }
         IrExpr::Call { callee, args } => {
