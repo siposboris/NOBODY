@@ -1,2 +1,2 @@
-funkcia sucet(a, b) { vrat a + b }
-vypis(sucet(2, 3))
+funkcia spocitaj(a, b) { vrat a + b }
+vypis(spocitaj(2, 3))
