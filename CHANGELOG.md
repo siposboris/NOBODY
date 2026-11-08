@@ -200,3 +200,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added `nobody-rs typecheck PROFILE FILE` CLI and documented N1001 exact mismatch diagnostics.
 - Added eight unit tests, two CLI integration tests, good/bad AI fixtures and CI smoke steps.
 - **Limitations:** unknown types deferred, no source spans in IR v1, no control-flow type joins or complete lexical symbol table. Cargo compilation and tests are **not verified**.
+
+## Rust 0.31 — lexical scope diagnostics (source snapshot, 2026-11-08)
+
+- Conservative IR checker rejects assignment to undeclared names with N1003 and duplicate declarations/repeated function parameters with N1004.
+- Inner block shadowing and assignments to enclosing declared variables remain valid.
+- Added six Rust unit tests; expanded numbered error documentation with exact fixes.
+- **Cargo compilation and tests not yet verified**; IR source spans and full closure semantics remain future work.
