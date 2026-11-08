@@ -1,2 +1,2 @@
-ai_let n = 1
-ai_break
+let n = 1
+break
