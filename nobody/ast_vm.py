@@ -7,8 +7,8 @@ import ast
 import operator
 from .parser import parse_source
 from .languages import ALIASES
+from .scopes import Scope, Function, ExecutionError
 
-class ExecutionError(RuntimeError): pass
 class _Return(Exception):
     def __init__(self,value): self.value=value
 class _Break(Exception): pass
@@ -27,8 +27,8 @@ class Machine:
         self.aliases=ALIASES[language]
         self.steps=0
         self.max_steps=max_steps
-        self.functions={}
-        self.declared_types={}
+        self.call_depth=0
+        self.max_call_depth=128
         self.builtins=dict(BUILTINS)
         self.builtins['print']=output or print
         for word,canonical in self.aliases.items():
@@ -52,9 +52,9 @@ class Machine:
         if node.kind=='literal':
             return {'True':True,'False':False,'None':None}[node.value]
         if node.kind=='name':
-            if node.value in env:return env[node.value]
+            owner=env.owner(node.value)
+            if owner is not None:return owner.values[node.value]
             if node.value in self.builtins:return self.builtins[node.value]
-            if node.value in self.functions:return ('function',node.value)
             raise ExecutionError('Unknown name: '+node.value)
         if node.kind=='list':
             return [self.expr(n,env) for n in node.children]
@@ -89,37 +89,26 @@ class Machine:
         for node in nodes:
             self.tick()
             if node.kind in ('let','typed_let'):
-                name, annotation = node.value if node.kind=='typed_let' else (node.value,None)
-                if name in env:raise ExecutionError('Duplicate declaration')
-                value=self.expr(node.children[0],env)
-                if annotation is not None and type(value) is not {'int':int,'float':float,'str':str,'bool':bool}[annotation]:
-                    raise ExecutionError('Type mismatch for '+name)
-                env[name]=value
-                if annotation is not None:
-                    self.declared_types.setdefault(id(env),{})[name]={'int':int,'float':float,'str':str,'bool':bool}[annotation]
+                name,annotation=node.value if node.kind=='typed_let' else (node.value,None)
+                kind={'int':int,'float':float,'str':str,'bool':bool}[annotation] if annotation is not None else None
+                env.declare(name,self.expr(node.children[0],env),kind)
             elif node.kind=='assign':
-                if node.value not in env:
-                    raise ExecutionError('Assignment to undeclared variable '+node.value)
-                value=self.expr(node.children[0],env)
-                expected=self.declared_types.get(id(env),{}).get(node.value)
-                if expected is not None and type(value) is not expected:
-                    raise ExecutionError('Type mismatch on reassignment to '+node.value)
-                env[node.value]=value
+                env.assign(node.value,self.expr(node.children[0],env))
             elif node.kind=='expression_statement':
                 self.expr(node.children[0],env)
             elif node.kind=='function':
-                self.functions[node.value[0]]=(node.value[1],node.children)
+                env.declare(node.value[0],Function(node.value[0],node.value[1],node.children,env))
             elif node.kind=='if':
                 for branch in node.children:
                     if branch.kind=='else':
-                        self.block(branch.children,env,in_loop,in_function)
+                        self.block(branch.children,Scope(env),in_loop,in_function)
                         break
                     if self.expr(branch.children[0],env):
-                        self.block(branch.children[1].children,env,in_loop,in_function)
+                        self.block(branch.children[1].children,Scope(env),in_loop,in_function)
                         break
             elif node.kind=='while':
                 while self.expr(node.children[0],env):
-                    try:self.block(node.children[1].children,env,True,in_function)
+                    try:self.block(node.children[1].children,Scope(env),True,in_function)
                     except _Continue:continue
                     except _Break:break
             elif node.kind=='for':
