@@ -1,0 +1,1 @@
+funkcia zvys(x) { vrat x + 1 } vypis(zvys(4))
