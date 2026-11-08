@@ -52,7 +52,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [ ] Port language-neutral typed AST/IR, JSON AST validator and deterministic source emitter into Rust, including round-trip equivalence checks.
 - [x] Implement a prototype Nobody-to-Nobody translation tool in the Python reference that preserves strings and comments.
 - [x] Implement preliminary Rust **Nobody-to-Nobody** keyword translation using token spans, preserving strings and comments, with roundtrip unit tests across selected native-script profiles.
-- [ ] Extend Rust translation to be syntax-aware for identifiers, keyword collisions and scopes; verify all 40 profile combinations and full program semantic equivalence.
+- [x] Add a Rust **N3011 collision guard**: reject non-keyword source identifiers that coincide with reserved words in the destination profile; include line/column and concrete rename instructions, plus unit/integration tests.
+- [ ] Extend Rust translation to become fully syntax-aware for lexical scope, automatic hygienic renaming, keyword ambiguities, Unicode normalization and verified semantic equivalence across all 40×40 profile pairs.
 - [ ] Finish complete grammar: declarations, types, assignments, functions, lexical scope, collections, structured data, imports and modules.
 - [ ] Build formatter, useful source diagnostics and parser error recovery.
 
@@ -164,6 +165,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.25 source snapshot | Rust AST contextual validator, new numbered errors N3008/N3009, CLI `validate`, test cases | **Unverified Rust build/CI** |
 | 0.25 source snapshot | Rust contextual validator, N3008/N3009 errors, native `validate` CLI and authored integration tests | Rust compilation/CI **unverified** |
 | 0.26 source snapshot | All 39 human keyword tables in Rust; redesigned familiar `ai` syntax, old-prefix migration, 40-profile source translator and test fixtures | **Rust build and parity checks unverified** |
+| 0.27 source snapshot | Rust translator rejects target keyword collisions (N3011), five new integration tests, precise repair docs | Rust build / CI **not yet verified** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 ## Immediate priorities (in dependency order)
