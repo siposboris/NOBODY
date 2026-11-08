@@ -146,3 +146,12 @@ A new [Rust parser module](rust/src/syntax.rs) builds a typed AST for a **limite
 The executable command is `cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd` (substitute `en` or `ai` and their matching fixtures). N3006 explains a not-yet-supported construct and N3007 explains a requested profile that is not yet ported to Rust. Both have [specific solutions in the error catalogue](docs/ERROR_CODES.md).
 
 **Rust compilation and tests are not yet verified** in this environment because `rustc` and `cargo` are unavailable; only source and test files have been committed. The older Python reference remains untouched until parity tests justify deletion. This is not a complete compiler or an official tested release.
+
+
+## Rust 0.24 source milestone — conditions, loops and functions
+
+The Rust parser now has AST nodes for `if/elif/else`, `while`, `for`, named functions, `return`, `break`, `continue` and nested source blocks, in addition to declarations, assignments and expressions. The supported syntax profiles are still **`sk`, `en` and `ai` only**. The language tables and native scripts in the Python reference are not yet fully migrated to Rust.
+
+Run `cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd` or `... parse ai examples/hello_ai.nbd`. Parsing produces an AST; it does **not** execute, compile to a native binary or statically type-check the program.
+
+The Rust unit tests and GitHub CI smoke checks have been updated, but **Rust compilation/CI has not been verified** in this environment. Python remains as a reference until Rust has proven parity. [Current roadmap](docs/ROADMAP.md) · [Rust parser details](rust/README.md).
