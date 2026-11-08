@@ -1,0 +1,22 @@
+name: Nobody frontend tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run standalone lexer and parser tests
+        run: |
+          python -m unittest discover -s tests -p 'test_lexer.py' -v
+          python -m unittest discover -s tests -p 'test_parser.py' -v
