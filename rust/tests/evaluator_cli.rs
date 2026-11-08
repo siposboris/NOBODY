@@ -14,8 +14,16 @@ fn run_ai_and_slovak_have_matching_observable_output() {
         .args(["run", "sk", &format!("{root}/examples/eval_basic_sk.nbd")])
         .output()
         .expect("start Slovak evaluator");
-    assert!(ai.status.success(), "{}", String::from_utf8_lossy(&ai.stderr));
-    assert!(sk.status.success(), "{}", String::from_utf8_lossy(&sk.stderr));
+    assert!(
+        ai.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ai.stderr)
+    );
+    assert!(
+        sk.status.success(),
+        "{}",
+        String::from_utf8_lossy(&sk.stderr)
+    );
     assert_eq!(ai.stdout, b"9\n8\n");
     assert_eq!(ai.stdout, sk.stdout);
 }
@@ -37,7 +45,11 @@ fn failed_run_reports_numbered_diagnostic() {
     let executable = env!("CARGO_BIN_EXE_nobody-rs");
     let root = env!("CARGO_MANIFEST_DIR");
     let failed = Command::new(executable)
-        .args(["run", "ai", &format!("{root}/examples/eval_bad_zero_ai.nbd")])
+        .args([
+            "run",
+            "ai",
+            &format!("{root}/examples/eval_bad_zero_ai.nbd"),
+        ])
         .output()
         .expect("start evaluator");
     assert!(!failed.status.success());
