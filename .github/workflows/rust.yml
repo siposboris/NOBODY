@@ -27,6 +27,14 @@ jobs:
           cargo --version
           rustfmt --version
           cargo clippy --version
+      - name: Generate reproducible dependency lock snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile --manifest-path rust/Cargo.toml
+          printf '%s\n' 'NOBODY_LOCK_BEGIN'
+          cat rust/Cargo.lock
+          printf '%s\n' 'NOBODY_LOCK_END'
       - name: Unified Rust verification gate
         run: |
           set -o pipefail
