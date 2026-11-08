@@ -72,8 +72,8 @@ fn block(body: &[Statement]) -> String {
     bare("block", body.iter().map(stmt).collect())
 }
 
-fn stmt(stmt: &Statement) -> String {
-    match stmt {
+fn stmt(statement: &Statement) -> String {
+    match statement {
         Statement::Let {
             name,
             type_name,
