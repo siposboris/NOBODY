@@ -63,7 +63,7 @@ def classify_exception(exc):
       ('non-ascii character','LEX_CHARACTER'),
       ('Forbidden bidirectional control','LEX_BIDI'),
       ('Foreign keyword','PARSE_LANGUAGE'),
-      ('Expected user identifier','PARSE_IDENTIFIER'),
+      ('Expected (?:user )?identifier','PARSE_IDENTIFIER'),
       ('Unclosed block|closing brace','PARSE_BLOCK'),
       ('Expected expression','PARSE_EXPRESSION'),
       ('Expected |Unexpected end|Assignment target|Supported types','PARSE_EXPECT'),
