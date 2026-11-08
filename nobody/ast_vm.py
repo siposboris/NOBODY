@@ -28,6 +28,7 @@ class Machine:
         self.steps=0
         self.max_steps=max_steps
         self.functions={}
+        self.declared_types={}
         self.builtins=dict(BUILTINS)
         self.builtins['print']=output or print
         for word,canonical in self.aliases.items():
@@ -94,10 +95,16 @@ class Machine:
                 if annotation is not None and type(value) is not {'int':int,'float':float,'str':str,'bool':bool}[annotation]:
                     raise ExecutionError('Type mismatch for '+name)
                 env[name]=value
+                if annotation is not None:
+                    self.declared_types.setdefault(id(env),{})[name]={'int':int,'float':float,'str':str,'bool':bool}[annotation]
             elif node.kind=='assign':
                 if node.value not in env:
                     raise ExecutionError('Assignment to undeclared variable '+node.value)
-                env[node.value]=self.expr(node.children[0],env)
+                value=self.expr(node.children[0],env)
+                expected=self.declared_types.get(id(env),{}).get(node.value)
+                if expected is not None and type(value) is not expected:
+                    raise ExecutionError('Type mismatch on reassignment to '+node.value)
+                env[node.value]=value
             elif node.kind=='expression_statement':
                 self.expr(node.children[0],env)
             elif node.kind=='function':
