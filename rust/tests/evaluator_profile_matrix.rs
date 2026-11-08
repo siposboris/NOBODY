@@ -8,13 +8,21 @@ fn same_basic_program_executes_in_all_40_syntax_profiles() {
     let ai = "let a = 4\nlet b = 5\nprint(a + b)\na = a * 2\nprint(a)";
     let expected = evaluate_source(ai, "ai").expect("AI fixture executes");
     assert_eq!(expected, "9\n8\n");
-    assert_eq!(PROFILES.len(), 40, "Update the profile matrix on language expansion");
+    assert_eq!(
+        PROFILES.len(),
+        40,
+        "Update the profile matrix on language expansion"
+    );
     for profile in PROFILES {
         let translated = translate_source(ai, "ai", profile.code)
             .unwrap_or_else(|error| panic!("translate {}: {error}", profile.code));
         let output = evaluate_source(&translated, profile.code)
             .unwrap_or_else(|error| panic!("execute {}: {error}", profile.code));
-        assert_eq!(output, expected, "execution mismatch for profile {}", profile.code);
+        assert_eq!(
+            output, expected,
+            "execution mismatch for profile {}",
+            profile.code
+        );
     }
 }
 
@@ -28,6 +36,10 @@ fn conditional_and_bounded_loop_match_across_profiles() {
             .unwrap_or_else(|error| panic!("translate {}: {error}", profile.code));
         let output = evaluate_source(&translated, profile.code)
             .unwrap_or_else(|error| panic!("execute {}: {error}", profile.code));
-        assert_eq!(output, expected, "control-flow mismatch for {}", profile.code);
+        assert_eq!(
+            output, expected,
+            "control-flow mismatch for {}",
+            profile.code
+        );
     }
 }
