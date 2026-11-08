@@ -67,3 +67,13 @@ The Rust build is not confirmed because the local toolchain is unavailable; GitH
 The Rust compiler frontend now has a **standalone contextual AST validator**, capable of checking whether `return`, `break` and `continue` are legal within the current function/loop nesting. The validator adds N3008 and N3009 to the append-only error catalogue, plus CLI integration tests. This is still only a **partial** replacement of the Python reference parser and evaluator.
 
 Rust compilation and CI must be demonstrated before marking the component tested. No historical Python file is eligible for removal yet.
+
+
+## 0.26 — keyword and AI syntax migration
+
+- Rust contains [40 keyword tables](../rust/src/profiles.rs): 39 experimental human languages in native scripts, plus redesigned canonical `ai`.
+- The Rust `ai` syntax now uses ordinary programming keywords instead of `ai_` prefixes. The Python `ai` implementation still recognizes the **legacy prefixed** dialect as historical reference.
+- The Rust `migrate-ai` command converts recognized `ai_` tokens safely, without modifying strings or comments. The original sample is preserved as `examples/hello_ai_legacy.nbd`; the current `examples/hello_ai.nbd` uses new syntax.
+- A preliminary Rust token-aware Nobody-to-Nobody source translator now exists for all profiles. It is **not yet a complete syntax/semantic equivalence guarantee** when identifiers collide with keywords.
+- Tests were authored for all 40 tables, native-script lexer/parser paths, AI syntax and round trips, but **successful compilation and full compatibility validation have not yet occurred**. Do not remove `nobody/languages.py` or any Python reference file until full feature parity and repeatable tests are verified.
+- After a green Rust build, priorities remain: cross-profile Unicode and identifier conflict audit, full semantic AST interchange, source-span diagnostics, static types, scopes/closures and Rust runtime.
