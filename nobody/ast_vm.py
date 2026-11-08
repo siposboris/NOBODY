@@ -94,6 +94,10 @@ class Machine:
                 if annotation is not None and type(value) is not {'int':int,'float':float,'str':str,'bool':bool}[annotation]:
                     raise ExecutionError('Type mismatch for '+name)
                 env[name]=value
+            elif node.kind=='assign':
+                if node.value not in env:
+                    raise ExecutionError('Assignment to undeclared variable '+node.value)
+                env[node.value]=self.expr(node.children[0],env)
             elif node.kind=='expression_statement':
                 self.expr(node.children[0],env)
             elif node.kind=='function':
