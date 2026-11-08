@@ -1,0 +1,4 @@
+nech cislo = 4
+vypis(
+    cislo + 3
+)

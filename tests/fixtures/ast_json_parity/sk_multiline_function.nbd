@@ -1,0 +1,4 @@
+funkcia dvojnasobok(x) {
+    vrat x * 2
+}
+vypis(dvojnasobok(7))

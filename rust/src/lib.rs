@@ -7,6 +7,7 @@ use std::fmt;
 use unicode_normalization::is_nfc;
 
 pub mod ast_json;
+mod ast_json_locations;
 pub use ast_json::export_ast_json;
 pub mod evaluator;
 pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};

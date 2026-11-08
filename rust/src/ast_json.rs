@@ -1,7 +1,8 @@
-//! Python-compatible nobody.ast.v1 JSON export for *single-line* source only.
-//! The Rust parser does not yet retain per-node source spans. Rather than
-//! fabricate line numbers on multiline input, reject it until spans are ported.
-//! Export never executes the source, and JSON imports are NOT implemented.
+//! Python-compatible nobody.ast.v1 JSON export for a verified source subset.
+//! Rust parser nodes do not yet carry source spans. For multiline input a
+//! token-aligned visitor recovers real line numbers or rejects unsupported
+//! constructs, rather than fabricating them. No code is executed; JSON
+//! imports are NOT implemented.
 use crate::syntax::{Expr, Statement};
 use crate::{parse_validated, Diagnostic};
 
@@ -128,17 +129,35 @@ fn stmt(statement: &Statement) -> String {
     }
 }
 
-/// Export the compatible single-line subset to deterministic nobody.ast.v1 JSON.
-/// Returns N4004 for multiline input rather than manufacturing inaccurate line data.
+/// Export the supported subset to deterministic nobody.ast.v1 JSON.
+/// A token-aligned position map recovers multiline node locations when safe;
+/// otherwise return N4004 rather than reporting fabricated line information.
 pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic> {
-    if source.contains('\n') || source.contains('\r') {
-        return Err(unsupported(
-            "Multiline source spans are not available in Rust AST JSON yet",
-        ));
-    }
     let program = parse_validated(source, profile)?;
     let tree = bare("module", program.statements.iter().map(stmt).collect());
-    Ok(format!(r#"{{"ast":{tree},"schema":"nobody.ast.v1"}}"#))
+    let json = format!(r#"{{"ast":{tree},"schema":"nobody.ast.v1"}}"#);
+    if !source.contains('\n') && !source.contains('\r') {
+        return Ok(json);
+    }
+
+    // JSON v1 uses stable sorted keys, so child nodes occur before their
+    // parent's "line" field. The location visitor yields that same postorder.
+    // Replacing only the serializer-owned exact field marker cannot affect
+    // escaped string literal contents, e.g. \"line\":1 in a quoted value.
+    let markers = crate::ast_json_locations::source_lines(source, profile, &program.statements)?;
+    let parts: Vec<_> = json.split(r#""line":1"#).collect();
+    if parts.len() != markers.len() + 1 {
+        return Err(unsupported("AST JSON line/node count mismatch"));
+    }
+    let mut result = String::with_capacity(json.len() + markers.len() * 2);
+    for (index, part) in parts.iter().enumerate() {
+        result.push_str(part);
+        if let Some(line) = markers.get(index) {
+            result.push_str(r#""line":"#);
+            result.push_str(&line.to_string());
+        }
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -155,13 +174,11 @@ mod tests {
     }
 
     #[test]
-    fn never_fabricates_multiline_node_positions() {
-        assert_eq!(
-            export_ast_json("nech n = 3\nvypis(n)", "sk")
-                .unwrap_err()
-                .code,
-            4004
-        );
+    fn exports_correct_multiline_source_positions() {
+        let result = export_ast_json("nech n = 3\nvypis(n)", "sk").unwrap();
+        assert!(result.contains(r#""kind":"let","line":1"#));
+        assert!(result.contains(r#""kind":"expression_statement","line":2"#));
+        assert!(result.contains(r#""kind":"call","line":2"#));
     }
 
     #[test]

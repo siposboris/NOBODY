@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exact Python-reference vs native Rust AST JSON comparison for one-line inputs.
 
-Only compatible en/sk reference fixtures are included. This is a test tool;
+Only compatible en/sk reference fixtures are included, including multiline source. This is a test tool;
 the Rust Nobody executable itself never imports or launches Python.
 """
 from pathlib import Path
@@ -31,8 +31,8 @@ def main():
         print("Native Rust nobody executable missing: build with cargo --locked", file=sys.stderr)
         return 2
     fixtures = sorted(FIXTURES.glob("*.nbd"))
-    if len(fixtures) != 6:
-        print(f"Expected 6 AST JSON fixtures, found {len(fixtures)}", file=sys.stderr)
+    if len(fixtures) != 10:
+        print(f"Expected 10 AST JSON fixtures, found {len(fixtures)}", file=sys.stderr)
         return 2
     errors = 0
     for fixture in fixtures:
