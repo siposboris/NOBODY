@@ -23,6 +23,8 @@ jobs:
           python -m unittest discover -s tests -p 'test_native_scripts.py' -v
           python -m unittest discover -s tests -p 'test_bidi.py' -v
           python -m unittest discover -s tests -p 'test_013_catalog_vm.py' -v
+          python -m unittest discover -s tests -p 'test_013_profile_validator.py' -v
+          python -m nobody audit-languages
           python -m nobody info
           python -m nobody languages --json > /dev/null
           python -m nobody ast-run examples/hello_sk.nbd --lang sk
