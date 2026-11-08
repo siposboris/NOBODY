@@ -332,7 +332,7 @@ mod tests {
         let source = "nech x = 1\nvypis(\n x +\n 2\n)";
         let tree = parse_validated(source, "sk").unwrap();
         let lines = source_lines(source, "sk", &tree.statements).unwrap();
-        assert_eq!(lines, vec![1, 1, 3, 4, 3, 2, 2, 1]);
+        assert_eq!(lines, vec![1, 1, 2, 3, 4, 3, 2, 2, 1]);
     }
 
     #[test]
