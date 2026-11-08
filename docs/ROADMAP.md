@@ -169,9 +169,13 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.27 source snapshot | Rust translator rejects target keyword collisions (N3011), five new integration tests, precise repair docs | Rust build / CI **not yet verified** |
 | 0.28 source snapshot | Canonical IR v1 and CLI `ir`/`compare-ir`, eight unit tests and four integration tests | **Build and CI unverified; structure comparison is not semantics proof** |
 | 0.29 source snapshot | Sequential builtin-shadowing in Rust IR, recursive function symbol handling and three authored regression tests | Rust build and tests **not verified** |
+| 0.30 source snapshot | Conservative Rust IR type checking, N1001 mismatch diagnostic, CLI `typecheck`, eight unit and two integration tests, CI smoke | **Build/tests unverified; unknown types deferred** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 - [x] Correct Rust IR symbol lowering so declarations shadow builtins only after their initializer, and function names remain visible for recursive references. Three regression tests authored; compilation remains unverified.
+
+- [x] Add a conservative Rust static type checker over canonical IR for typed declarations, assignments, primitive expressions and nested blocks; expose `typecheck`, document N1001 and author regression tests. **Source committed, compilation unverified.**
+- [ ] Add statement-level source spans, accurate locations in Rust semantic diagnostics, control-flow type joins, symbol tables and sounder type inference.
 
 ## Immediate priorities (in dependency order)
 
