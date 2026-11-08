@@ -177,6 +177,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.35 source snapshot | Conservative N1002 arithmetic type mismatch detection and six tests | **Rust build/tests unverified** |
 | 0.36 source snapshot | Localized primitive type normalization in canonical IR; 40-profile typed parity test and Slovak checker regressions | **Build/test execution unverified** |
 | 0.37 source snapshot | N1006 unary operand checks, five unit tests and CI path trigger correction | **Rust build/test execution unverified** |
+| 0.38 source snapshot | Control-flow-sensitive known-function arity invalidation and lexical shadowing regressions | **Build/test execution unverified** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 - [x] Correct Rust IR symbol lowering so declarations shadow builtins only after their initializer, and function names remain visible for recursive references. Three regression tests authored; compilation remains unverified.
@@ -191,6 +192,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 - [x] Add conservative Rust N1002 primitive arithmetic compatibility checks for nested expressions and function-call arguments, with six unit tests and exact repair guidance. **Build/test execution unverified.**
 - [x] Canonicalize primitive type annotations (`int`, `float`, `str`, `bool`) when lowering localized declarations into Rust IR v1; add cross-profile structural equivalence and Slovak typed declaration regression tests. **Rust execution still unverified.**
 - [x] Add conservative Rust N1006 numeric unary operand checks, five unit tests, actionable diagnostic documentation; ensure verifier-script edits trigger Rust GitHub Actions. **Build/test execution unverified.**
+- [x] Conservatively invalidate known Rust function arity after potential reassignment in conditional branches and loops, without leaking local shadowing or iterator bindings; add four regression tests. **Build/test execution unverified.**
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
