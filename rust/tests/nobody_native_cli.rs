@@ -35,7 +35,11 @@ fn native_nobody_lists_only_available_syntax_profiles() {
 fn native_nobody_executes_without_invoking_python() {
     let file = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/eval_basic_sk.nbd");
     let output = run(&["run", "sk", file]);
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(output.stdout, b"9\n8\n");
 }
 
