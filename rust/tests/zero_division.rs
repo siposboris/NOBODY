@@ -44,10 +44,7 @@ fn preserves_nonzero_mantissa_even_with_extreme_exponent() {
 
 #[test]
 fn defers_dynamic_and_computed_denominators() {
-    for source in [
-        "let x = 2 / mystery",
-        "let x = 2 / f(0)",
-    ] {
+    for source in ["let x = 2 / mystery", "let x = 2 / f(0)"] {
         check_source(source, "ai").unwrap();
     }
 }
