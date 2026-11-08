@@ -47,8 +47,8 @@ fn bare(kind: &str, children: Vec<String>) -> String {
     node(kind, "null".into(), children)
 }
 
-fn expr(expr: &Expr) -> String {
-    match expr {
+fn expr(input: &Expr) -> String {
+    match input {
         Expr::Number(value) => node("number", quoted(value), vec![]),
         Expr::String(value) => node("string", quoted(value), vec![]),
         Expr::Boolean(value) => node(
