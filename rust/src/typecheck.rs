@@ -233,10 +233,23 @@ fn block(
                 check_calls(expr, functions)?;
                 check_binary_types(expr, env)?;
                 let found = infer(expr, env);
-                let declared = type_name
-                    .as_deref()
-                    .map(Type::from_annotation)
-                    .unwrap_or(found);
+                // An explicitly written but unknown primitive annotation must
+                // not silently become dynamic typing. Profiles are normalized
+                // to the canonical primitive names during IR lowering.
+                let declared = match type_name.as_deref() {
+                    Some(annotation) => {
+                        let candidate = Type::from_annotation(annotation);
+                        if candidate == Type::Unknown {
+                            return Err(diagnostic(
+                                1007,
+                                format!("Variable {name:?} has unknown type annotation {annotation:?}"),
+                                "Use a supported primitive annotation: int, float, str or bool (or its keyword in the selected syntax profile).",
+                            ));
+                        }
+                        candidate
+                    }
+                    None => found,
+                };
                 if !compatible(declared, found) {
                     return Err(diagnostic(1001,
                         format!("Variable {name:?} declares {declared:?}, but initializer has known type {found:?}"),
