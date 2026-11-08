@@ -201,3 +201,17 @@ The Python reference remains experimental and is **not** the target runtime. See
 | CI and compilation | Workflow updated, successful run **not yet confirmed** |
 
 The complete [English development roadmap](ROADMAP.md) is the source of truth for remaining work.
+
+
+## Rust 0.25 — partial contextual semantics
+
+| Capability | State |
+|---|---|
+| Context checks for return, break, continue | Implemented in Rust source; unverified compilation |
+| Function lexical boundary respected by loop-control validation | Implemented in Rust source |
+| Numbered N3008/N3009 diagnostics with exact fixes | Implemented in catalogue |
+| Native `validate` CLI and integration tests | Authored; build and test results unverified |
+| Accurate per-node line/column AST spans | Still planned; validator does not invent them |
+| Rust runtime execution and complete type checking | Not implemented |
+
+This is not a Python replacement yet. [Rust migration rules](RUST_MIGRATION.md) still govern deletion of legacy Python components.
