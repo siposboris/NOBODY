@@ -1,8 +1,8 @@
 //! Unicode/RTL lexer acceptance fixtures: logical order, UTF-8 byte spans,
 //! scalar-value columns and explicit rejection of invisible bidi controls.
 //! This does not claim Unicode normalization or confusable detection.
-use nobody::{parse_validated, scan, translate_source, TokenKind};
 use nobody::profiles::word;
+use nobody::{parse_validated, scan, translate_source, TokenKind};
 
 #[test]
 fn rtl_profiles_keep_logical_token_order_and_original_spelling() {
