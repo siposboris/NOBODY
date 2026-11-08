@@ -1,0 +1,6 @@
+# nobody slovak syntax, experimental prototype
+nech cislo = 10
+funkcia dvojnasobok(x) {
+    vrat x * 2
+}
+vypis("Vysledok:", dvojnasobok(cislo))
