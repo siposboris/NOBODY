@@ -25,7 +25,7 @@ fn ir_subcommand_outputs_versioned_module() {
 #[test]
 fn compare_ir_reports_matching_languages() {
     let sk=repo_path("rust/examples/basic_sk.nbd");
-    let en=repo_path("rust/examples/basic_en.nbd");
+    let en=repo_path("rust/examples/ir_match_en.nbd");
     let output=run(&["compare-ir","sk",&sk,"en",&en]);
     assert!(output.status.success(),"stderr: {}",String::from_utf8_lossy(&output.stderr));
     assert!(String::from_utf8_lossy(&output.stdout).contains("MATCH"));
