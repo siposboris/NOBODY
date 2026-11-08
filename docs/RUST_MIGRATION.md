@@ -11,6 +11,12 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Current verified migration direction (2026-11-08)
+
+The compiled **`nobody` Rust executable** is the primary user-facing command for its documented subset, including `run`, `parse`, `translate`, `typecheck`, `info`, and `languages`. The new `direction PROFILE` command ports the old Python language-direction metadata for all 40 active profiles (four RTL, 36 LTR); its verification is tracked in GitHub Actions. Rust commands do **not** spawn Python. Python still runs in differential CI and provides older features (including AST JSON) not yet supported in Rust.
+
+The older inventory below records original migration planning and is **historical**, not a current source-code status table. No complete Python module has yet passed every removal criterion. Do not delete Python reference files until their exact supported semantics and tests have been replaced; delete module by module after a dedicated review.
+
 ## Current migration inventory
 
 | Component | Python reference | Rust replacement | Status |
