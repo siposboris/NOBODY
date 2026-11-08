@@ -111,3 +111,11 @@ Do not confuse these historical notes with published and verified tags.
 - Introduced `type-check` CLI and ten tests; the complete local 0.18 archive passed **134 tests**.
 - Unknown function results, control-flow merges and generic types remain uncertain; static success is **not** a proof that runtime execution cannot fail.
 - GitHub Actions outcome and complete historical bootstrap import have not yet been verified.
+
+
+## Nobody 0.19 — branch-aware static typing (2026-11-08)
+- Statics: conditional branches now use independent snapshots and conservative type joins; loops account for possibly zero iterations.
+- Added `E_ARITY` diagnostics for direct calls to functions whose argument count is statically known.
+- Added ten regression tests; **144 tests passed locally** across the complete development tree.
+- GitHub source and CI workflow updated. Full GitHub test result not yet confirmed.
+- Known limitations: Python dependency, incomplete static inference, cross-language keyword collisions, unimported historical bootstrap files and no native compiler.
