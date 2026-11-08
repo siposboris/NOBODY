@@ -113,6 +113,14 @@ fn check_calls(expr:&IrExpr,functions:&BTreeMap<String,usize>)->Result<(),Diagno
     }
     Ok(())
 }
+/// Keep only function signatures that remain valid on every possible path.
+/// Branch-local declarations are not exported to the enclosing lexical scope.
+fn retain_guaranteed_signatures(
+    outer:&mut BTreeMap<String,usize>,
+    candidate:&BTreeMap<String,usize>,
+){
+    outer.retain(|name,arity|candidate.get(name)==Some(arity));
+}
 fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut BTreeMap<String,usize>)->Result<(),Diagnostic>{
     let mut declared_here=BTreeSet::new();
     for stmt in statements {
@@ -162,10 +170,12 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                     check_binary_types(condition,env)?;
                     let mut local=env.clone();let mut local_functions=functions.clone();
                     block(body,&mut local,&mut local_functions)?;
+                    retain_guaranteed_signatures(functions,&local_functions);
                 }
                 if let Some(body)=otherwise{
                     let mut local=env.clone();let mut local_functions=functions.clone();
                     block(body,&mut local,&mut local_functions)?;
+                    retain_guaranteed_signatures(functions,&local_functions);
                 }
             }
             IrStatement::While{condition,body}=>{
@@ -173,6 +183,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                 check_binary_types(condition,env)?;
                 let mut local=env.clone();let mut local_functions=functions.clone();
                 block(body,&mut local,&mut local_functions)?;
+                retain_guaranteed_signatures(functions,&local_functions);
             }
             IrStatement::For{variable,iterable,body}=>{
                 check_calls(iterable,functions)?;
@@ -180,6 +191,12 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                 let mut local=env.clone();local.insert(variable.clone(),Type::Unknown);
                 let mut local_functions=functions.clone();local_functions.remove(variable);
                 block(body,&mut local,&mut local_functions)?;
+                // The loop iterator shadows any outer signature only inside
+                // the body; it must not invalidate that outer binding itself.
+                if let Some(arity)=functions.get(variable).copied(){
+                    local_functions.insert(variable.clone(),arity);
+                }
+                retain_guaranteed_signatures(functions,&local_functions);
             }
             IrStatement::Function{name,parameters,body}=>{
                 if !declared_here.insert(name.clone()){
@@ -332,6 +349,18 @@ mod tests{
     }
     #[test]fn checks_nested_unary_in_call(){
         assert_eq!(check_source("print(-\"bad\")","ai").unwrap_err().code,1006);
+    }
+    #[test]fn branch_reassignment_invalidates_stale_function_arity(){
+        check_source("fn f(x) { return x }\nif true { f = mystery }\nf(1,2)","ai").unwrap();
+    }
+    #[test]fn loop_reassignment_invalidates_stale_function_arity(){
+        check_source("fn f(x) { return x }\nwhile false { f = mystery }\nf(1,2)","ai").unwrap();
+    }
+    #[test]fn local_shadowing_does_not_invalidate_outer_arity(){
+        assert_eq!(check_source("fn f(x) { return x }\nif true { let f = 1 }\nf(1,2)","ai").unwrap_err().code,1005);
+    }
+    #[test]fn loop_iterator_shadowing_does_not_invalidate_outer_arity(){
+        assert_eq!(check_source("fn f(x) { return x }\nfor f in range(2) { print(f) }\nf(1,2)","ai").unwrap_err().code,1005);
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
