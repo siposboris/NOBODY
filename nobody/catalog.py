@@ -28,6 +28,7 @@ _MAP = {
     'Swahili':'sw','Dutch':'nl',
     'Bulgarian':'bg','Romanian':'ro','Swedish':'sv',
     'Finnish':'fi','Armenian':'hy','Georgian':'ka',
+    'Nepali':'ne','Marathi':'mr','Gujarati':'gu','Kannada':'kn','Telugu':'te',
 }
 def languages():
     source=Path(__file__).resolve().parent/'data/google_translate_249.txt'
