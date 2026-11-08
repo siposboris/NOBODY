@@ -262,3 +262,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added strict decimal literal validation to the Rust lexer with N2006 and actionable documentation. Added three unit tests, a malformed-number fixture and two CLI integration tests.
 - Improved GitHub Actions to preserve verification logs when the Rust gate fails.
 - **No roadmap acceptance item was closed.** The authoring environment has no Rust toolchain and GitHub Actions success has not been independently verified; these are source snapshots, not a certified build.
+
+## Unreleased — Unicode NFC identifier validation (2026-11-08)
+
+- Added N2008: a Rust lexer diagnostic for identifiers that are not in Unicode NFC, without silently rewriting source bytes.
+- Added regression coverage for decomposed Latin names, precomposed Unicode and noncomposing marks, preserved strings/comments, and translation rejection.
+- Pinned `unicode-normalization` to `=0.1.24`. The core is no longer third-party-dependency-free; a committed `Cargo.lock` is still pending for reproducible dependency resolution.
+- **Verified:** [Rust CI #42503823825](https://github.com/siposboris/NOBODY/actions/runs/42503823825) passed. The full Unicode security and profile verification roadmap gate remains open.
