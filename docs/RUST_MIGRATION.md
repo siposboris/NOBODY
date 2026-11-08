@@ -48,3 +48,8 @@ The generation environment used for the first Rust commit did not contain `rustc
 5. Port runtime with scopes and closures, then bytecode and native backend.
 6. Remove Python files **individually** when their gate passes, and finally remove the Python CI/bootstrap requirements.
 7. Rewrite core compiler in Nobody, demonstrate native self-compilation and reproducible outputs; then retire Rust if fully replaced.
+
+
+## 0.23 incremental update
+
+A small Rust AST parser is now authored in [`rust/src/syntax.rs`](../rust/src/syntax.rs) and exposed via `nobody-rs parse sk|en|ai FILE`. Parser coverage is intentionally restricted to variable declarations, optional primitive annotations, assignments, literals, basic operators and call syntax. Seven Rust unit tests and three CLI fixtures were added, but **none have been verified as passing in the authoring environment** (Rust toolchain absent). This is **partial migration** only. Python parser and other modules must remain until all existing reference behavior is replaced and differential checks pass.
