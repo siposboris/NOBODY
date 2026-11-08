@@ -17,9 +17,9 @@ The compiled **`nobody` Rust executable** is the primary user-facing command for
 
 The older inventory below records original migration planning and is **historical**, not a current source-code status table. No complete Python module has yet passed every removal criterion. Do not delete Python reference files until their exact supported semantics and tests have been replaced; delete module by module after a dedicated review.
 
-## AST JSON source migration (2026-11-08, pending verification)
+## AST JSON source migration (2026-11-08, verified single-line subset)
 
-Rust now offers an **export-only** `nobody.ast.v1` bridge for **single-line** source files in `nobody ast-json PROFILE FILE`. It reproduces the existing Python schema for the parser's currently supported AST kinds without introducing Python into the compiled binary. Multiline source is explicitly rejected with N4004 because Rust parser AST nodes do not retain original node line positions; exporting fabricated line numbers would corrupt downstream tooling. Import, schema validation, output profile emission, full grammar, true source spans and large-input safeguards are still migration gates. Six differential fixtures compare byte-for-byte Python vs Rust output in CI. Do not delete `nobody/ai_ir.py` or `nobody/ast_format.py` yet.
+Rust now offers an **export-only** `nobody.ast.v1` bridge for **single-line** source files in `nobody ast-json PROFILE FILE`. It reproduces the existing Python schema for the parser's currently supported AST kinds without introducing Python into the compiled binary. Multiline source is explicitly rejected with N4004 because Rust parser AST nodes do not retain original node line positions; exporting fabricated line numbers would corrupt downstream tooling. Import, schema validation, output profile emission, full grammar, true source spans and large-input safeguards are still migration gates. Six differential fixtures compare byte-for-byte Python vs Rust output in CI. All six fixtures and the full Rust CI gate passed in [run #42520969571](https://github.com/siposboris/NOBODY/actions/runs/42520969571); merged via [PR #20](https://github.com/siposboris/NOBODY/pull/20). Do not delete `nobody/ai_ir.py` or `nobody/ast_format.py` yet.
 
 ## Updated component-level status — 2026-11-08
 
