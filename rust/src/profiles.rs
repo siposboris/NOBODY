@@ -69,6 +69,17 @@ pub fn semantic(code: &str, spelling: &str) -> Option<&'static str> {
         .position(|x| x == spelling)
         .map(|index| CANONICAL[index])
 }
+/// Editor display metadata only. Source bytes remain in logical UTF-8 order.
+/// Returns None for unavailable profiles; bidi control characters remain
+/// forbidden by the Rust lexer regardless of the profile direction.
+pub fn direction(code: &str) -> Option<&'static str> {
+    profile(code)?;
+    Some(if matches!(code, "ar" | "ur" | "he" | "fa") {
+        "rtl"
+    } else {
+        "ltr"
+    })
+}
 pub fn is_reserved(code: &str, spelling: &str) -> bool {
     semantic(code, spelling).is_some()
 }
@@ -94,6 +105,18 @@ mod tests {
         assert_eq!(word("ai", "true"), Some("true"));
         assert_eq!(word("ai", "none"), Some("null"));
         assert!(semantic("ai", "ai_if").is_none());
+    }
+    #[test]
+    fn direction_matches_reference_for_all_profiles() {
+        for profile in PROFILES {
+            let expected = if matches!(profile.code, "ar" | "ur" | "he" | "fa") {
+                "rtl"
+            } else {
+                "ltr"
+            };
+            assert_eq!(direction(profile.code), Some(expected));
+        }
+        assert_eq!(direction("unknown"), None);
     }
     #[test]
     fn native_script_words_are_preserved() {
