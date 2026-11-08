@@ -5,7 +5,7 @@ The loader does not execute programs. This is not a secure code sandbox.
 import json
 import re
 import unicodedata
-from .parser import Node, parse_source, BINDING
+from .parser import Node, parse_source, PRECEDENCE as BINDING
 from .languages import PREFERRED
 
 SCHEMA = "nobody.ast.v1"
