@@ -46,7 +46,7 @@ def main(argv=None):
         for issue in audit_profiles():
             print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
-        print(json.dumps({'name':'Nobody','frontend_version':'0.13-experimental',
+        print(json.dumps({'name':'Nobody','frontend_version':'0.14-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
                           'native_compiler':False,'runtime':'Python bootstrap',
                           'all_249_syntax_implemented':False},indent=2))
