@@ -44,7 +44,7 @@ fn native_nobody_executes_without_invoking_python() {
 }
 
 #[test]
-fn native_nobody_errors_on_unsupported_subcommand() {
+fn native_nobody_reports_missing_ast_json_arguments() {
     let output = run(&["ast-json", "file.nbd"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("N9001"));
