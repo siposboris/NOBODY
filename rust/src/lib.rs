@@ -5,6 +5,9 @@
 
 use std::fmt;
 
+pub mod profiles;
+pub mod ai_migration;
+pub use ai_migration::migrate_legacy_ai;
 pub mod syntax;
 pub mod validate;
 pub use validate::{parse_validated,validate_program};
