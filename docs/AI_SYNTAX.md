@@ -42,3 +42,8 @@ Source: [language profiles](../nobody/languages.py), [AST serializer](../nobody/
 - User identifier naming/keyword collisions across 40 profiles need improved namespace handling.
 - No AI-specific model weights, cognition, learning, privileges or autonomy are implemented.
 - Future: formal grammar, schema for structured metadata, deterministic round-trip AST loader with validation, native backends and self-hosting.
+
+
+## 0.16 follow-up — validated AST import and regeneration
+
+AI tools may now produce a versioned `nobody.ast.v1` JSON tree, ask the loader to reject unsupported node kinds and invalid shapes, then render supported AST nodes back into a selected Nobody syntax profile using `ast-emit`. This is a structured code-generation tool, not an autonomous AI runtime or a security boundary. Some program types remain unsupported and must be rejected rather than guessed.
