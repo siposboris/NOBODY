@@ -136,3 +136,11 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Formalize script-aware identifier rules, normalization, keyword boundaries, Unicode security and bidirectional display for Arabic/Urdu.
 - [x] Local Nobody-written bootstrap compiler tables expanded from 4 to 22 languages; native-script output round-tripped in the local Python bootstrap. Full bootstrap source is not yet published to this GitHub repository.\n- [ ] Add end-to-end parser/runtime tests, language-specific diagnostics and complete compiler/runtime source import.
 - [ ] Add further languages only after profile tests, documentation and native-speaker review.
+
+### Experimental 0.12 progress — RTL source safety (2026-11-08)
+- [x] Add direction metadata for native Arabic and Urdu (`rtl`); preserve logical Unicode source order.
+- [x] Lexically reject invisible Unicode bidi overrides and isolate formatting controls across source, including strings/comments.
+- [x] Add RTL regression tests, standalone GitHub CI configuration and [RTL specification](RTL.md).
+- [ ] Implement real direction-aware editor rendering, cursor behavior and mixed-direction punctuation handling. **Not shipped.**
+- [ ] Review Unicode normalization/confusables and native speaker translations.
+- [ ] Import the full runtime and Nobody-written bootstrap compiler to GitHub and verify complete CI.
