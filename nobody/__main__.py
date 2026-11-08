@@ -32,6 +32,11 @@ def main(argv=None):
     astj=sub.add_parser('ast-json',help='Output deterministic versioned JSON AST')
     astj.add_argument('file')
     astj.add_argument('--lang',required=True)
+    valid=sub.add_parser('ast-validate',help='Validate Nobody AST v1 JSON (no execution)')
+    valid.add_argument('file')
+    emitted=sub.add_parser('ast-emit',help='Reconstruct Nobody source from AST JSON')
+    emitted.add_argument('file')
+    emitted.add_argument('--lang',required=True)
     direction=sub.add_parser('direction')
     direction.add_argument('language')
     info=sub.add_parser('info')
@@ -49,10 +54,18 @@ def main(argv=None):
         for issue in audit_profiles():
             print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
-        print(json.dumps({'name':'Nobody','frontend_version':'0.15-experimental',
+        print(json.dumps({'name':'Nobody','frontend_version':'0.16-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
                           'native_compiler':False,'runtime':'Python bootstrap',
                           'all_249_syntax_implemented':False},indent=2))
+    elif args.command=='ast-validate':
+        from .ast_format import from_json
+        from_json(Path(args.file).read_text(encoding='utf-8'))
+        print('Valid nobody.ast.v1')
+    elif args.command=='ast-emit':
+        from .ast_format import from_json, emit_source
+        tree=from_json(Path(args.file).read_text(encoding='utf-8'))
+        print(emit_source(tree,args.lang),end='')
     elif args.command=='direction':
         info=direction_for_language(args.language)
         print(info.direction)
