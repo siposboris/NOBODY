@@ -340,8 +340,7 @@ impl Evaluator {
                 // leak into a function. The captured global values are
                 // read-only snapshots until closures are specified.
                 let globals = self.scopes.first().cloned().unwrap_or_default();
-                let saved_scopes =
-                    std::mem::replace(&mut self.scopes, vec![globals, parameters]);
+                let saved_scopes = std::mem::replace(&mut self.scopes, vec![globals, parameters]);
                 self.active_calls.push(name.clone());
                 let result = self.statements(&function.body);
                 self.active_calls.pop();
@@ -353,7 +352,7 @@ impl Evaluator {
                         Err(unsupported("Loop control escaped a function body"))
                     }
                 }
-            },
+            }
         }
     }
     fn statement(&mut self, stmt: &IrStatement) -> Result<Flow, Diagnostic> {
@@ -511,10 +510,14 @@ impl Evaluator {
                 body,
             } => {
                 if self.scopes.len() != 1 {
-                    return Err(unsupported("Nested function definitions and closures are not yet supported"));
+                    return Err(unsupported(
+                        "Nested function definitions and closures are not yet supported",
+                    ));
                 }
                 if self.functions.contains_key(name) || self.lookup(name).is_some() {
-                    return Err(unsupported(format!("Duplicate function declaration {name:?}")));
+                    return Err(unsupported(format!(
+                        "Duplicate function declaration {name:?}"
+                    )));
                 }
                 self.functions.insert(
                     name.clone(),
@@ -547,7 +550,7 @@ pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
         Flow::Next => Ok(evaluator.output),
         Flow::Break | Flow::Continue | Flow::Return(_) => {
             Err(unsupported("Flow control outside a valid lexical context"))
-        },
+        }
     }
 }
 pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic> {
