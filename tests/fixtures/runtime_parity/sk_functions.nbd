@@ -1,0 +1,2 @@
+funkcia spocitaj(a, b) { vrat a + b }
+vypis(spocitaj(2, 3))
