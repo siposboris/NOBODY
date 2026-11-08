@@ -261,3 +261,19 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Pridať presné zdrojové rozsahy (riadok/stĺpec) a opravné úpravy (quick fixes) pre editory/LSP.
 
 **Dôležité:** 0.20 je experimentálna implementácia, nie sľub, že všetky staršie knižničné chyby už majú svoj špecifický kód. Python-free runtime a natívny kompilátor naďalej nie sú hotové.
+
+
+## Architecture decision — Rust first, ultimately Nobody self-hosting (2026-11-08)
+
+- [x] Establish a **Rust 2021 Cargo crate** with no third-party dependencies and initial UTF-8 tokenization/source checking.
+- [x] Preserve native-script keywords and apply existing N2001–N2005 error numbers where implemented.
+- [x] Add GitHub Actions workflow for `cargo test`, formatting and Clippy (workflow outcome not yet verified).
+- [x] Document [per-component migration gates](RUST_MIGRATION.md) and prohibition of deleting Python components before feature parity.
+- [ ] Install/validate Rust toolchain and achieve a **verified successful build**. The current working container has neither `cargo` nor `rustc`, so local Rust tests have not run.
+- [ ] Port all 39 human-language tables and `ai` profile plus complete Unicode lexer parity to Rust.
+- [ ] Port typed AST parser, error catalog, source translation, static analyzer, source emitter, interpreter and scope/closure runtime, with differential tests and measurable coverage.
+- [ ] Delete Python components **only when their Rust equivalents demonstrably replace them**. Keep archived versions/source history for recovery.
+- [ ] Implement compiler/VM/native backend in Rust; eliminate Python from compile/run path and make a self-contained binary.
+- [ ] Write compiler in Nobody and prove stages 1→2→3 reproducible, then retire Rust when safely replaced.
+
+**Previous 0.21 Python return-inference experiment:** not a reason to keep expanding Python. Treat it as legacy reference. The engineering priority has now shifted to Rust parity, not further Python milestones.
