@@ -17,7 +17,10 @@ pub fn migrate_legacy_ai(source:&str)->Result<String,Diagnostic>{
                 }else{None}
             })
         }else{None};
-        result.push_str(replacement.unwrap_or(&source[token.start..token.end]));
+        match replacement {
+            Some(word)=>result.push_str(word),
+            None=>result.push_str(&source[token.start..token.end]),
+        }
         cursor=token.end;
     }
     result.push_str(&source[cursor..]);
