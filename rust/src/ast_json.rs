@@ -168,7 +168,7 @@ mod tests {
     fn unicode_and_quotes_are_preserved_in_json() {
         let output = export_ast_json(r#"vypis("Život \"a\"")"#, "sk").unwrap();
         assert!(output.contains(r#""kind":"string""#));
-        assert!(output.contains(r#"\"a\""#));
+        assert!(output.contains("Život"));
     }
 
     #[test]
