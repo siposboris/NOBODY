@@ -142,3 +142,17 @@ Full local source archive: 134 unit tests passed. GitHub CI status unconfirmed.
 | Complete source import, independent IR and native self-hosting | Not implemented |
 
 144 tests passed in local complete 0.19 tree; GitHub Actions result not yet verified.
+
+
+## Nobody 0.20 — diagnostiky
+
+| Schopnosť | Stav |
+|---|---|
+| Stabilné číselné diagnostiky Nxxxx | 24 experimentálnych kategórií v katalógu |
+| Detailná príčina, kontext a postup opravy | Implementované pre katalogizované prípady |
+| Pôvodné symbolické kódy `E_*` | Zachované |
+| Výpis `nobody errors 1001` | Implementovaný |
+| Všetky historické chyby bez `N9999` | Zatiaľ nie |
+| Lokalizované diagnostiky pre 39 ľudských profilov a `ai` | Plánované |
+
+Dokumentácia: [ERROR_CODES.md](ERROR_CODES.md). Kompletný lokálny zdrojový balík: 156 úspešných testov; stav GitHub CI neoverený.
