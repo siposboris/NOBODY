@@ -7,6 +7,8 @@ on:
       - 'rust/**'
       - '.github/workflows/rust.yml'
       - 'scripts/verify-rust.sh'
+      - 'scripts/check-python-rust-parity.py'
+      - 'tests/fixtures/runtime_parity/**'
   pull_request:
     paths:
       - 'rust/**'
@@ -47,6 +49,10 @@ jobs:
         run: cargo test --locked --manifest-path rust/Cargo.toml --all-targets
       - name: Clippy
         run: cargo clippy --locked --manifest-path rust/Cargo.toml --all-targets -- -D warnings
+      - name: Python reference vs Rust runtime differential
+        run: |
+          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
+          python3 scripts/check-python-rust-parity.py
       - name: CLI lex and parser subset smoke
         run: |
           cargo run --locked --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
