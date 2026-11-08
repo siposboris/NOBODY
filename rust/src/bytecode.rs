@@ -90,7 +90,10 @@ impl Compiler {
 
     fn patch(&mut self, position: usize, target: usize) -> Result<(), Diagnostic> {
         if target >= MAX_INSTRUCTIONS {
-            return Err(diagnostic(4005, "Bytecode jump target exceeds instruction budget"));
+            return Err(diagnostic(
+                4005,
+                "Bytecode jump target exceeds instruction budget",
+            ));
         }
         match self.code.get_mut(position) {
             Some(Instruction::Jump(address) | Instruction::JumpIfFalse(address)) => {
@@ -102,12 +105,17 @@ impl Compiler {
     }
 
     fn variable(&self, name: &str) -> Option<usize> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(name).copied())
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).copied())
     }
 
     fn block(&mut self, body: &[IrStatement]) -> Result<(), Diagnostic> {
         self.scopes.push(BTreeMap::new());
-        let result = body.iter().try_for_each(|statement| self.statement(statement));
+        let result = body
+            .iter()
+            .try_for_each(|statement| self.statement(statement));
         self.scopes.pop();
         result
     }
@@ -119,18 +127,21 @@ impl Compiler {
         match expression {
             IrExpr::Number(text) => {
                 if !text.bytes().all(|ch| ch.is_ascii_digit() || ch == b'_') {
-                    return Err(unsupported("Bytecode currently supports integer literals only"));
+                    return Err(unsupported(
+                        "Bytecode currently supports integer literals only",
+                    ));
                 }
-                let value = text.replace('_', "").parse::<i128>().map_err(|_| {
-                    diagnostic(4003, "Integer literal outside signed i128 range")
-                })?;
+                let value = text
+                    .replace('_', "")
+                    .parse::<i128>()
+                    .map_err(|_| diagnostic(4003, "Integer literal outside signed i128 range"))?;
                 self.emit(Instruction::Push(value))
             }
             IrExpr::Boolean(value) => self.emit(Instruction::PushBool(*value)),
             IrExpr::Name(Name::User(name)) => {
-                let slot = self.variable(name).ok_or_else(|| {
-                    diagnostic(4001, format!("Unknown variable {name:?}"))
-                })?;
+                let slot = self
+                    .variable(name)
+                    .ok_or_else(|| diagnostic(4001, format!("Unknown variable {name:?}")))?;
                 self.emit(Instruction::Load(slot))
             }
             IrExpr::Unary { op, value } => {
@@ -139,7 +150,9 @@ impl Compiler {
                     "+" => Ok(()),
                     "-" => self.emit(Instruction::Neg),
                     "not" => self.emit(Instruction::Not),
-                    _ => Err(unsupported(format!("Unsupported bytecode unary operator {op:?}"))),
+                    _ => Err(unsupported(format!(
+                        "Unsupported bytecode unary operator {op:?}"
+                    ))),
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
@@ -153,7 +166,11 @@ impl Compiler {
                     "<=" => Instruction::Le,
                     ">" => Instruction::Gt,
                     ">=" => Instruction::Ge,
-                    _ => return Err(unsupported(format!("Unsupported bytecode binary operator {op:?}"))),
+                    _ => {
+                        return Err(unsupported(format!(
+                            "Unsupported bytecode binary operator {op:?}"
+                        )))
+                    }
                 };
                 self.expression(lhs, depth + 1)?;
                 self.expression(rhs, depth + 1)?;
@@ -290,7 +307,9 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
         return Err(unsupported("Unknown bytecode version"));
     }
     if program.code.is_empty() || program.code.len() > MAX_INSTRUCTIONS {
-        return Err(unsupported("Bytecode instruction count outside verifier limits"));
+        return Err(unsupported(
+            "Bytecode instruction count outside verifier limits",
+        ));
     }
     if program.slots > MAX_STACK {
         return Err(unsupported("Bytecode slot count outside verifier limits"));
@@ -302,12 +321,16 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
     for (pc, instruction) in program.code.iter().enumerate() {
         match instruction {
             Instruction::Halt if pc != last => {
-                return Err(unsupported("Halt cannot appear before the last instruction"));
+                return Err(unsupported(
+                    "Halt cannot appear before the last instruction",
+                ));
             }
             Instruction::Jump(target) | Instruction::JumpIfFalse(target)
                 if *target >= program.code.len() =>
             {
-                return Err(unsupported("Bytecode jump destination is outside the program"));
+                return Err(unsupported(
+                    "Bytecode jump destination is outside the program",
+                ));
             }
             _ => {}
         }
@@ -335,7 +358,9 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
             Instruction::Push(_) | Instruction::PushBool(_) => state.depth += 1,
             Instruction::Load(slot) => {
                 if !state.initialized.get(*slot).copied().unwrap_or(false) {
-                    return Err(unsupported("Load references a slot not initialized on every path"));
+                    return Err(unsupported(
+                        "Load references a slot not initialized on every path",
+                    ));
                 }
                 state.depth += 1;
             }
@@ -346,17 +371,21 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                 // A declaration in a loop may execute on multiple iterations.
                 // Compiler lexical scopes prevent duplicates in the same block.
                 *initialized = true;
-                state.depth = state.depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode stack underflow at declaration")
-                })?;
+                state.depth = state
+                    .depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode stack underflow at declaration"))?;
             }
             Instruction::Store(slot) => {
                 if !state.initialized.get(*slot).copied().unwrap_or(false) {
-                    return Err(unsupported("Store references a slot not initialized on every path"));
+                    return Err(unsupported(
+                        "Store references a slot not initialized on every path",
+                    ));
                 }
-                state.depth = state.depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode stack underflow at assignment")
-                })?;
+                state.depth = state
+                    .depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode stack underflow at assignment"))?;
             }
             Instruction::Add
             | Instruction::Sub
@@ -367,7 +396,10 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
             | Instruction::Le
             | Instruction::Gt
             | Instruction::Ge => {
-                state.depth = state.depth.checked_sub(1).filter(|depth| *depth > 0)
+                state.depth = state
+                    .depth
+                    .checked_sub(1)
+                    .filter(|depth| *depth > 0)
                     .ok_or_else(|| unsupported("Binary bytecode stack underflow"))?;
             }
             Instruction::Neg | Instruction::Not => {
@@ -376,20 +408,23 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                 }
             }
             Instruction::Drop => {
-                state.depth = state.depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode drop stack underflow")
-                })?;
+                state.depth = state
+                    .depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode drop stack underflow"))?;
             }
             Instruction::Print(count) => {
-                state.depth = state.depth.checked_sub(*count).ok_or_else(|| {
-                    unsupported("Bytecode print stack underflow")
-                })?;
+                state.depth = state
+                    .depth
+                    .checked_sub(*count)
+                    .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
             Instruction::Jump(target) => successors.push(*target),
             Instruction::JumpIfFalse(target) => {
-                state.depth = state.depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Conditional jump stack underflow")
-                })?;
+                state.depth = state
+                    .depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Conditional jump stack underflow"))?;
                 successors.push(*target);
             }
             Instruction::Halt => {
@@ -417,7 +452,9 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                 }
                 Some(previous) => {
                     if previous.depth != state.depth {
-                        return Err(unsupported("Bytecode stack heights disagree at control-flow merge"));
+                        return Err(unsupported(
+                            "Bytecode stack heights disagree at control-flow merge",
+                        ));
                     }
                     let mut changed = false;
                     for (old, incoming) in previous.initialized.iter_mut().zip(&state.initialized) {
@@ -474,17 +511,21 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
             Instruction::Push(value) => stack.push(Value::Int(*value)),
             Instruction::PushBool(value) => stack.push(Value::Bool(*value)),
             Instruction::Load(slot) => {
-                let value = variables[*slot].clone().ok_or_else(|| {
-                    unsupported("Uninitialized bytecode slot at runtime")
-                })?;
+                let value = variables[*slot]
+                    .clone()
+                    .ok_or_else(|| unsupported("Uninitialized bytecode slot at runtime"))?;
                 stack.push(value);
             }
             Instruction::Define(slot) | Instruction::Store(slot) => {
                 variables[*slot] = stack.pop();
             }
             Instruction::Add | Instruction::Sub | Instruction::Mul => {
-                let right = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
-                let left = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
+                let right = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
+                let left = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
                 let (Value::Int(left), Value::Int(right)) = (left, right) else {
                     return Err(unsupported("Arithmetic requires integer values"));
                 };
@@ -492,7 +533,8 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                     Instruction::Add => left.checked_add(right),
                     Instruction::Sub => left.checked_sub(right),
                     _ => left.checked_mul(right),
-                }.ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
+                }
+                .ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
                 stack.push(Value::Int(value));
             }
             Instruction::Neg => {
@@ -510,14 +552,26 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 stack.push(Value::Bool(!value));
             }
             Instruction::Eq | Instruction::Ne => {
-                let right = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
-                let left = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
+                let right = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
+                let left = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
                 let equal = left == right;
-                stack.push(Value::Bool(if matches!(instruction, Instruction::Eq) { equal } else { !equal }));
+                stack.push(Value::Bool(if matches!(instruction, Instruction::Eq) {
+                    equal
+                } else {
+                    !equal
+                }));
             }
             Instruction::Lt | Instruction::Le | Instruction::Gt | Instruction::Ge => {
-                let right = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
-                let left = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
+                let right = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
+                let left = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
                 let (Value::Int(left), Value::Int(right)) = (left, right) else {
                     return Err(unsupported("Ordered comparisons require integer values"));
                 };
@@ -547,8 +601,12 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
             }
             Instruction::Print(count) => {
                 let start = stack.len() - *count;
-                let rendered = stack[start..].iter().map(Value::display)
-                    .collect::<Vec<_>>().join(" ") + "\n";
+                let rendered = stack[start..]
+                    .iter()
+                    .map(Value::display)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    + "\n";
                 if output.len().saturating_add(rendered.len()) > MAX_OUTPUT {
                     return Err(diagnostic(4005, "Bytecode output budget exceeded"));
                 }
@@ -651,7 +709,10 @@ print(total)
 if total >= 8 { print(true) } else { print(false) }";
         let bytecode_output = execute_source(source, "ai").unwrap();
         assert_eq!(bytecode_output, "8\ntrue\n");
-        assert_eq!(bytecode_output, crate::evaluate_source(source, "ai").unwrap());
+        assert_eq!(
+            bytecode_output,
+            crate::evaluate_source(source, "ai").unwrap()
+        );
     }
 
     #[test]
@@ -666,7 +727,10 @@ while x < 7 {
 }";
         let bytecode_output = execute_source(source, "ai").unwrap();
         assert_eq!(bytecode_output, "9\n4\n5\n6\n7\n");
-        assert_eq!(bytecode_output, crate::evaluate_source(source, "ai").unwrap());
+        assert_eq!(
+            bytecode_output,
+            crate::evaluate_source(source, "ai").unwrap()
+        );
     }
 
     #[test]
