@@ -1,0 +1,1 @@
+nech x = 3; vypis(x + 4)
