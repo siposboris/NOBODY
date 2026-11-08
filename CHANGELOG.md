@@ -167,3 +167,14 @@ Do not confuse these historical notes with published and verified tags.
 - Improved diagnostics to avoid printing fabricated line 0 for AST nodes that do not yet carry source spans.
 - Updated the English roadmap and CI smoke commands. **No Rust compilation or passing test run is claimed yet**, since toolchain/CI results are not confirmed.
 - Python code has not been removed; parity gates still apply.
+
+
+## Nobody Rust 0.26 — complete keyword-table port and familiar AI syntax (2026-11-08)
+
+- Ported **all 39 experimental human syntax tables** and redesigned canonical `ai` profile into independent [Rust profile data](rust/src/profiles.rs), keeping original Unicode keyword spellings.
+- Replaced old `ai_let`/`ai_if`/`ai_def` etc. in the **Rust `ai` dialect** with `let`/`if`/`fn`, plus `true`, `false`, `null`, `and`, `or`, `not` and support for `else if`.
+- Added [token-preserving AI migration](rust/src/ai_migration.rs) and numbered **N3010** error with exact corrective command. Old programs retained separately.
+- Added a preliminary [Rust Nobody-to-Nobody translator](rust/src/translator.rs) for all 40 profiles. It does **not** produce Python, and preserves strings/comments.
+- Added full-profile keyword and native-script parsing tests, AI migration tests and CLI/CI smoke commands.
+- Expanded Tamil combining-mark support in Rust UTF-8 lexer.
+- **Verification:** The Rust crate could not be compiled in the authoring environment (`cargo`/`rustc` absent). No passing Rust test count is claimed. Full Unicode normalization, reserved-word semantics, interpreter/runtime and Python removal remain pending.
