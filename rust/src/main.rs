@@ -1,4 +1,4 @@
-use nobody::profiles::PROFILES;
+use nobody::profiles::{direction, PROFILES};
 use nobody::{
     check_source, evaluate_source, lower_source, migrate_legacy_ai, parse, parse_validated,
     same_ir, scan, translate_source, TokenKind,
@@ -6,12 +6,12 @@ use nobody::{
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
-        Some("lex" | "check") if arguments.len() == 3 => true,
+        Some("lex" | "check" | "direction") if arguments.len() == 3 => true,
         Some("parse" | "validate" | "ir" | "typecheck" | "run") if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info") if arguments.len() == 2 => true,
@@ -39,6 +39,23 @@ fn main() {
     if command == "list-languages" || command == "languages" {
         for profile in PROFILES {
             println!("{}", profile.code);
+        }
+        return;
+    }
+    if command == "direction" {
+        match direction(&arguments[2]) {
+            Some("rtl") => {
+                println!("rtl");
+                println!("Use a UTF-8 source editor with RTL paragraph direction for Arabic/Urdu/Hebrew/Persian text; preserve logical character order and ASCII operator order. Never insert invisible bidi control characters into a .nbd source file.");
+            }
+            Some("ltr") => {
+                println!("ltr");
+                println!("Use UTF-8 and normal left-to-right code layout; retain the selected language native keyword spellings.");
+            }
+            _ => {
+                eprintln!("N3007: Unknown Nobody syntax profile {:?}. Repair: select one of the 40 available syntax profiles.", arguments[2]);
+                process::exit(1);
+            }
         }
         return;
     }
