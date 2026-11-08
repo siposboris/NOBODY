@@ -47,7 +47,9 @@ fn literal_text(raw: &str) -> Result<String, Diagnostic> {
     }
     let first = raw.chars().next().unwrap_or('"');
     if !matches!(first, '"' | '\'') || !raw.ends_with(first) {
-        return Err(unsupported("Multiline and nonstandard string delimiters are not supported yet"));
+        return Err(unsupported(
+            "Multiline and nonstandard string delimiters are not supported yet",
+        ));
     }
     if raw.starts_with("\"\"\"") || raw.starts_with("'''") {
         return Err(unsupported("Triple-quoted strings are not yet supported"));
@@ -57,14 +59,20 @@ fn literal_text(raw: &str) -> Result<String, Diagnostic> {
     let mut chars = inner.chars();
     while let Some(ch) = chars.next() {
         if ch == '\\' {
-            let escape = chars.next().ok_or_else(|| unsupported("Dangling string escape"))?;
+            let escape = chars
+                .next()
+                .ok_or_else(|| unsupported("Dangling string escape"))?;
             result.push(match escape {
                 'n' => '\n',
                 't' => '\t',
                 '\\' => '\\',
                 '"' => '"',
                 '\'' => '\'',
-                _ => return Err(unsupported(format!("Unsupported string escape: {escape:?}"))),
+                _ => {
+                    return Err(unsupported(format!(
+                        "Unsupported string escape: {escape:?}"
+                    )))
+                }
             });
         } else {
             result.push(ch);
@@ -105,29 +113,51 @@ impl Evaluator {
         match expr {
             IrExpr::Number(text) => {
                 if !text.bytes().all(|b| b.is_ascii_digit() || b == b'_') {
-                    return Err(unsupported("The first evaluator slice supports integer literals only"));
+                    return Err(unsupported(
+                        "The first evaluator slice supports integer literals only",
+                    ));
                 }
                 text.replace('_', "")
                     .parse::<i128>()
                     .map(RuntimeValue::Int)
-                    .map_err(|_| error(4003, "Integer literal is outside i128 range", "Use an integer in the signed 128-bit range."))
+                    .map_err(|_| {
+                        error(
+                            4003,
+                            "Integer literal is outside i128 range",
+                            "Use an integer in the signed 128-bit range.",
+                        )
+                    })
             }
             IrExpr::String(text) => Ok(RuntimeValue::Text(literal_text(text)?)),
             IrExpr::Boolean(value) => Ok(RuntimeValue::Bool(*value)),
             IrExpr::Null => Ok(RuntimeValue::Null),
             IrExpr::Name(Name::User(name)) => self.vars.get(name).cloned().ok_or_else(|| {
-                error(4001, format!("Unknown variable {name:?}"), "Declare the variable before using it.")
+                error(
+                    4001,
+                    format!("Unknown variable {name:?}"),
+                    "Declare the variable before using it.",
+                )
             }),
-            IrExpr::Name(Name::Builtin(_)) => Err(unsupported("A built-in is not a first-class value in the initial evaluator")),
+            IrExpr::Name(Name::Builtin(_)) => Err(unsupported(
+                "A built-in is not a first-class value in the initial evaluator",
+            )),
             IrExpr::Unary { op, value } => {
                 let value = self.eval(value, depth + 1)?;
                 match (op.as_str(), value) {
                     ("+", RuntimeValue::Int(n)) => Ok(RuntimeValue::Int(n)),
-                    ("-", RuntimeValue::Int(n)) => n.checked_neg()
-                        .map(RuntimeValue::Int)
-                        .ok_or_else(|| error(4003, "Integer unary negation overflow", "Use a smaller integer.")),
+                    ("-", RuntimeValue::Int(n)) => {
+                        n.checked_neg().map(RuntimeValue::Int).ok_or_else(|| {
+                            error(
+                                4003,
+                                "Integer unary negation overflow",
+                                "Use a smaller integer.",
+                            )
+                        })
+                    }
                     ("not", RuntimeValue::Bool(b)) => Ok(RuntimeValue::Bool(!b)),
-                    _ => Err(unsupported(format!("Unsupported unary operator {op:?} or operand"))),
+                    _ => Err(unsupported(format!(
+                        "Unsupported unary operator {op:?} or operand"
+                    ))),
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
@@ -135,53 +165,81 @@ impl Evaluator {
                 let right = self.eval(rhs, depth + 1)?;
                 match (left, right) {
                     (RuntimeValue::Int(a), RuntimeValue::Int(b)) => {
-                        let number = match op.as_str() {
-                            "+" => a.checked_add(b),
-                            "-" => a.checked_sub(b),
-                            "*" => a.checked_mul(b),
-                            "/" | "//" | "%" if b == 0 => return Err(error(
-                                4002, "Division by zero at runtime", "Ensure the divisor is nonzero before dividing.",
-                            )),
-                            "/" => return Err(unsupported("Nonzero true division requires floating-point runtime support")),
-                            "//" => floor_div_rem(a, b).map(|(q, _)| q),
-                            "%" => floor_div_rem(a, b).map(|(_, r)| r),
-                            _ => return Err(unsupported(format!("Unsupported numeric operator {op:?}"))),
-                        };
-                        number.map(RuntimeValue::Int).ok_or_else(|| error(
-                            4003, "Integer arithmetic overflow", "Use smaller integer operands.",
-                        ))
+                        let number =
+                            match op.as_str() {
+                                "+" => a.checked_add(b),
+                                "-" => a.checked_sub(b),
+                                "*" => a.checked_mul(b),
+                                "/" | "//" | "%" if b == 0 => {
+                                    return Err(error(
+                                        4002,
+                                        "Division by zero at runtime",
+                                        "Ensure the divisor is nonzero before dividing.",
+                                    ))
+                                }
+                                "/" => return Err(unsupported(
+                                    "Nonzero true division requires floating-point runtime support",
+                                )),
+                                "//" => floor_div_rem(a, b).map(|(q, _)| q),
+                                "%" => floor_div_rem(a, b).map(|(_, r)| r),
+                                _ => {
+                                    return Err(unsupported(format!(
+                                        "Unsupported numeric operator {op:?}"
+                                    )))
+                                }
+                            };
+                        number.map(RuntimeValue::Int).ok_or_else(|| {
+                            error(
+                                4003,
+                                "Integer arithmetic overflow",
+                                "Use smaller integer operands.",
+                            )
+                        })
                     }
                     (RuntimeValue::Text(a), RuntimeValue::Text(b)) if op == "+" => {
                         if a.len().saturating_add(b.len()) > MAX_OUTPUT {
-                            return Err(error(4005, "Text value exceeds the evaluator budget", "Use shorter text values."));
+                            return Err(error(
+                                4005,
+                                "Text value exceeds the evaluator budget",
+                                "Use shorter text values.",
+                            ));
                         }
                         Ok(RuntimeValue::Text(a + &b))
                     }
                     _ => Err(unsupported(format!("Unsupported operands for {op:?}"))),
                 }
             }
-            IrExpr::Call { callee, args } if matches!(
-                callee.as_ref(),
-                IrExpr::Name(Name::Builtin("print"))
-            ) => {
+            IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("print"))) =>
+            {
                 let mut values = Vec::new();
                 for arg in args {
                     values.push(self.eval(arg, depth + 1)?.display());
                 }
                 let line = values.join(" ") + "\n";
                 if self.output.len().saturating_add(line.len()) > MAX_OUTPUT {
-                    return Err(error(4005, "Output exceeds the evaluator budget", "Produce less output."));
+                    return Err(error(
+                        4005,
+                        "Output exceeds the evaluator budget",
+                        "Produce less output.",
+                    ));
                 }
                 self.output.push_str(&line);
                 Ok(RuntimeValue::Null)
             }
-            IrExpr::Call { .. } => Err(unsupported("Only the unshadowed print built-in can be called")),
+            IrExpr::Call { .. } => Err(unsupported(
+                "Only the unshadowed print built-in can be called",
+            )),
         }
     }
     fn statement(&mut self, stmt: &IrStatement) -> Result<(), Diagnostic> {
         self.tick(0)?;
         match stmt {
-            IrStatement::Let { name, type_name: None, expr } => {
+            IrStatement::Let {
+                name,
+                type_name: None,
+                expr,
+            } => {
                 if self.vars.contains_key(name) {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
@@ -191,7 +249,11 @@ impl Evaluator {
             }
             IrStatement::Assign { name, expr } => {
                 if !self.vars.contains_key(name) {
-                    return Err(error(4001, format!("Assignment to unknown variable {name:?}"), "Declare the variable first."));
+                    return Err(error(
+                        4001,
+                        format!("Assignment to unknown variable {name:?}"),
+                        "Declare the variable first.",
+                    ));
                 }
                 let value = self.eval(expr, 1)?;
                 self.vars.insert(name.clone(), value);
@@ -201,7 +263,9 @@ impl Evaluator {
                 self.eval(expr, 1)?;
                 Ok(())
             }
-            _ => Err(unsupported("This statement is not supported by the first Rust evaluator slice")),
+            _ => Err(unsupported(
+                "This statement is not supported by the first Rust evaluator slice",
+            )),
         }
     }
 }
@@ -233,15 +297,26 @@ mod tests {
     }
     #[test]
     fn unknown_name_is_numbered() {
-        assert_eq!(evaluate_source("print(missing)", "ai").unwrap_err().code, 4001);
+        assert_eq!(
+            evaluate_source("print(missing)", "ai").unwrap_err().code,
+            4001
+        );
     }
     #[test]
     fn literal_zero_divisor_is_caught_at_runtime() {
-        assert_eq!(evaluate_source("print(10 / 0)", "ai").unwrap_err().code, 4002);
+        assert_eq!(
+            evaluate_source("print(10 / 0)", "ai").unwrap_err().code,
+            4002
+        );
     }
     #[test]
     fn unsupported_function_is_not_executed() {
-        assert_eq!(evaluate_source("fn f() { return 1 }", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("fn f() { return 1 }", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
     }
     #[test]
     fn floor_division_and_modulo_keep_python_sign_rules() {
@@ -252,7 +327,10 @@ mod tests {
     }
     #[test]
     fn true_division_is_explicitly_deferred() {
-        assert_eq!(evaluate_source("print(3 / 2)", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("print(3 / 2)", "ai").unwrap_err().code,
+            4004
+        );
     }
     #[test]
     fn integer_overflow_is_numbered() {
@@ -265,6 +343,9 @@ mod tests {
     }
     #[test]
     fn text_and_boolean_literals() {
-        assert_eq!(evaluate_source("print(\"hello\", true, null)", "ai").unwrap(), "hello true null\n");
+        assert_eq!(
+            evaluate_source("print(\"hello\", true, null)", "ai").unwrap(),
+            "hello true null\n"
+        );
     }
 }
