@@ -115,9 +115,15 @@ impl Cursor<'_> {
         // If it actually wraps only the left subexpression, restore the
         // cursor and let the structural visitor handle that child instead.
         // Preserve the expression's inner source line, just as Python does.
-        if self.tokens.get(self.at).is_some_and(|token| token.value == "(") {
+        if self
+            .tokens
+            .get(self.at)
+            .is_some_and(|token| token.value == "(")
+        {
             if self.group_depth >= 64 {
-                return Err(unsupported("Nested grouping exceeds AST source-line budget"));
+                return Err(unsupported(
+                    "Nested grouping exceeds AST source-line budget",
+                ));
             }
             let saved = self.at;
             self.at += 1;
@@ -125,7 +131,11 @@ impl Cursor<'_> {
             let grouped = self.expression(input);
             self.group_depth -= 1;
             if let Ok(lines) = grouped {
-                if self.tokens.get(self.at).is_some_and(|token| token.value == ")") {
+                if self
+                    .tokens
+                    .get(self.at)
+                    .is_some_and(|token| token.value == ")")
+                {
                     self.at += 1;
                     return Ok(lines);
                 }
