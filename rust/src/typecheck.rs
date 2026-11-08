@@ -113,13 +113,43 @@ fn check_calls(expr:&IrExpr,functions:&BTreeMap<String,usize>)->Result<(),Diagno
     }
     Ok(())
 }
-/// Keep only function signatures that remain valid on every possible path.
-/// Branch-local declarations are not exported to the enclosing lexical scope.
-fn retain_guaranteed_signatures(
-    outer:&mut BTreeMap<String,usize>,
-    candidate:&BTreeMap<String,usize>,
+/// Invalidate only writes to enclosing bindings that may execute in a
+/// branch or loop. Local declarations, loop variables and function bodies
+/// must never be mistaken for assignments to an outer function.
+fn invalidate_possible_outer_writes(
+    statements:&[IrStatement],
+    functions:&mut BTreeMap<String,usize>,
+    inherited_shadows:&BTreeSet<String>,
 ){
-    outer.retain(|name,arity|candidate.get(name)==Some(arity));
+    let mut shadows=inherited_shadows.clone();
+    for stmt in statements {
+        match stmt {
+            IrStatement::Let{name,..}|IrStatement::Function{name,..}=>{
+                shadows.insert(name.clone());
+            }
+            IrStatement::Assign{name,..}=>{
+                if !shadows.contains(name){functions.remove(name);}
+            }
+            IrStatement::If{branches,otherwise}=>{
+                for (_,body) in branches {
+                    invalidate_possible_outer_writes(body,functions,&shadows);
+                }
+                if let Some(body)=otherwise {
+                    invalidate_possible_outer_writes(body,functions,&shadows);
+                }
+            }
+            IrStatement::While{body,..}=>{
+                invalidate_possible_outer_writes(body,functions,&shadows);
+            }
+            IrStatement::For{variable,body,..}=>{
+                let mut loop_shadows=shadows.clone();
+                loop_shadows.insert(variable.clone());
+                invalidate_possible_outer_writes(body,functions,&loop_shadows);
+            }
+            // A function declaration does not immediately execute its body.
+            _=>{}
+        }
+    }
 }
 fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut BTreeMap<String,usize>)->Result<(),Diagnostic>{
     let mut declared_here=BTreeSet::new();
@@ -170,12 +200,12 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                     check_binary_types(condition,env)?;
                     let mut local=env.clone();let mut local_functions=functions.clone();
                     block(body,&mut local,&mut local_functions)?;
-                    retain_guaranteed_signatures(functions,&local_functions);
+                    invalidate_possible_outer_writes(body,functions,&BTreeSet::new());
                 }
                 if let Some(body)=otherwise{
                     let mut local=env.clone();let mut local_functions=functions.clone();
                     block(body,&mut local,&mut local_functions)?;
-                    retain_guaranteed_signatures(functions,&local_functions);
+                    invalidate_possible_outer_writes(body,functions,&BTreeSet::new());
                 }
             }
             IrStatement::While{condition,body}=>{
@@ -183,7 +213,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                 check_binary_types(condition,env)?;
                 let mut local=env.clone();let mut local_functions=functions.clone();
                 block(body,&mut local,&mut local_functions)?;
-                retain_guaranteed_signatures(functions,&local_functions);
+                invalidate_possible_outer_writes(body,functions,&BTreeSet::new());
             }
             IrStatement::For{variable,iterable,body}=>{
                 check_calls(iterable,functions)?;
@@ -196,7 +226,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                 if let Some(arity)=functions.get(variable).copied(){
                     local_functions.insert(variable.clone(),arity);
                 }
-                retain_guaranteed_signatures(functions,&local_functions);
+                invalidate_possible_outer_writes(body,functions,&BTreeSet::new());
             }
             IrStatement::Function{name,parameters,body}=>{
                 if !declared_here.insert(name.clone()){
@@ -361,6 +391,18 @@ mod tests{
     }
     #[test]fn loop_iterator_shadowing_does_not_invalidate_outer_arity(){
         assert_eq!(check_source("fn f(x) { return x }\nfor f in range(2) { print(f) }\nf(1,2)","ai").unwrap_err().code,1005);
+    }
+    #[test]fn nested_local_function_shadow_keeps_outer_arity(){
+        assert_eq!(check_source("fn f(x) { return x }\nif true { fn f(x,y) { return x } }\nf(1,2)","ai").unwrap_err().code,1005);
+    }
+    #[test]fn nested_reassignment_invalidates_outer_arity(){
+        check_source("fn f(x) { return x }\nif true { while false { f = mystery } }\nf(1,2)","ai").unwrap();
+    }
+    #[test]fn reassignment_before_shadow_invalidates_outer_arity(){
+        check_source("fn f(x) { return x }\nif true { f = mystery; let f = 3 }\nf(1,2)","ai").unwrap();
+    }
+    #[test]fn nested_function_body_does_not_immediately_mutate_outer_arity(){
+        assert_eq!(check_source("fn f(x) { return x }\nif true { fn g() { f = mystery } }\nf(1,2)","ai").unwrap_err().code,1005);
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
