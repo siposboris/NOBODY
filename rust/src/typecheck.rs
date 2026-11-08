@@ -46,6 +46,37 @@ fn infer(expr:&IrExpr,env:&BTreeMap<String,Type>)->Type {
         }
     }
 }
+/// Reject only definitely incompatible primitive arithmetic.
+/// Dynamic values are intentionally deferred.
+fn check_binary_types(expr:&IrExpr,env:&BTreeMap<String,Type>)->Result<(),Diagnostic>{
+    match expr {
+        IrExpr::Binary{op,lhs,rhs}=>{
+            check_binary_types(lhs,env)?;
+            check_binary_types(rhs,env)?;
+            let a=infer(lhs,env);
+            let b=infer(rhs,env);
+            let known=a!=Type::Unknown && b!=Type::Unknown;
+            let numeric=|t:Type|matches!(t,Type::Int|Type::Float);
+            let allowed=if op=="+" {
+                (numeric(a)&&numeric(b)) || (a==Type::Str&&b==Type::Str)
+            } else if matches!(op.as_str(),"-"|"*"|"/"|"//"|"%"|"**") {
+                numeric(a)&&numeric(b)
+            } else {true};
+            if known && !allowed {
+                return Err(diagnostic(1002,
+                    format!("Operator {op:?} cannot combine known types {a:?} and {b:?}"),
+                    "Use compatible numeric operands for arithmetic, or two strings for text concatenation with '+'."));
+            }
+        }
+        IrExpr::Call{callee,args}=>{
+            check_binary_types(callee,env)?;
+            for arg in args{check_binary_types(arg,env)?;}
+        }
+        IrExpr::Unary{value,..}=>check_binary_types(value,env)?,
+        _=>{}
+    }
+    Ok(())
+}
 /// Verify calls to statically known user-defined functions only.
 /// Unknown and dynamic callees remain deferred.
 fn check_calls(expr:&IrExpr,functions:&BTreeMap<String,usize>)->Result<(),Diagnostic>{
@@ -83,6 +114,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                         "Rename the second declaration, or use assignment without 'let' to update the existing variable."));
                 }
                 check_calls(expr,functions)?;
+                check_binary_types(expr,env)?;
                 let found=infer(expr,env);
                 let declared=type_name.as_deref().map(Type::from_annotation).unwrap_or(found);
                 if !compatible(declared,found){
@@ -95,6 +127,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
             }
             IrStatement::Assign{name,expr}=>{
                 check_calls(expr,functions)?;
+                check_binary_types(expr,env)?;
                 if let Some(expected)=env.get(name).copied(){
                     let actual=infer(expr,env);
                     if !compatible(expected,actual){
@@ -116,6 +149,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
             IrStatement::If{branches,otherwise}=>{
                 for (condition,body) in branches{
                     check_calls(condition,functions)?;
+                    check_binary_types(condition,env)?;
                     let mut local=env.clone();let mut local_functions=functions.clone();
                     block(body,&mut local,&mut local_functions)?;
                 }
@@ -126,11 +160,13 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
             }
             IrStatement::While{condition,body}=>{
                 check_calls(condition,functions)?;
+                check_binary_types(condition,env)?;
                 let mut local=env.clone();let mut local_functions=functions.clone();
                 block(body,&mut local,&mut local_functions)?;
             }
             IrStatement::For{variable,iterable,body}=>{
                 check_calls(iterable,functions)?;
+                check_binary_types(iterable,env)?;
                 let mut local=env.clone();local.insert(variable.clone(),Type::Unknown);
                 let mut local_functions=functions.clone();local_functions.remove(variable);
                 block(body,&mut local,&mut local_functions)?;
@@ -159,6 +195,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
             }
             IrStatement::Return(expr)|IrStatement::Expression(expr)=>{
                 check_calls(expr,functions)?;
+                check_binary_types(expr,env)?;
             }
             IrStatement::Break|IrStatement::Continue=>{}
         }
@@ -246,6 +283,24 @@ mod tests{
     #[test]fn known_function_arity_checked_before_reassignment(){
         let err=check_source("fn f(x) { return x }\nf(1,2)\nf = mystery","ai").unwrap_err();
         assert_eq!(err.code,1005);
+    }
+    #[test]fn rejects_string_minus_integer(){
+        assert_eq!(check_source("let x = \"hello\" - 1","ai").unwrap_err().code,1002);
+    }
+    #[test]fn rejects_mixed_string_number_addition(){
+        assert_eq!(check_source("let x = \"hello\" + 1","ai").unwrap_err().code,1002);
+    }
+    #[test]fn rejects_incompatible_nested_expression(){
+        assert_eq!(check_source("print(1 + (\"x\" * 2))","ai").unwrap_err().code,1002);
+    }
+    #[test]fn accepts_numeric_and_text_addition(){
+        check_source("let x = 2 + 3\nlet y = \"a\" + \"b\"","ai").unwrap();
+    }
+    #[test]fn defers_unknown_arithmetic(){
+        check_source("let x = unknown + 2","ai").unwrap();
+    }
+    #[test]fn rejects_bad_binary_in_return(){
+        assert_eq!(check_source("fn f() { return true * 2 }","ai").unwrap_err().code,1002);
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
