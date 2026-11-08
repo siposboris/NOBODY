@@ -6,6 +6,8 @@
 use std::fmt;
 
 pub mod profiles;
+pub mod ir;
+pub use ir::{lower_source,same_ir,Module as IrModule,IrExpr,IrStatement,Name as IrName,IR_VERSION};
 pub mod translator;
 pub use translator::translate_source;
 pub mod ai_migration;
