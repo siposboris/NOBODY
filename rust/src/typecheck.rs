@@ -302,6 +302,12 @@ mod tests{
     #[test]fn rejects_bad_binary_in_return(){
         assert_eq!(check_source("fn f() { return true * 2 }","ai").unwrap_err().code,1002);
     }
+    #[test]fn slovak_valid_primitive_annotations_pass(){
+        check_source("nech vek: cele = 3","sk").unwrap();
+    }
+    #[test]fn localized_float_accepts_integer_initializer(){
+        check_source("nech pomer: desatinne = 2","sk").unwrap();
+    }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
     }
