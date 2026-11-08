@@ -148,3 +148,12 @@ Do not confuse these historical notes with published and verified tags.
 - Assigned N3006 and N3007 for unsupported constructs and Rust profile selection; documented exact causes and repairs.
 - Updated GitHub Actions Rust workflow with parser smoke checks and added Rust-specific README.
 - **Build/test not verified**: `cargo`/`rustc` unavailable in the current authoring environment. No Python modules removed; no native compilation, execution, or self-hosting claimed.
+
+
+## Nobody Rust 0.24 — control-flow and function AST source (2026-11-08)
+
+- Added Rust AST variants and parser logic for conditions, else-if/else branches, while/for loops, function declarations, returns, break/continue and nested brace-delimited blocks.
+- Added Rust unit tests for SK/AI/EN grammar paths, missing closing braces (N3002), malformed signatures (N3003) and misplaced else (N3006).
+- Extended GitHub Actions smoke tests to parse the existing `examples/hello_sk.nbd` and `examples/hello_ai.nbd`, as well as the smaller Rust fixtures.
+- Updated the canonical English roadmap and error-code explanation to match the newly supported grammar.
+- **Verification limitation:** the environment has neither Cargo nor rustc; compilation and GitHub Actions success are unconfirmed. This is **Rust parser source progress**, not a verified Rust compiler release.
