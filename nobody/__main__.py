@@ -32,6 +32,7 @@ def main(argv=None):
     direction=sub.add_parser('direction')
     direction.add_argument('language')
     info=sub.add_parser('info')
+    audit=sub.add_parser('audit-languages',help='Audit keyword completeness, lowercase and Unicode safety')
     args=p.parse_args(argv)
     if args.command=='languages':
         if args.json:
@@ -39,6 +40,11 @@ def main(argv=None):
         else:
             for idx,item in enumerate(languages(),1):
                 print(f'{idx:3d}. {item.name}: {item.status} {item.syntax_code or ""}')
+    elif args.command=='audit-languages':
+        from .profile_validator import profile_summary, audit_profiles
+        print(json.dumps(profile_summary(),indent=2))
+        for issue in audit_profiles():
+            print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
         print(json.dumps({'name':'Nobody','frontend_version':'0.13-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
