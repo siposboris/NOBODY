@@ -247,6 +247,16 @@ Roadmap checklist progress is **44/112 (39%)** as of this update. It counts mark
 
 **Range-based for-loop execution slice (2026-11-08, verified):** The Rust `run` evaluator supports bounded `for` over 1–3-argument unshadowed `range`, positive and negative steps, lexical per-iteration variable scope, nested `break`/`continue`, and N4006 for zero step. Nine new integration tests cover these behaviors and iteration overflow/budget guards. All four GitHub workflows passed, including [Rust CI #42512795206](https://github.com/siposboris/NOBODY/actions/runs/42512795206), and the change merged in [PR #10](https://github.com/siposboris/NOBODY/pull/10). This is an incremental Phase 4 capability: generators, arbitrary iterables, functions, native compilation, full Python parity, and hard sandboxing remain open.
 
+### Next implementable milestone — functions and reference parity
+
+The Rust `run` evaluator now has verified basic assignments, conditionals, bounded `while`, and `range`-based `for` loops. These are **partial** capabilities, not a complete runtime.
+
+1. **Function values and calls:** implement named functions with explicit lexical environments, parameter arity, local scope and `return` control flow. Start with non-recursive integer/text functions; fail explicitly for unsupported calls.
+2. **Function safety gates:** deterministic recursion/step budget, no unbounded native call stack, no shared caller-local leakage, and tests for shadowing, nested definitions, return behavior and arity.
+3. **Differential verification:** run the same small compatible AI and Slovak fixtures under the Python reference and Rust evaluator; record expected stdout and error behavior in automated CI. Note semantic differences explicitly rather than silently accepting them.
+4. **Preserve existing guarantees:** one syntax profile per file, checked integer math, numbered diagnostics, no implicit execution from `parse`/`typecheck`, no dependency on Python inside the Rust `run` implementation.
+5. **Completion gate:** formatting, locked compilation/tests, strict Clippy, multilingual CLI smoke, and both Python workflows green. Do not mark full Phase 4 complete or remove Python on the strength of a single fixture.
+
 ### Following slices — only after the 0.39 gate
 
 1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.
