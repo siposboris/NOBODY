@@ -201,6 +201,12 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 
 **Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. The Phase 0 Rust verification item was closed after inspecting the successful run #42501364426 and job steps/logs. Totals are now **41 checked / 68 open**.
 
+## Verified GitHub CI results (2026-11-08)
+
+- **Rust frontend:** [run #42501364426](https://github.com/siposboris/NOBODY/actions/runs/42501364426) passed all jobs: `cargo fmt --check`, compilation, 109 library unit tests, integration tests, strict Clippy and CLI smoke. Source commit `e1437613639c5428babc0e6d406795215762fce4`.
+- **Python reference frontend:** [run #42501583586](https://github.com/siposboris/NOBODY/actions/runs/42501583586) passed on Python 3.11, 3.12 and 3.13 after compatibility fixes. **Lexer:** [run #42501583602](https://github.com/siposboris/NOBODY/actions/runs/42501583602) passed.
+- This does not prove full language correctness, full Rust/Python parity, platform portability or runtime implementation. Those roadmap items remain open.
+
 ## Latest work toward existing open items (2026-11-08)
 
 - **Phase 1 lexer completeness (still open):** Reject malformed decimal literals such as `12abc`, `1__2` and `1e+` with N2006 and actionable repairs. Preserve decimal/exponent forms and `1-2` token separation. Three lexer unit tests and two CLI integration tests authored, with a malformed-number fixture.
