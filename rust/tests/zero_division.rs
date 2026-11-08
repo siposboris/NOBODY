@@ -1,4 +1,4 @@
-//! Narrow N1008 guard against certainly zero numeric literal divisors.
+//! Narrow N1008 guard against provably zero constant divisors.
 //! This is not general constant folding or a runtime execution guarantee.
 use nobody::check_source;
 
@@ -7,7 +7,7 @@ fn rejects_zero_division_in_all_three_operators() {
     for source in ["let x = 7 / 0", "let x = 7 // 0", "let x = 7 % 0"] {
         let err = check_source(source, "ai").unwrap_err();
         assert_eq!(err.code, 1008, "{source}");
-        assert!(err.detail.contains("zero divisor"));
+        assert!(err.detail.contains("zero constant divisor"));
     }
 }
 
@@ -44,11 +44,7 @@ fn preserves_nonzero_mantissa_even_with_extreme_exponent() {
 
 #[test]
 fn defers_dynamic_and_computed_denominators() {
-    for source in [
-        "let x = 2 / mystery",
-        "let x = 2 / (1 - 1)",
-        "let x = 2 / f(0)",
-    ] {
+    for source in ["let x = 2 / mystery", "let x = 2 / f(0)"] {
         check_source(source, "ai").unwrap();
     }
 }
