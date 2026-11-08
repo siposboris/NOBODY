@@ -104,20 +104,13 @@ fn lower_block(
     language: &str,
     outer: &BTreeSet<String>,
 ) -> Vec<IrStatement> {
-    // Conservative whole-block lexical visibility: a local declaration shadows
-    // a builtin throughout this block. Later IR revisions must define temporal
-    // declaration visibility precisely.
+    // Sequential visibility: a declaration shadows a builtin only after
+    // its initializer has been lowered. Functions see their own names so
+    // recursive calls remain user symbols. This is still a preliminary scope
+    // model; runtime lexical binding rules must be specified separately.
     let mut visible = outer.clone();
-    for statement in statements {
-        match statement {
-            Statement::Let { name, .. } | Statement::Function { name, .. } => {
-                visible.insert(name.clone());
-            }
-            _ => {}
-        }
-    }
     statements.iter().map(|statement| {
-        match statement {
+        let lowered = match statement {
             Statement::Let { name, type_name, expr } => IrStatement::Let {
                 name: name.clone(),
                 type_name: type_name.clone(),
@@ -149,6 +142,7 @@ fn lower_block(
             }
             Statement::Function { name, parameters, body } => {
                 let mut function_scope = visible.clone();
+                function_scope.insert(name.clone()); // recursion
                 function_scope.extend(parameters.iter().cloned());
                 IrStatement::Function {
                     name: name.clone(),
@@ -162,7 +156,14 @@ fn lower_block(
             Statement::Continue => IrStatement::Continue,
             Statement::Expression(expr) =>
                 IrStatement::Expression(expression(expr, language, &visible)),
+        };
+        match statement {
+            Statement::Let { name, .. } | Statement::Function { name, .. } => {
+                visible.insert(name.clone());
+            }
+            _ => {}
         }
+        lowered
     }).collect()
 }
 
@@ -220,6 +221,29 @@ mod tests {
         assert_eq!(body[0], IrStatement::Return(IrExpr::Name(Name::User("print".into()))));
     }
 
+    #[test]
+    fn builtin_shadowing_starts_after_declaration(){
+        let ir=lower_source("print(1)\nlet print = 7\nprint(2)","ai").unwrap();
+        let IrStatement::Expression(IrExpr::Call { callee:first, .. })=&ir.statements[0]
+            else {panic!("expected first call")};
+        assert_eq!(**first,IrExpr::Name(Name::Builtin("print")));
+        let IrStatement::Expression(IrExpr::Call { callee:last, .. })=&ir.statements[2]
+            else {panic!("expected last call")};
+        assert_eq!(**last,IrExpr::Name(Name::User("print".into())));
+    }
+    #[test]
+    fn initializer_uses_previous_binding_not_new_variable(){
+        let ir=lower_source("let print = print","ai").unwrap();
+        let IrStatement::Let{expr,..}=&ir.statements[0] else {panic!("expected let")};
+        assert_eq!(*expr,IrExpr::Name(Name::Builtin("print")));
+    }
+    #[test]
+    fn function_name_is_visible_for_recursion(){
+        let ir=lower_source("fn print(n) { return print(n) }","ai").unwrap();
+        let IrStatement::Function{body,..}=&ir.statements[0] else {panic!("expected function")};
+        let IrStatement::Return(IrExpr::Call{callee,..})=&body[0] else {panic!("expected call")};
+        assert_eq!(**callee,IrExpr::Name(Name::User("print".into())));
+    }
     #[test]
     fn nested_loop_control_is_represented() {
         let ir = lower_source("while true { if true { break } }", "ai").unwrap();
