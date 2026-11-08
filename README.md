@@ -32,3 +32,8 @@ Created as an independent project from its founder's requirements with software 
 ## Development update (2026-11-08)
 
 [Experimental Nobody 0.8 notes](docs/PROTOTYPE_0_8.md), [example](examples/hello_sk.nbd), and [new regression tests](tests/test_language_barriers.py) are published. 49 tests passed in the full **local** tree, but the full source is not yet mirrored here. **No GitHub CI success or official GitHub v0.8 release is claimed.**
+
+
+## Latest experimental development (2026-11-08)
+
+A stand-alone [Nobody lexer](nobody/lexer.py) and [lexer unit tests](tests/test_lexer.py) are now committed. The complete working 0.9 prototype is available as a separate source archive in the development conversation but **has not yet been fully imported into this repository**. The complete local prototype passed 55 tests. GitHub CI for the complete interpreter has not run; do not interpret these commits as an official verified release.
