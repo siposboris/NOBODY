@@ -1,15 +1,15 @@
 use std::{env,fs,process};
-use nobody::{lower_source,migrate_legacy_ai,parse,parse_validated,same_ir,scan,translate_source,TokenKind};
+use nobody::{check_source,lower_source,migrate_legacy_ai,parse,parse_validated,same_ir,scan,translate_source,TokenKind};
 use nobody::profiles::PROFILES;
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
         Some("lex"|"check") if arguments.len()==3 => true,
-        Some("parse"|"validate"|"ir") if arguments.len()==4 => true,
+        Some("parse"|"validate"|"ir"|"typecheck") if arguments.len()==4 => true,
         Some("compare-ir") if arguments.len()==6 => true,
         Some("list-languages") if arguments.len()==2 => true,
         Some("migrate-ai") if arguments.len()==3 => true,
@@ -57,6 +57,13 @@ fn main() {
     if command=="migrate-ai" {
         match migrate_legacy_ai(&source) {
             Ok(migrated)=>print!("{migrated}"),
+            Err(error)=>{eprintln!("{error}");process::exit(1);}
+        }
+        return;
+    }
+    if command=="typecheck" {
+        match check_source(&source,&arguments[2]) {
+            Ok(())=>println!("Conservative Rust type check passed (known types only; unknown expressions deferred)."),
             Err(error)=>{eprintln!("{error}");process::exit(1);}
         }
         return;
