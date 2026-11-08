@@ -488,3 +488,16 @@ add(1, 2)
 **Oprava:** Normalizuj iba názvy identifikátorov do štandardnej Unicode NFC formy, napríklad použi \`café\`. Lexer nenormalizuje ani neprepisuje zdrojový text potichu: vráti N2008 na začiatku problematického identifikátora. Zachováva presné bajtové pozície, textové literály a komentáre.
 
 **Rozsah a závislosť:** Kontrola používa pripnutú knižnicu \`unicode-normalization = "=0.1.24"\`. Nejde o NFKC, transliteráciu, automatické opravovanie názvov ani úplnú ochranu proti vizuálnym zámenám (UTS #39). N2007 a N2008 sú nezávislé.
+
+
+### N1007 — Unknown explicit primitive type annotation (Rust checker)
+
+**Exact cause:** A declaration explicitly names a type that the current Rust type checker does not recognize. The supported primitive types are `int`, `float`, `str`, and `bool`, or their canonical keyword translations in the selected Nobody syntax profile. An unrecognized annotation is **not** silently treated as dynamic typing.
+
+**Incorrect:** `let age: intr = 3` (typo in `int`).
+
+**Correct:** `let age: int = 3`. In Slovak syntax, `nech vek: cele = 3` is valid.
+
+**Repair:** Use a recognized type keyword or remove the annotation if inference / unknown typing is intended. Unannotated dynamic expressions remain conservatively accepted.
+
+**Limitations:** Custom types, generics, aliases and modules are **not yet implemented** in the Rust checker. N1007 does not mean those facilities are permanently forbidden. Canonical IR v1 has no reliable source span for this check, so N1007 gives the variable and annotation but does not invent a line/column. This change does not provide a sound whole-program type checker.
