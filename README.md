@@ -5,8 +5,8 @@
 Nobody is an independent open-source programming language project aiming to combine useful ideas from Python, Rust, C/C++, Go, Erlang, Haskell, Lisp, Julia, Ada/SPARK, Lean and more. Not all features can be active simultaneously.
 
 ## Core design rules
-- **One human syntax language per source file** (no mixing Slovak, English, Czech, German keywords).
-- **Lowercase ASCII syntax and identifiers** (without diacritics); Unicode is allowed in string literals and comments.
+- **One of 22 selected human syntax languages per source file**, never mixing syntax languages. [Full language list](docs/LANGUAGES.md).
+- **Lowercase syntax in each language's native writing system**: ASCII-friendly Latin profiles; Cyrillic, Arabic, Chinese, Japanese, Korean, Devanagari, Bengali, Tamil and Thai where appropriate. Vietnamese retains lowercase accents. Unicode is allowed in strings/comments. [Language rules](docs/LANGUAGES.md).
 - Source-to-source translation: Nobody `.nbd` → Nobody `.nbd`, **not Python output**.
 - Configurable typing, memory, performance, safety and target modes — **only implemented modes may run**. Planned options must fail clearly.
 - Long-term aim: a compiler written in Nobody that generates native executables. Python is currently a temporary bootstrap runtime.
@@ -42,3 +42,8 @@ A stand-alone [Nobody lexer](nobody/lexer.py) and [lexer unit tests](tests/test_
 ## Experimental milestone: Nobody 0.10 AST parser (2026-11-08)
 
 The new [AST parser](nobody/parser.py), [tests](tests/test_parser.py) and [frontend CI workflow](.github/workflows/frontend-tests.yml) are now available. Parser accepts a documented subset of brace-based Nobody syntax in SK/EN/CS/DE and produces an abstract syntax tree rather than Python source. It is **not** a full grammar, execution engine or native compiler. Earlier interpreter, semantic checker and Nobody compiler source are **not yet fully imported to GitHub**. The full local working tree passed **65 tests**; GitHub CI results for this commit have not been confirmed. [Detailed limitations](docs/PARSER.md).
+
+
+## Languages (experimental)
+
+Nobody now defines **22 syntax profiles** with original writing systems, not romanized Chinese, Japanese, Russian or Arabic. See [the complete list and examples](docs/LANGUAGES.md). The source-to-source translation module is committed as [nobody/translator.py](nobody/translator.py), and [test_native_scripts.py](tests/test_native_scripts.py) checks round trips. The full compiler/runtime is still being imported; this does not establish production readiness.
