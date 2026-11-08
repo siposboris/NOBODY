@@ -401,7 +401,7 @@ mod tests {
     }
     #[test]
     fn sk_nested_function_and_return() {
-        let program=parse("funkcia dvojnasobok(x) { vrat x * 2 }\\nvypis(dvojnasobok(3))","sk").unwrap();
+        let program=parse("funkcia dvojnasobok(x) { vrat x * 2 }\nvypis(dvojnasobok(3))","sk").unwrap();
         assert!(matches!(&program.statements[0], Statement::Function{parameters,..} if parameters.len()==1));
     }
     #[test]
@@ -411,7 +411,7 @@ mod tests {
     }
     #[test]
     fn ai_while_with_assignment() {
-        let program=parse("ai_let n = 0\\nai_while n < 3 { n = n + 1 }","ai").unwrap();
+        let program=parse("ai_let n = 0\nai_while n < 3 { n = n + 1 }","ai").unwrap();
         assert!(matches!(&program.statements[1],Statement::While{..}));
     }
     #[test]
