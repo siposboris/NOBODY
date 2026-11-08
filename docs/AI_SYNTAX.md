@@ -1,49 +1,67 @@
-# Nobody AI syntax profile (`ai`) — experimental 0.15
+# Nobody `ai` syntax — familiar, regular and machine-readable
 
-The `ai` profile is **not a language spoken by AI**. It is a deterministic, explicit source vocabulary intended to be easy for LLMs, coding agents, parsers and code generators to manipulate. It has the same semantics as every other Nobody syntax profile and confers **no extra permissions or autonomy**.
+**Status:** Rust-first experimental syntax proposal (November 8, 2026).  
+**Design goal:** Reduce *unfamiliar syntax* for code-generating AI models while keeping one well-defined Nobody semantic core. Familiarity is a design hypothesis, **not a proven improvement in AI accuracy, token cost or performance**. No model benchmarks have yet been run.
 
-## Example
+## Design principles
 
-Slovak:
+1. Use short, recognizable programming keywords already common in modern programming languages. No artificial `ai_` prefix.
+2. Keep source readable to a human and deterministic to a parser.
+3. Use braces for blocks, explicit `let` for declarations and `fn` for functions.
+4. Keep lowercase `true`, `false`, `null`, `and`, `or`, `not`.
+5. Share the same AST and behavior with the human-language syntax profiles; `ai` is a **syntax dialect**, not a different AI-only runtime, intelligence or autonomous agent.
+6. Keep JSON AST exchange as a separate tool protocol. A stable AST is better suited for machine interchange than invented unreadable symbols.
+
+## Canonical example
+
 ```text
-nech pocet = 3
-ak pocet > 2 { vypis("Ahoj") }
+fn double(x) {
+    return x * 2
+}
+
+let count: int = 3
+if count > 1 {
+    print(double(count))
+} else {
+    print(0)
+}
 ```
 
-AI-profile Nobody:
-```text
-ai_let pocet = 3
-ai_if pocet > 2 { ai_print("Ahoj") }
-```
+## Keyword conventions
 
-## Design rules
+| Meaning | Old Python-reference `ai` | New Rust-first `ai` |
+|---|---|---|
+| Declaration | `ai_let` | `let` |
+| Function | `ai_def` | `fn` |
+| Condition | `ai_if` | `if` |
+| Alternative | `ai_else` | `else` |
+| Loop | `ai_while` / `ai_for` | `while` / `for` |
+| Return | `ai_return` | `return` |
+| Boolean | `ai_true` / `ai_false` | `true` / `false` |
+| No value | `ai_none` | `null` |
+| Print | `ai_print` | `print` |
+| Primitive type | `ai_int` | `int` |
+| Else-if | `ai_elif` | `elif` (also `else if` in Rust parser) |
 
-- Every keyword begins with `ai_` and uses **lowercase ASCII**, for example `ai_let`, `ai_if`, `ai_else`, `ai_while`, `ai_for`, `ai_function`/canonical `ai_def`, `ai_return`, `ai_true`, `ai_false`, `ai_none`, `ai_and`, `ai_or`, `ai_not`, `ai_print`, `ai_int`.
-- The current canonical spellings are built mechanically from internal semantic IDs, not human-language translation. For function declaration the actual spelling is **`ai_def`**.
-- Never mix `ai` keyword spellings with `sk`, `en`, or another profile inside a source file.
-- String literals, comments and user identifiers are not translated.
-- The output remains Nobody source, not Python.
+The new Rust vocabulary implements all 29 canonical keyword slots. Native human-language profiles are in [`rust/src/profiles.rs`](../rust/src/profiles.rs). Their translations remain experimental and require native-speaker review.
 
-## Machine-readable AST
+## Safely migrate existing `ai_` files
 
-The `ast-json` CLI command exports a **versioned and deterministic** JSON representation (`nobody.ast.v1`) containing `kind`, `value`, `line` and `children`. This is an AST interchange preview, **not** a full program specification and not bytecode or machine instructions. It is most useful for external AI coding workflows.
+The original prefixed dialect remains preserved in the Python reference and [legacy example](../examples/hello_ai_legacy.nbd). A Rust tokenizer-based migration tool rewrites **only recognized keyword tokens**, not quoted strings or comments.
 
-From the GitHub frontend:
 ```bash
-python3 -m nobody translate examples/hello_sk.nbd --from-lang sk --to ai
-python3 -m nobody ast-json examples/hello_sk.nbd --lang sk
+cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > migrated_ai.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai migrated_ai.nbd
 ```
 
-Source: [language profiles](../nobody/languages.py), [AST serializer](../nobody/ai_ir.py), [regression tests](../tests/test_015.py).
+The converter writes to **stdout**; it never overwrites its input file. The Rust parser raises **N3010** for recognized old `ai_` keywords to explain the required migration. Different runtime behavior between old Python and new Rust code is still possible: full semantic parity has **not** been verified.
 
-## Limitations / future milestones
+## Next acceptance checks
 
-- Only the existing AST grammar subset is supported.
-- User identifier naming/keyword collisions across 40 profiles need improved namespace handling.
-- No AI-specific model weights, cognition, learning, privileges or autonomy are implemented.
-- Future: formal grammar, schema for structured metadata, deterministic round-trip AST loader with validation, native backends and self-hosting.
+- Compile and run `cargo test` and CI for Rust, then confirm all 40 profiles parse their native-script keywords.
+- Validate Unicode normalization, identifier collisions and language-specific reserved words.
+- Benchmark the same coding prompts across `ai`, English `en` and representative ordinary languages using independent LLMs, comparing success, tokens and repairs.
+- Port full AST JSON export/import and source-to-source translation into Rust.
+- Remove the old Python reference only after equivalent Rust frontend/runtime behavior and regression tests have been verified.
 
-
-## 0.16 follow-up — validated AST import and regeneration
-
-AI tools may now produce a versioned `nobody.ast.v1` JSON tree, ask the loader to reject unsupported node kinds and invalid shapes, then render supported AST nodes back into a selected Nobody syntax profile using `ast-emit`. This is a structured code-generation tool, not an autonomous AI runtime or a security boundary. Some program types remain unsupported and must be rejected rather than guessed.
+[Full roadmap](ROADMAP.md) · [Rust migration](RUST_MIGRATION.md) · [Error catalogue](ERROR_CODES.md).
