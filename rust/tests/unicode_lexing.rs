@@ -73,3 +73,42 @@ fn unicode_token_spans_are_valid_utf8_slices() {
         assert_eq!(&source[t.start..t.end], t.value);
     }
 }
+
+#[test]
+fn latin_cyrillic_lookalike_identifier_is_rejected() {
+    // The 'а' below is Cyrillic U+0430, not Latin 'a'.
+    let source = "let pаypal = 3";
+    let error = scan(source).unwrap_err();
+    assert_eq!(error.code, 2007);
+    assert_eq!((error.line, error.column), (1, 6));
+    assert!(error.detail.contains("Latin"));
+    assert!(error.detail.contains("Cyrillic"));
+}
+
+#[test]
+fn latin_greek_lookalike_identifier_is_rejected() {
+    // Greek omicron in an otherwise Latin variable name.
+    let error = scan("let tοken = 1").unwrap_err();
+    assert_eq!(error.code, 2007);
+    assert_eq!((error.line, error.column), (1, 6));
+}
+
+#[test]
+fn single_script_names_and_multiscript_text_remain_valid() {
+    for source in [
+        "let paypal = 3",
+        "let пример = 3",
+        "let παράδειγμα = 3",
+        "let x = \"pаypal tοken\" # Cyrillic and Greek text is not code",
+        "let かな漢字 = 3",
+    ] {
+        scan(source).unwrap_or_else(|e| panic!("{source:?}: {e}"));
+    }
+}
+
+#[test]
+fn mixed_script_error_uses_unicode_scalar_column_after_prefix() {
+    let error = scan("let cafépаy = 2").unwrap_err();
+    assert_eq!(error.code, 2007);
+    assert_eq!((error.line, error.column), (1, 10));
+}
