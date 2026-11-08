@@ -71,7 +71,7 @@ mod tests {
     }
     #[test]
     fn reject_top_level_break_ai() {
-        let error=parse_validated("ai_break","ai").unwrap_err();
+        let error=parse_validated("break","ai").unwrap_err();
         assert_eq!(error.code,3009);
     }
     #[test]
@@ -108,6 +108,6 @@ mod tests {
     }
     #[test]
     fn allow_break_in_ai_loop() {
-        parse_validated("ai_while ai_true { ai_break }","ai").unwrap();
+        parse_validated("while true { break }","ai").unwrap();
     }
 }
