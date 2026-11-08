@@ -44,3 +44,14 @@ The independent Nobody project was initiated from its creator's requirements wit
 The language catalogue still contains **249** Google Translate language/script variants. **34** now have experimental Nobody syntax dictionaries; **215** are still planned and unavailable. 0.14 adds Bulgarian (`bg`), Romanian (`ro`), Swedish (`sv`), Finnish (`fi`), Armenian (`hy`), and Georgian (`ka`). All use native writing systems for their keywords where appropriate; terminology needs human review. See [language roster](docs/LANGUAGES.md).
 
 The AST interpreter now supports assignment to existing variables (`count = count + 1`) with rejection of assignments to undeclared variables. Typed reassignments are not yet checked against initial annotations. The full local 0.14 ZIP passed **104 tests**, but GitHub CI remains unconfirmed and the complete Nobody-written bootstrap is not yet uploaded to this repository. [Roadmap](docs/ROADMAP.md).
+
+
+## 0.15 milestone — AI syntax profile, five more native scripts, typed reassignment
+
+The project now contains **39 experimental human-language syntax profiles plus one special `ai` profile**. The Google Translate reference catalogue retains **249 variants**, with **210 human variants still awaiting a syntax dictionary**. New human profiles: Nepali (`ne`), Marathi (`mr`), Gujarati (`gu`), Kannada (`kn`), Telugu (`te`). Native-speaker validation remains outstanding.
+
+The AI profile is **not an artificial intelligence or a language with special powers**: it is a regular Nobody syntax profile with semantically transparent lowercase ASCII tokens such as `ai_let`, `ai_if`, `ai_print`. [AI profile design](docs/AI_SYNTAX.md).
+
+The frontend now exports a stable versioned JSON AST via `python3 -m nobody ast-json examples/hello_sk.nbd --lang sk`. The experimental AST interpreter rejects reassignments that violate a variable's explicitly declared primitive type. It still requires Python and is **not a security sandbox**.
+
+**110 local tests passed** in the full 0.15 development archive. GitHub CI success is not yet independently verified; the full earlier Nobody-written bootstrap compiler still needs importing to this repo.
