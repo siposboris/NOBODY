@@ -70,3 +70,16 @@ The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, sour
 | Testing | 95 tests passed in full **local** 0.13 source tree; separate GitHub CI outcome unconfirmed |
 
 [Source catalogue](../nobody/data/google_translate_249.txt) · [Implementation statuses](../nobody/catalog.py) · [Full roadmap](ROADMAP.md)
+
+
+## Nobody 0.14 feature state
+
+| Feature | State |
+|---|---|
+| Syntax dictionaries | **34 experimental** (including six new in 0.14); native-speaker review incomplete |
+| Google Translate reference variants | **249 in catalogue**; **215 not implemented** as Nobody syntax |
+| Nobody-to-Nobody source compiler | Local prototype with 34 keyword tables; complete bootstrap not yet mirrored to GitHub |
+| AST parser/evaluator reassignment | Implemented for existing variables; unknown variables rejected |
+| Enforcing initial primitive type annotations | Experimental; reassignment typing not yet enforced |
+| Full static typing, native compilation, Python-independent runtime | Planned |
+| Tests | **104 local tests passed** in complete 0.14 archive; GitHub CI unverified |
