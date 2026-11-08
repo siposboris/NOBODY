@@ -105,3 +105,17 @@ The 22 rows above remain the **original working experimental profiles**, not a f
 [Full catalogue of 249 variant names](../nobody/data/google_translate_249.txt). The catalogue includes dialects and script variants, so it must **not** be described as 249 fully supported syntax languages. All other 221 entries are planned, not functional. This reference is based on a publicly reported August 2026 Google Translate list; project status is not affiliated with Google.
 
 The source-code profiles are provisional and still require native-speaker review and collision testing. Each file uses one syntax language. Text and comments are not translated.
+
+
+## Experimental Nobody 0.14 — six more syntax profiles
+
+| Code | Language | Writing system | `if` keyword |
+|---|---|---|---|
+| `bg` | Bulharčina | cyrilika | `ако` |
+| `ro` | Rumunčina | latinka | `daca` |
+| `sv` | Švédčina | latinka | `om` |
+| `fi` | Fínčina | latinka | `jos` |
+| `hy` | Arménčina | arménske písmo | `եթե` |
+| `ka` | Gruzínčina | gruzínske písmo | `თუ` |
+
+**Current total: 34 experimental syntax profiles and 215 remaining catalogue variants.** All six use original writing systems where appropriate; no compulsory romanization for Bulgarian, Armenian or Georgian. Each syntax profile still needs expert linguistic review. The previous 22-row table above documents the original first batch; the six 0.13 profiles are listed in the preceding section. [All 249 catalogue variants](../nobody/data/google_translate_249.txt).
