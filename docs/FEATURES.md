@@ -51,3 +51,22 @@ The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, sour
 - **Implemented in GitHub frontend:** Arabic and Urdu `rtl` display metadata; logical order preservation, prevention of hidden Unicode bidi formatting controls during lexical scanning and [standalone tests](../tests/test_bidi.py).
 - **Not implemented:** automatic RTL paragraph rendering or bidirectional cursor controls in external editors. [Details](RTL.md).
 - **Local prototype:** 86 tests passed; this is not GitHub CI confirmation.
+
+
+## Experimental Nobody 0.13 — implementation truth table
+
+| Component | Actual state |
+|---|---|
+| Google Translate reference list | 249 named language/script variants; **catalogue only** |
+| Working experimental syntax dictionaries | 28 (22 previous + Hebrew, Greek, Ukrainian, Persian, Swahili and Dutch) |
+| Pending syntax dictionaries | 221 catalogue entries; deliberately unavailable |
+| Original scripts | Used in active native-script profiles; no forced transliteration |
+| RTL direction metadata | Arabic, Urdu, Hebrew, Persian; **external editor support is not automatic** |
+| Source translator | Translates recognized Nobody keywords between active dictionaries, preserving literals |
+| AST parser | Subset: expressions, function calls, branches, loops, annotated declarations |
+| AST interpreter | Python-hosted; does **not generate Python source**, but still depends on Python |
+| Native compiler and true self-hosting | Not implemented |
+| Security / hard memory quotas | Not implemented; not a sandbox |
+| Testing | 93 tests passed in full **local** 0.13 source tree; separate GitHub CI outcome unconfirmed |
+
+[Source catalogue](../nobody/data/google_translate_249.txt) · [Implementation statuses](../nobody/catalog.py) · [Full roadmap](ROADMAP.md)
