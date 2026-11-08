@@ -73,3 +73,15 @@ Do not confuse these historical notes with published and verified tags.
 - AST parser and evaluator now support assignment to previously declared variables, enabling mutable loop counters; unknown names fail.
 - Added new tests and CI configuration. **104 tests passed locally** in the complete 0.14 archive, not confirmed on GitHub Actions.
 - Known limitations: type constraints on reassignment, block-scoping, complete bootstrap source import, native compilation and native-speaker validation.
+
+
+## Nobody 0.15 experimental development (2026-11-08)
+
+- Added Nepali, Marathi, Gujarati, Kannada and Telugu provisional original-script syntax dictionaries.
+- Added dedicated canonical `ai` syntax with explicit, stable `ai_` prefixes.
+- Added `nobody.ast.v1` deterministic JSON AST output for machine-based developer tools.
+- Added runtime enforcement of primitive explicitly declared types on reassignment, not only initial declaration.
+- Updated local Nobody-written bootstrap compiler vocabulary to all 40 syntaxes (39 human + AI).
+- Added six new regression tests: **110 passed in complete local development archive**, GitHub CI result unconfirmed.
+- 249 human variants remain in reference catalogue; 210 human variants still have no usable Nobody syntax dictionary.
+- Known limitations: parser grammar subset, Python-hosted interpreter, unverified native linguistic word choice, older bootstrap not yet mirrored in GitHub and no native self-hosting.
