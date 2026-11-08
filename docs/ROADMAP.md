@@ -161,3 +161,5 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Complete AST grammar and independent execution semantics. Python still hosts the compiler frontend and AST evaluator.
 - [ ] Import full bootstrap interpreter and Nobody-written compiler into GitHub, with verified CI and release tags.
 - [ ] Build a native code backend; independently verify self-hosting. No milestone date is guaranteed.
+
+- [x] Add [language-profile auditing](../nobody/profile_validator.py) with completeness, Unicode normalization and lowercase checks; 95 tests pass locally. Native linguistic quality still needs human review.
