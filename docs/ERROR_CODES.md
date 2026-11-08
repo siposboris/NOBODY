@@ -253,10 +253,10 @@ Rozsahy: 1000–1999 typy a diagnostiky, 2000–2999 lexer/Unicode, 3000–3999 
 
 ## Additional Rust parser errors (English, 0.23 experimental)
 
-### N3006 — Unsupported construct in the current Rust parser
-**Exact cause:** The Rust parser encountered a known but not-yet-implemented control-flow or function keyword, for example `ak` or `ai_if`. This is a **feature gap**, not an invalid Nobody program.
-**How to fix:** For now use `nech` / `let` / `ai_let`, reassignment and supported expressions. Do not use `if`, functions or loops with this partial Rust parser yet. Re-run when these statements are ported.
-**Example:** `nobody-rs parse sk program.nbd` with `ak pravda { vypis(1) }` produces N3006.
+### N3006 — Unsupported or misplaced construct in the current Rust parser
+**Exact cause:** The Rust parser encounters a statement/keyword not supported at the current position or a reserved keyword from a not-yet-implemented part of the grammar. A detached `inak` (`else`) outside an `ak` (`if`) is an example.
+**How to fix:** Attach `inak` directly after the preceding `ak { ... }` block. For other missing features, see [Rust supported syntax](../rust/README.md) and use the Python legacy reference only until the Rust migration covers that feature.
+**Example:** `nobody-rs parse sk program.nbd` with `inak { vypis(1) }` but no preceding `ak` produces N3006. A correctly formed `ak pravda { vypis(1) } inak { vypis(2) }` now parses successfully.
 
 ### N3007 — Unsupported language profile in the current Rust parser
 **Exact cause:** The selected `--lang` equivalent for the current Rust CLI is not one of `sk`, `en`, `ai`. Other human languages exist in the Python reference but have not been ported into the Rust parser.
