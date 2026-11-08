@@ -36,6 +36,24 @@ ALIASES = {
 }
 ALIASES["sk"]["kym"] = "while"
 ALIASES["en"]["def"] = "def"
+
+# Six more experimental, native-script-friendly syntax vocabularies.
+# Keyword naturalness must be reviewed by native speakers.
+_ADDED_PROFILES = {
+  "he": "אם אחרת אחרת_אם כלעוד עבור בתוך פונקציה החזר אמת שקר ריק וגם או לא עצור המשך הגדר הדפס טווח אורך סכום מינימום מקסימום מוחלט עגל שלם עשרוני טקסט בוליאני",
+  "el": "αν αλλιως αλλιως_αν οσο για μεσα συναρτηση επιστροφη αληθες ψευδες κενο και η οχι διακοπη συνεχεια εστω εκτυπωσε ευρος μηκος αθροισμα ελαχιστο μεγιστο απολυτο στρογγυλεψε ακεραιος δεκαδικος κειμενο λογικο",
+  "uk": "якщо інакше інакше_якщо поки для в функція повернути істина хиба ніщо і або не перервати продовжити нехай друк діапазон довжина сума мінімум максимум модуль округлити ціле дробове рядок логічне",
+  "fa": "اگر وگرنه وگرنه_اگر تاوقتی برای در تابع بازگردان درست نادرست هیچ و یا نه بشکن ادامه بگذار چاپ بازه طول جمع کمینه بیشینه قدرمطلق گردکردن صحیح اعشاری متن منطقی",
+  "sw": "ikiwa vinginevyo vinginevyo_ikiwa wakati kwa ndani kazi rudisha kweli si_kweli hakuna na au si vunja endelea acha chapisha masafa urefu jumla kiwango_chini kiwango_juu thamani_kuu zungusha namba_kamili desimali maandishi mantiki",
+  "nl": "als anders anders_als zolang voor in functie geef_terug waar onwaar niets en of niet breek verder laat druk bereik lengte som minimum maximum absoluut afronden geheel decimaal tekst logisch"
+}
+_CANONICAL_NEW = ["if","else","elif","while","for","in","def","return","True","False","None","and","or","not","break","continue","let","print","range","len","sum","min","max","abs","round","int","float","str","bool"]
+for _code, _spelling in _ADDED_PROFILES.items():
+    _words = _spelling.split()
+    if len(_words) != len(_CANONICAL_NEW) or len(_words) != len(set(_words)):
+        raise ValueError("Invalid experimental language profile: " + _code)
+    ALIASES[_code] = dict(zip(_words, _CANONICAL_NEW))
+
 PREFERRED = {}
 for lang, aliases in ALIASES.items():
     preferred = {}
@@ -67,3 +85,6 @@ LANGUAGE_NAMES = {
   "pl": "Polish"
 }
 NATIVE_SCRIPT_PROFILES = ("ru", "zh", "hi", "ar", "bn", "ur", "ja", "ko", "ta", "th", "vi")
+
+LANGUAGE_NAMES.update({"he":"Hebrew","el":"Greek","uk":"Ukrainian","fa":"Persian","sw":"Swahili","nl":"Dutch"})
+NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("he","el","uk","fa")
