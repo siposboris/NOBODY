@@ -41,7 +41,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 - [x] Implement a native UTF-8 token scanner *prototype* in Rust for names, literals, symbols and comments, with byte spans and native-script letters; expose `nobody-rs lex` and lexer-only `check`.
 - [x] Assign numbered Rust lexer diagnostics N2001–N2005 for string, case, combining-mark, unsupported-glyph and bidi-control errors.
-- [ ] Complete the Rust lexer against Unicode normalization, combining characters, RTL, confusables, token boundaries and reference regression fixtures.
+- [ ] Complete the Rust lexer against Unicode normalization, combining characters, RTL, confusables, token boundaries and reference regression fixtures. **Progress (2026-11-08):** added strict decimal numeric token validation with stable N2006 and three authored regression tests. Full Unicode/RTL and compiled tests still pending; item stays open.
 - [x] Port the **source keyword tables** for all 39 human syntax profiles and a redesigned `ai` profile into Rust, including original Unicode spellings, direct profile selection and preliminary native-script parser tests.
 - [ ] Verify all 40 Rust profiles pass compiled lexer/parser tests, native-speaker review, Unicode normalization checks, reserved-word collisions and parity with historical behavior.
 - [x] Commit a **limited** Rust recursive-descent/precedence AST parser for `sk`, `en`, `ai`: declarations, optional primitive annotations, reassignment, expression operators, literals and call syntax. Its source exists, but a passing Rust build is **not yet verified**.
@@ -200,6 +200,12 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly configured Rust toolchain and retains `rust-verification.log` as a downloadable artifact even if the gate fails. The gate is deliberately strict and must not be marked complete without a successful result. A targeted source review also corrected a preexisting arity-tracking error where lexical shadowing inside branches could discard an outer function signature; four new regression tests are authored but not yet executed.
 
 **Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. Close the Phase 0 Rust verification item only after the full CI job succeeds and its run URL/logs have been inspected. Until then the totals remain **40 checked / 69 open**.
+
+## Latest work toward existing open items (2026-11-08)
+
+- **Phase 1 lexer completeness (still open):** Reject malformed decimal literals such as `12abc`, `1__2` and `1e+` with N2006 and actionable repairs. Preserve decimal/exponent forms and `1-2` token separation. Three new source-level tests authored.
+- **Phase 0 Rust verification (still open):** The container has neither `cargo` nor `rustc`, and its network cannot resolve the official Rust toolchain host. No claim of a successful build, formatting gate, Clippy or GitHub Actions run is made. Do not remove the existing acceptance gate.
+- **Accounting:** Existing roadmap totals stay unchanged. Fixes to partial work are not new completed milestones.
 
 ## Immediate priorities (in dependency order)
 
