@@ -83,3 +83,18 @@ The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, sour
 | Enforcing initial primitive type annotations | Experimental; reassignment typing not yet enforced |
 | Full static typing, native compilation, Python-independent runtime | Planned |
 | Tests | **104 local tests passed** in complete 0.14 archive; GitHub CI unverified |
+
+
+## 0.15 experimental development status
+
+| Capability | Current state |
+|---|---|
+| Human syntax profiles | **39 experimental**; five more native scripts added |
+| AI syntax profile | **1 experimental** `ai` profile with lowercase ASCII canonical words |
+| 249 Google language/script reference variants | 39 mapped to a syntax profile; **210 unmapped** |
+| AI-compatible AST JSON | Deterministic schema tag `nobody.ast.v1`; no schema validator/roundtrip loader yet |
+| AST runtime type guard | Checks explicit primitive types on declarations **and reassignments** |
+| Full static type system, memory safety and native self-hosting | Not implemented |
+| Test results | 110 tests passed in full local 0.15 tree; GitHub CI not yet confirmed |
+
+See [AI syntax](AI_SYNTAX.md), [language list](LANGUAGES.md), [roadmap](ROADMAP.md).
