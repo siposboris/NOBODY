@@ -1,0 +1,4 @@
+nech pocet = 0
+pokial pocet < 3 { pocet = pocet + 1 }
+vypis(pocet)
+pre i v rozsah(1, 4) { vypis(i) }
