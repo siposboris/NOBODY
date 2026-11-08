@@ -39,3 +39,9 @@ jobs:
           cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/translated_ai.nbd
           cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > /tmp/migrated_ai.nbd
           cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/migrated_ai.nbd
+
+      - name: Canonical IR v1 and structural comparison smoke
+        run: |
+          cargo run --manifest-path rust/Cargo.toml -- ir sk rust/examples/basic_sk.nbd
+          cargo run --manifest-path rust/Cargo.toml -- ir ai examples/hello_ai.nbd
+          cargo run --manifest-path rust/Cargo.toml -- compare-ir sk rust/examples/basic_sk.nbd en rust/examples/ir_match_en.nbd
