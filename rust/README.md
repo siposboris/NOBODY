@@ -29,6 +29,12 @@ still does not invoke Python or online services at runtime. A checked-in `Cargo.
 CI verifies it with `--locked`. This does not yet constitute a tagged,
 reproducible release artifact or supply-chain audit.
 
+## Rust evaluator conditional slice (experimental)
+
+`nobody-rs run` now supports conditional blocks (`if`, `else if`, `else`), comparisons of integers (`<`, `>`, `<=`, `>=`), equality and inequality, boolean `not`, `and`, and `or`. Boolean `and`/`or` short-circuit without evaluating the skipped expression. Branch-local declarations are lexical: they do not leak outside the branch, while assignment can update a visible outer binding.
+
+Conditions **currently require boolean values**. Unlike Python, using `if 1` fails with N4004 instead of applying implicit truthiness. Function calls (other than `print`), loops, and typed runtime declarations remain unsupported; no Python reference parity or sandbox guarantees are claimed. Each source file still uses exactly one selected syntax profile.
+
 ## 0.39 development slice — explicitly opt-in Rust evaluator (experimental)
 
 The new `nobody-rs run PROFILE FILE` command executes a **small** Nobody IR subset directly in Rust, not Python. Implemented initially: `let` declarations without type annotations, assignment, integer `+`, `-`, `*`, floor division `//`, remainder `%`, simple text concatenation, boolean/null literals, and unshadowed `print`. The evaluator does not support functions, loops, conditionals, user-defined calls, floating-point execution or true division `/` with a nonzero divisor. Unsupported constructs fail with N4004 instead of silently generating wrong results. Runtime errors N4001–N4005 are documented in [the error catalogue](../docs/ERROR_CODES.md).
