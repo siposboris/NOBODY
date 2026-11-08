@@ -6,70 +6,44 @@
 use crate::{scan, Diagnostic, Token, TokenKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Language { Sk, En, Ai }
-
+pub struct Language {code: &'static str}
 impl Language {
     pub fn from_code(s: &str) -> Result<Self, Diagnostic> {
-        match s {
-            "sk" => Ok(Self::Sk),
-            "en" => Ok(Self::En),
-            "ai" => Ok(Self::Ai),
-            _ => Err(error(3007, 1, 1,
-                format!("Unsupported Rust syntax profile '{s}'; supported: sk, en, ai"))),
+        if let Some(p)=crate::profiles::profile(s) {
+            Ok(Self{code:p.code})
+        } else {
+            Err(error(3007,1,1,format!("Unknown Nobody syntax profile {s:?}. Use a listed language code; `ai` is the canonical AI syntax")))
         }
     }
     fn let_word(self) -> &'static str {
-        match self { Self::Sk => "nech", Self::En => "let", Self::Ai => "ai_let" }
+        crate::profiles::word(self.code,"let").expect("complete profile table")
     }
-    fn boolean(self, s: &str) -> Option<bool> {
-        match self {
-            Self::Sk => match s { "pravda" => Some(true), "nepravda" => Some(false), _ => None },
-            Self::En => match s { "true" => Some(true), "false" => Some(false), _ => None },
-            Self::Ai => match s { "ai_true" => Some(true), "ai_false" => Some(false), _ => None },
+    fn boolean(self,s:&str)->Option<bool>{
+        match crate::profiles::semantic(self.code,s){
+            Some("true")=>Some(true),Some("false")=>Some(false),_=>None
         }
     }
-    fn ty(self, s: &str) -> Option<&'static str> {
-        match self {
-            Self::Sk => match s {
-                "cele" => Some("int"), "desatinne" => Some("float"),
-                "text" => Some("str"), "logicke" => Some("bool"), _ => None
-            },
-            Self::En => match s {
-                "int" => Some("int"), "float" => Some("float"),
-                "str" => Some("str"), "bool" => Some("bool"), _ => None
-            },
-            Self::Ai => match s {
-                "ai_int" => Some("int"), "ai_float" => Some("float"),
-                "ai_str" => Some("str"), "ai_bool" => Some("bool"), _ => None
-            },
+    fn ty(self,s:&str)->Option<&'static str>{
+        match crate::profiles::semantic(self.code,s){
+            Some("int")=>Some("int"),Some("float")=>Some("float"),
+            Some("str")=>Some("str"),Some("bool")=>Some("bool"),_=>None
         }
     }
-    fn kw(self, semantic: &str, word: &str) -> bool {
-        match (self,semantic) {
-            (Self::Sk,"if") => word=="ak",
-            (Self::Sk,"elif") => word=="inak_ak",
-            (Self::Sk,"else") => word=="inak",
-            (Self::Sk,"while") => word=="pokial" || word=="kym",
-            (Self::Sk,"for") => word=="pre",
-            (Self::Sk,"in") => word=="v",
-            (Self::Sk,"def") => word=="funkcia",
-            (Self::Sk,"return") => word=="vrat",
-            (Self::Sk,"break") => word=="prerus",
-            (Self::Sk,"continue") => word=="pokracuj",
-            (Self::En,"def") => word=="def" || word=="function",
-            (Self::En,"if"|"elif"|"else"|"while"|"for"|"in"|"return"|"break"|"continue") =>
-                word==semantic,
-            (Self::Ai,_) => word==format!("ai_{semantic}"),
-            _ => false,
-        }
+    fn kw(self,semantic:&str,spelling:&str)->bool{
+        crate::profiles::semantic(self.code,spelling)==Some(semantic)
+            || (self.code=="sk" && semantic=="while" && spelling=="kym")
+            || (self.code=="en" && semantic=="def" && spelling=="def")
     }
-    fn is_unsupported_keyword(self, s: &str) -> bool {
-        let common = ["ak", "inak", "pokial", "pre", "funkcia", "vrat",
-                      "if", "else", "elif", "while", "for", "function", "def", "return",
-                      "ai_if", "ai_else", "ai_elif", "ai_while", "ai_for",
-                      "ai_def", "ai_return", "ai_break", "ai_continue"];
-        let _ = self;
-        common.contains(&s)
+    fn is_unsupported_keyword(self,spelling:&str)->bool{
+        crate::profiles::is_reserved(self.code,spelling)
+    }
+    fn legacy_ai_keyword(self,spelling:&str)->bool{
+        self.code=="ai" && spelling.starts_with("ai_") &&
+            crate::profiles::CANONICAL.iter().any(|canonical| {
+                spelling.strip_prefix("ai_")==Some(
+                    match *canonical { "true"=>"true","false"=>"false",
+                        "none"=>"none","def"=>"def",other=>other})
+            })
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,7 +79,8 @@ fn error(code: u16, line: usize, column: usize, detail: impl Into<String>) -> Di
         3003 => "Use a valid lowercase variable name after the declaration keyword.",
         3005 => "Complete the expression with a valid literal, identifier or parenthesized expression.",
         3006 => "Use only declarations, assignments and expressions in the current Rust parser subset.",
-        3007 => "Choose --lang sk, en or ai; other profiles require the future full Rust language-table port.",
+        3007 => "Choose a supported code from the 39 human profiles or ai.",
+        3010 => "Migrate old ai_ keywords with `nobody-rs migrate-ai INPUT OUTPUT`; the new ai profile uses let/fn/if/return/true.",
         _ => "Correct the reported Nobody syntax.",
     };
     Diagnostic { code, line, column, detail: detail.into(), repair }
@@ -158,6 +133,10 @@ impl Parser {
             TokenKind::Number => Expr::Number(tok.value),
             TokenKind::String => Expr::String(tok.value),
             TokenKind::Name => {
+                if self.language.legacy_ai_keyword(&tok.value) {
+                    return Err(error(3010,line,col,
+                        format!("Legacy AI keyword {:?}; new syntax removes ai_ prefixes",tok.value)));
+                }
                 if self.language.is_unsupported_keyword(&tok.value) {
                     return Err(error(3006,line,col,
                         format!("Keyword {:?} is not implemented by the Rust subset parser",tok.value)));
@@ -374,14 +353,14 @@ mod tests {
     }
     #[test]
     fn ai_profile_with_native_literal() {
-        let program=parse("ai_let age: ai_int = 3\nai_print(\"世界\", age)","ai").unwrap();
+        let program=parse("let age: int = 3\nprint(\"世界\", age)","ai").unwrap();
         assert_eq!(program.statements.len(),2);
     }
     #[test]
     fn exact_unknown_language_error() {
-        let err=parse("nech vek = 1","ja").unwrap_err();
+        let err=parse("nech vek = 1","zz").unwrap_err();
         assert_eq!(err.code,3007);
-        assert!(err.to_string().contains("sk, en, ai"));
+        assert!(err.to_string().contains("39 human profiles"));
     }
     #[test]
     fn control_flow_is_parsed() {
@@ -411,7 +390,7 @@ mod tests {
     }
     #[test]
     fn ai_while_with_assignment() {
-        let program=parse("ai_let n = 0\nai_while n < 3 { n = n + 1 }","ai").unwrap();
+        let program=parse("let n = 0\nwhile n < 3 { n = n + 1 }","ai").unwrap();
         assert!(matches!(&program.statements[1],Statement::While{..}));
     }
     #[test]
@@ -421,7 +400,7 @@ mod tests {
     }
     #[test]
     fn ai_function_return() {
-        let program=parse("ai_def make(x) { ai_return x }","ai").unwrap();
+        let program=parse("fn make(x) { return x }","ai").unwrap();
         assert!(matches!(&program.statements[0],Statement::Function{name,..} if name=="make"));
     }
     #[test]
