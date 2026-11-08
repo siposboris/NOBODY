@@ -367,8 +367,8 @@ mod tests {
     fn numeric_literals_accept_decimal_and_exponent() {
         for input in ["0", "123", "1_000", "12.50", "1e3", "1e-3", "1.2E+10"] {
             let tokens = scan(input).unwrap();
-            assert_eq!(tokens.len(), 1, input);
-            assert_eq!(tokens[0].kind, TokenKind::Number, input);
+            assert_eq!(tokens.len(), 1, "{input}");
+            assert_eq!(tokens[0].kind, TokenKind::Number, "{input}");
             assert_eq!(tokens[0].value, input);
         }
     }
