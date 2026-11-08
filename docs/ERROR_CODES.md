@@ -28,6 +28,7 @@
 | **N3008** | `RETURN_CONTEXT` | Return outside a function body |
 | **N3009** | `LOOP_CONTROL_CONTEXT` | Break or continue outside a loop in the current function |
 | **N3010** | `AI_LEGACY_SYNTAX` | Old prefixed `ai_` keyword in the redesigned Rust AI syntax |
+| **N3011** | `TRANSLATION_COLLISION` | Source identifier conflicts with a target-language reserved keyword |
 | **N4001** | `RUN_NAME` | Neexistujúce meno |
 | **N4002** | `RUN_TYPE` | Typová chyba za behu |
 | **N4003** | `RUN_LIMIT` | Prekročený limit vykonávania |
@@ -321,3 +322,34 @@ cargo run --manifest-path rust/Cargo.toml -- validate ai new_ai.nbd
 **Correct:** `let n: int = 3`
 
 The converter writes to standard output and does **not** overwrite the original file. This message does not imply that Rust execution or whole-program parity is implemented.
+
+### N3011 — Identifier conflicts with a target-language keyword
+
+**Exact cause:** A source program contains an identifier that is a legal name in the original Nobody syntax, but becomes a reserved keyword (or a built-in keyword token) in the requested target syntax. Silently translating the rest of the program would change how that identifier is parsed, so the Rust translator stops and reports the exact identifier, target language, line and column.
+
+**How to fix:** Rename the identifier in the *source* program to a neutral name that is not reserved in the target profile, then translate again. This is not resolved by changing the spelling of the keyword in the destination after translation.
+
+**Incorrect Slovak source for AI translation:**
+
+```text
+nech fn = 3
+vypis(fn)
+```
+
+In the redesigned AI syntax, `fn` is reserved for function declarations. Translating `nech fn` to `let fn` would produce invalid/ambiguous code. The translator reports **N3011**, pointing at `fn`.
+
+**Corrected source:**
+
+```text
+nech hodnota = 3
+vypis(hodnota)
+```
+
+This safely becomes:
+
+```text
+let hodnota = 3
+print(hodnota)
+```
+
+Quoted string literals and comments are not changed and cannot trigger N3011 merely by containing a reserved word. This is an experimental **fail-closed token check**, not yet a full scope-aware renaming and semantic-equivalence proof.
