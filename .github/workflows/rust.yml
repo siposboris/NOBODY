@@ -8,6 +8,8 @@ on:
       - '.github/workflows/rust.yml'
       - 'scripts/verify-rust.sh'
       - 'scripts/check-python-rust-parity.py'
+      - 'scripts/check-ast-json-parity.py'
+      - 'tests/fixtures/ast_json_parity/**'
       - 'tests/fixtures/runtime_parity/**'
   pull_request:
     paths:
@@ -53,6 +55,10 @@ jobs:
         run: |
           cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
           python3 scripts/check-python-rust-parity.py
+      - name: Python reference vs Rust AST JSON differential
+        run: |
+          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody
+          python3 scripts/check-ast-json-parity.py
       - name: CLI lex and parser subset smoke
         run: |
           cargo run --locked --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
