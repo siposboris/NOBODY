@@ -1,0 +1,50 @@
+# Rust → Nobody migration contract
+
+**Decision (2026-11-08):** Rust is the temporary production-compiler implementation language. The long-term goal is a Nobody compiler and runtime written in Nobody itself. Python is legacy reference material, not the target runtime.
+
+## Hard rules
+
+1. **New core implementation work goes to Rust**, not to newly written Python modules. Existing Python code is temporarily retained for comparison and to prevent data loss.
+2. Port modules **by observable behavior**: preserve documented syntax (39 human profiles + `ai`), native scripts, logical Unicode order, Nxxxx error numbers, type semantics and source-to-source translation.
+3. Each component must pass `cargo test`, an integration fixture suite and a Python-vs-Rust differential check for relevant legacy examples *before* the Python equivalent is deleted. Differential tests may temporarily invoke Python in CI, but shipping Rust binaries must not depend on it.
+4. Mark a component **Rust-replaced** only when every feature it replaces is implemented, tests agree and the Rust CLI exposes an equivalent user-facing path. Otherwise mark **partial**.
+5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
+6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
+
+## Current migration inventory
+
+| Component | Python reference | Rust replacement | Status |
+|---|---|---|---|
+| Unicode source tokenization | `nobody/lexer.py`, `nobody/bidi.py` | `rust/src/lib.rs` | **Partial Rust port**: byte offsets, strings/comments, native-script names, N2001–N2005. Not yet complete Unicode equivalence |
+| Human and AI language profiles | `nobody/languages.py` | Planned Rust tables | Python remains reference |
+| Parser and typed AST | `nobody/parser.py` | Planned Rust parser | Python remains reference |
+| Source-to-source translation | `nobody/translator.py` | Planned Rust translator | Python remains reference |
+| AST interpreter/scopes/closures | `nobody/ast_vm.py`, `nobody/scopes.py` | Planned Rust VM | Python remains reference |
+| Static type analysis | `nobody/static_types.py`, `nobody/return_types.py` | Planned Rust checker | Python remains reference |
+| Error-code catalogue | `nobody/errors.py` | N2001–N2005 in Rust lexer | Partial; all other numbered codes pending |
+| AST JSON schema/emitter | `nobody/ai_ir.py`, `nobody/ast_format.py` | Planned Rust IR | Python remains reference |
+| Bootstrap Nobody compiler | `compiler/bootstrap.nbd` and legacy bootstrap | Rust native compiler frontend/backend pending | Self-hosting not proved |
+
+## Build current Rust prototype
+
+Install a Rust toolchain on your own machine, then from the repository root:
+
+```bash
+cargo test --manifest-path rust/Cargo.toml --all-targets
+cargo run --manifest-path rust/Cargo.toml -- lex examples/hello_sk.nbd
+cargo run --manifest-path rust/Cargo.toml -- check examples/hello_sk.nbd
+```
+
+**`check` currently checks lexical validity only**, not full parse or type correctness. The executable is an experimental lexer frontend, not a complete compiler.
+
+The generation environment used for the first Rust commit did not contain `rustc` or `cargo`; the source was authored and published but **could not be compiled or tested locally**. A GitHub Actions workflow exists for remote verification; its outcome is not yet confirmed.
+
+## Next steps
+
+1. Establish successful GitHub Rust CI, fix compiler/linter errors without masking failures.
+2. Port the language table and Unicode lexer with the missing combining-mark ranges and exact source spans; differential regression suite.
+3. Implement Rust parser and AST, including the canonical `ai` profile.
+4. Port numbered errors, source translator and static checker.
+5. Port runtime with scopes and closures, then bytecode and native backend.
+6. Remove Python files **individually** when their gate passes, and finally remove the Python CI/bootstrap requirements.
+7. Rewrite core compiler in Nobody, demonstrate native self-compilation and reproducible outputs; then retire Rust if fully replaced.
