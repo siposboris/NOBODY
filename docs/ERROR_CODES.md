@@ -20,6 +20,7 @@
 | **N2005** | `LEX_BIDI` | Skrytý riadiaci znak smeru |
 | **N2006** | `LEX_NUMBER` | Neplatný desiatkový číselný literál |
 | **N2007** | `LEX_MIXED_SCRIPT` | Podozrivé miešanie latinky, gréčtiny a cyriliky v názve |
+| **N2008** | `LEX_NFC` | Identifikátor nie je v kanonickej forme Unicode NFC |
 | **N3001** | `PARSE_EXPECT` | Chýbajúci prvok |
 | **N3002** | `PARSE_BLOCK` | Nesprávne zátvorky bloku |
 | **N3003** | `PARSE_IDENTIFIER` | Neplatný názov |
@@ -479,3 +480,11 @@ add(1, 2)
 **Oprava:** Použi v danom názve písmená jedného z týchto troch písiem. Skontroluj problematické písmeno na uvedenom riadku a stĺpci. Textové literály a komentáre sa týmto pravidlom neobmedzujú.
 
 **Rozsah:** Ide o **úzku ochranu**, nie o všeobecnú detekciu Unicode confusables či implementáciu UTS #39. Iné písma a bežné kombinácie, napríklad japonské kandži a hiragana, sa automaticky nezakazujú. Unicode NFC/NFKC normalizácia zostáva otvorenou úlohou.
+
+### N2008 — Identifikátor nie je normalizovaný do NFC (Rust lexer)
+
+**Príčina:** Názov obsahuje kanonicky ekvivalentný, ale nenormalizovaný zápis Unicode. Napríklad text \`cafe\u{301}\` obsahuje kombináciu \`e\` a U+0301, zatiaľ čo \`café\` používa vopred zložené U+00E9. Bez jednotného pravidla sa vizuálne totožné názvy môžu správať ako odlišné premenné.
+
+**Oprava:** Normalizuj iba názvy identifikátorov do štandardnej Unicode NFC formy, napríklad použi \`café\`. Lexer nenormalizuje ani neprepisuje zdrojový text potichu: vráti N2008 na začiatku problematického identifikátora. Zachováva presné bajtové pozície, textové literály a komentáre.
+
+**Rozsah a závislosť:** Kontrola používa pripnutú knižnicu \`unicode-normalization = "=0.1.24"\`. Nejde o NFKC, transliteráciu, automatické opravovanie názvov ani úplnú ochranu proti vizuálnym zámenám (UTS #39). N2007 a N2008 sú nezávislé.
