@@ -61,5 +61,7 @@ Do not confuse these historical notes with published and verified tags.
 - Extended RTL metadata to Hebrew and Persian.
 - Implemented direct evaluation of a subset of Nobody AST, without generation of Python source. This interpreter still runs on Python.
 - Added primitive annotated declarations and mismatch checks, a runnable GitHub frontend CLI and regression tests.
-- **93 tests passed in the complete local 0.13 tree.** GitHub Actions status has not yet been verified.
+- **95 tests passed in the complete local 0.13 tree.** GitHub Actions status has not yet been verified.
 - Full prior bootstrap importer, native backend, full language grammar and independent self-hosting are still planned.
+
+- Added experimental profile validator and GitHub CLI `audit-languages`; 95 tests pass in local source archive. GitHub CI result remains unconfirmed.
