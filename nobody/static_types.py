@@ -24,9 +24,20 @@ class Environment:
     def __init__(self,parent=None):
         self.parent=parent
         self.vars={}
+        self.signatures={}
     def find(self,name):
         if name in self.vars:return self
         return self.parent.find(name) if self.parent else None
+    def signature(self,name):
+        owner=self.find(name)
+        return owner.signatures.get(name) if owner else None
+    def visible_frames(self):
+        frames=[]
+        current=self
+        while current:
+            frames.append(current)
+            current=current.parent
+        return frames
 
 class Checker:
     def __init__(self,language):
@@ -79,6 +90,9 @@ class Checker:
             for child in n.children:self.expr(child,env)
             callee=n.children[0]
             if callee.kind=="name":
+                count=env.signature(callee.value)
+                if count is not None and len(n.children)-1!=count:
+                    self.problem(n,"E_ARITY",f"Function {callee.value!r} expects {count} arguments, got {len(n.children)-1}")
                 canonical=ALIASES[self.language].get(callee.value)
                 if canonical in ("int","float","str","bool"):return canonical
                 if canonical=="len":return "int"
@@ -105,30 +119,65 @@ class Checker:
                     if annotation and actual!=UNKNOWN and annotation!=actual:
                         self.problem(n,"E_TYPE",f"Cannot assign {actual} to {annotation} variable {n.value!r}")
                     if annotation is None:
-                        owner.vars[n.value]=(None,actual if inferred==actual else UNKNOWN)
+                        owner.vars[n.value]=(None,actual)
             elif k=="function":
                 name,params=n.value
                 if name in env.vars:self.problem(n,"E_DUPLICATE",f"Duplicate function {name!r}")
                 env.vars[name]=(None,"function")
+                env.signatures[name]=len(params)
                 local=Environment(env)
                 for param in params:local.vars[param]=(None,UNKNOWN)
                 self.walk(n.children,local)
             elif k=="if":
+                original=self.snapshot(env)
+                outcomes=[]
                 for branch in n.children:
-                    if branch.kind=="else":self.walk(branch.children,Environment(env))
+                    self.restore(original)
+                    if branch.kind=="else":
+                        self.walk(branch.children,Environment(env))
                     else:
                         self.expr(branch.children[0],env)
                         self.walk(branch.children[1].children,Environment(env))
+                    outcomes.append(self.snapshot(env))
+                if not any(branch.kind=="else" for branch in n.children):
+                    outcomes.append(original)
+                self.merge(original,outcomes)
             elif k=="while":
                 self.expr(n.children[0],env)
+                original=self.snapshot(env)
                 self.walk(n.children[1].children,Environment(env))
+                body=self.snapshot(env)
+                self.merge(original,[original,body])
             elif k=="for":
                 self.expr(n.children[0],env)
+                original=self.snapshot(env)
                 local=Environment(env)
                 local.vars[n.value]=(None,UNKNOWN)
                 self.walk(n.children[1].children,local)
+                body=self.snapshot(env)
+                self.merge(original,[original,body])
             elif k in ("return","expression_statement"):
                 self.expr(n.children[0],env)
+    @staticmethod
+    def snapshot(env):
+        return [(frame,dict(frame.vars)) for frame in env.visible_frames()]
+
+    @staticmethod
+    def restore(snapshot):
+        for frame,variables in snapshot:
+            frame.vars=dict(variables)
+
+    @staticmethod
+    def merge(before,outcomes):
+        # A type survives only when all possible control-flow paths agree.
+        for position,(frame,original) in enumerate(before):
+            for name,(annotation,inferred) in original.items():
+                if annotation is not None:
+                    frame.vars[name]=(annotation,annotation)
+                else:
+                    variants=[case[position][1][name][1] for case in outcomes]
+                    frame.vars[name]=(None,variants[0] if all(x==variants[0] for x in variants) else UNKNOWN)
+
     def check(self,tree):
         self.walk(tree.children,Environment())
         return Analysis(tuple(self.errors),tuple(self.warnings))
