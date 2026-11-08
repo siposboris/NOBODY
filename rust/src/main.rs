@@ -1,8 +1,7 @@
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, evaluate_source, export_ast_json, lower_source, migrate_legacy_ai, parse,
-    parse_validated,
-    same_ir, scan, translate_source, TokenKind,
+    parse_validated, same_ir, scan, translate_source, TokenKind,
 };
 use std::{env, fs, process};
 
@@ -13,7 +12,11 @@ fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
         Some("lex" | "check" | "direction") if arguments.len() == 3 => true,
-        Some("parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json") if arguments.len() == 4 => true,
+        Some("parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json")
+            if arguments.len() == 4 =>
+        {
+            true
+        }
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info" | "audit-languages")
             if arguments.len() == 2 =>
