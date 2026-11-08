@@ -1,66 +1,93 @@
-# Nobody Rust frontend (experimental)
+# Nobody — Rust compiler frontend (experimental)
 
-This crate is the **early Rust migration** of the Nobody compiler frontend.
-It does **not** compile native programs, execute Nobody, infer static types or
-fully replace the original Python-language parser.
+This is the Rust-first migration of the Nobody compiler frontend. Its goal is
+eventually to replace the Python interpreter/compiler and later be rewritten in
+Nobody itself. **Parsing does not mean running or native compilation.**
 
-## Build and test
+## Current source coverage
 
-Install the Rust stable toolchain (`rustc` and `cargo`) and run from the repository root:
+- **39 experimental human-language keyword profiles** plus a redesigned
+  canonical **`ai`** syntax profile (40 total) in `src/profiles.rs`.
+- UTF-8 lexical scanning with source byte offsets and common combining marks
+  in `src/lib.rs`.
+- AST parser supporting declarations, assignments, expressions, calls,
+  functions, conditions, loops, returns and nested blocks in `src/syntax.rs`.
+- Context validation for return/break/continue in `src/validate.rs`.
+- A token-preserving converter for old `ai_` source in `src/ai_migration.rs`.
+- Stable Nxxxx diagnostic categories for known source problems.
+
+**Important:** Rust compilation and the complete 40-profile test matrix are
+**not yet independently verified** in this authoring environment. Individual
+profiles may still contain Unicode or translation problems; native-speaker
+reviews are outstanding. The Python reference remains in the repository until
+complete behavioral parity has been demonstrated.
+
+## Build and check
+
+With the stable Rust toolchain installed:
 
 ```bash
 cargo fmt --manifest-path rust/Cargo.toml --all -- --check
 cargo test --manifest-path rust/Cargo.toml --all-targets
 cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings
-cargo run --manifest-path rust/Cargo.toml -- lex examples/hello_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- check examples/hello_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- parse en rust/examples/basic_en.nbd
-cargo run --manifest-path rust/Cargo.toml -- parse ai rust/examples/basic_ai.nbd
+cargo run --manifest-path rust/Cargo.toml -- list-languages
 cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
 ```
 
-**Build status:** Source committed, but local compilation **not verified** in the authoring environment (no `cargo`/`rustc`). The GitHub workflow must confirm compatibility before this is a completed migration stage.
+### Redefined `ai` syntax
 
-## Supported commands
+```text
+fn twice(x) {
+    return x * 2
+}
 
-| Command | Meaning |
-|---|---|
-| `lex FILE` | Tokenize UTF-8 source; print tokens with original spellings and positions |
-| `check FILE` | **Lexer only**, not grammar/types/runtime |
-| `parse sk FILE` | Parse a small Slovak syntax subset into a Rust AST |
-| `parse en FILE` | Parse a small English syntax subset into a Rust AST |
-| `parse ai FILE` | Parse a small canonical machine-oriented syntax subset into a Rust AST |
+let n: int = 2
+if n > 1 { print(twice(n)) }
+```
 
-## Parsed grammar subset
+The keywords resemble widely used programming languages rather than
+inventing new `ai_` terms. `ai` is still an ordinary Nobody **syntax
+profile**, with no special runtime or autonomous AI capability. The design
+has **not** been benchmarked for LLM token efficiency or coding accuracy.
+The canonical AI dictionary has `let`, `fn`, `if`, `else`, `while`,
+`for`, `in`, `return`, `true`, `false`, `null`, `and`, `or`,
+`not`, `print`, etc. The Rust parser also recognizes `else if` as an
+alternative to `elif` in the AI profile.
 
-- Original-script lowercase identifiers, numbers, quoted strings and boolean literals;
-- Declarations in `sk`, `en` and `ai` (`nech`, `let`, `ai_let`) and primitive type annotations;
-- Assignments, arithmetic/comparisons, unary +/- and calls;
-- **New in 0.24:** `if/elif/else`, `while`, `for ... in`, function definitions, `return`, `break`, `continue`, nested brace-delimited blocks;
-- Typed Rust syntax tree nodes `Expr`, `Statement`, `Program`, with no Python dependency.
-
-**Still unsupported:** full 39-human-language dictionary port (Rust currently parses only SK/EN/AI), static typing, unary logical `not`, full operators, dictionaries, modules/imports, exception handling, compile-time validation of break/return placement, execution, native compilation and complete legacy parity.
-
-`check` remains **LEXER-ONLY**. Use `parse` for syntax validation.
-`parse` produces an AST; it does **not** run the program.
-
-
-
-## 0.25 — AST contextual validation (source milestone)
-
-The Rust crate now includes `src/validate.rs` and a distinct `validate` CLI command. This **checks legal nesting of control-flow instructions** after parsing; it does not run code or verify types.
+### Convert legacy AI source safely
 
 ```bash
-cargo run --manifest-path rust/Cargo.toml -- validate sk examples/hello_sk.nbd
-cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
-cargo test --manifest-path rust/Cargo.toml --all-targets
+cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > new_ai.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai new_ai.nbd
 ```
 
-- `N3008` means a `return` was written outside any function.
-- `N3009` means `break` or `continue` was written outside a loop in the **current** function. A function declared inside an outer loop cannot break that outer loop.
-- Tests cover nested functions, loops, branch bodies and CLI errors, including a check that unavailable AST source spans are not fabricated.
-- `parse` remains syntax-only; `validate` adds the control-flow context pass; `check` remains lexer-only. None of these commands execute Nobody code.
+The command prints the transformed program to **stdout**; it does not
+overwrite the original. It changes **known keyword tokens only**, leaving
+comments, strings and unrelated identifiers unchanged. Using a recognized
+legacy keyword without conversion produces **N3010**, documented in
+[`ERROR_CODES.md`](../docs/ERROR_CODES.md).
 
-**Verification:** Rust compiler availability and GitHub Actions test results are still unconfirmed; the source and tests are committed, not claimed green.
+## Commands
+
+| CLI command | Purpose |
+|---|---|
+| `lex FILE` | Print source tokens with line/column information |
+| `check FILE` | **Lexer-only** checks |
+| `parse PROFILE FILE` | Create an experimental AST, supports all 40 profile tables |
+| `validate PROFILE FILE` | AST parse plus return/break/continue context checks |
+| `list-languages` | Display implemented Rust keyword profile codes |
+| `migrate-ai FILE` | Print converted legacy-prefixed AI source |
+
+## Still outstanding
+
+- Formal Unicode normalization and confusable detection, native-speaker reviews,
+  full foreign-keyword collisions and source-span tracking for AST statements.
+- Complete grammar, static typing, true function/runtime behavior,
+  source-to-source translation, bytecode, native backend and self-hosting.
+- Successful reproducible Rust compilation and CI, differential comparison with
+  Python behavior and subsequent safe removal of Python modules.
+
+[Canonical English roadmap](../docs/ROADMAP.md) ·
+[AI syntax specification](../docs/AI_SYNTAX.md) ·
+[Migration gates](../docs/RUST_MIGRATION.md).
