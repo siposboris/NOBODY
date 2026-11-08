@@ -60,3 +60,10 @@ A small Rust AST parser is now authored in [`rust/src/syntax.rs`](../rust/src/sy
 The Rust parser now has AST node definitions and source parsing for branching, loops, functions, returns and nested blocks for `sk`, `en` and `ai`. This extends the 0.23 subset but **still does not establish feature parity** with the existing Python parser, language tables, translator or runtime. No Python component is eligible for deletion yet.
 
 The Rust build is not confirmed because the local toolchain is unavailable; GitHub Actions must be checked before accepting any further component as verified. New diagnostic categories still require stable Nxxxx numbers and specific documentation.
+
+
+## 0.25 incremental migration update
+
+The Rust compiler frontend now has a **standalone contextual AST validator**, capable of checking whether `return`, `break` and `continue` are legal within the current function/loop nesting. The validator adds N3008 and N3009 to the append-only error catalogue, plus CLI integration tests. This is still only a **partial** replacement of the Python reference parser and evaluator.
+
+Rust compilation and CI must be demonstrated before marking the component tested. No historical Python file is eligible for removal yet.
