@@ -44,4 +44,11 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml -- run ai rust/exa
   printf 'Evaluator accepted a zero divisor unexpectedly.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody native Python-free CLI smoke =='
+cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- info | grep -F '"implementation": "Rust"'
+native_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run sk rust/examples/eval_basic_sk.nbd)
+if [[ "$native_output" != "$expected" ]]; then
+  printf 'Native Nobody output mismatch.\n' >&2
+  exit 1
+fi
 printf '%s\n' 'Nobody Rust verification passed.'

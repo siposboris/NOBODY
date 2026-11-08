@@ -14,7 +14,7 @@ fn main() {
         Some("lex" | "check") if arguments.len() == 3 => true,
         Some("parse" | "validate" | "ir" | "typecheck" | "run") if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
-        Some("list-languages") if arguments.len() == 2 => true,
+        Some("list-languages" | "languages" | "info") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
         Some("translate") if arguments.len() == 5 => true,
         _ => false,
@@ -24,7 +24,19 @@ fn main() {
         process::exit(2);
     }
     let command = arguments[1].as_str();
-    if command == "list-languages" {
+    if command == "info" {
+        println!("{{");
+        println!(r#"  "name": "Nobody","#);
+        println!(r#"  "implementation": "Rust","#);
+        println!(r#"  "compiler_version": "{}","#, env!("CARGO_PKG_VERSION"));
+        println!(r#"  "implemented_syntax_profiles": {},"#, PROFILES.len());
+        println!(r#"  "native_machine_code_compiler": false,"#);
+        println!(r#"  "self_hosted": false,"#);
+        println!(r#"  "python_required_for_rust_cli": false"#);
+        println!("}}");
+        return;
+    }
+    if command == "list-languages" || command == "languages" {
         for profile in PROFILES {
             println!("{}", profile.code);
         }
