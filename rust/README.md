@@ -125,3 +125,7 @@ The Rust `typecheck` command now also reports **N1002** for definitely incompati
 ## 0.36 — localized primitive types
 
 IR lowering maps localized primitive annotations to canonical `int`, `float`, `str`, `bool` so equivalent typed declarations in different syntax profiles produce comparable IR. Regression tests cover Slovak annotations and translated typed declarations across 40 profiles. This is source-level progress; **Rust compilation and CI success remain unverified**.
+
+## 0.37 — unary numeric operands
+
+Rust `typecheck` now rejects known nonnumeric values with unary `+` and `-` as N1006. Unknown operands remain deferred. Five unit tests were authored; GitHub Actions triggers on verifier script edits. **Compilation and CI remain unverified.**
