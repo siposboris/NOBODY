@@ -105,3 +105,7 @@ The check preserves strings/comments and reports source line/column, but full sc
 ## 0.31 — lexical scope diagnostics
 
 The Rust `typecheck` command now also reports **N1003** (assignment to undeclared name) and **N1004** (duplicate declaration or repeated function parameter). Nested blocks may shadow enclosing names. Source and six additional tests are committed; Rust compilation/CI results remain unverified. IR statement source spans, imports and full closure semantics are not yet implemented.
+
+## 0.32 — known function arity
+
+The Rust `typecheck` command also checks direct calls to lexically known functions for argument-count mismatch (**N1005**). Example: `fn add(a,b) { return a+b }` followed by `add(1)` is rejected with an actionable repair. Recursive calls are checked, but dynamic and unknown callees are deferred. Six unit and two CLI tests are authored; Cargo/CI success remains unverified.
