@@ -665,7 +665,7 @@ while x < 7 {
   print(x)
 }";
         let bytecode_output = execute_source(source, "ai").unwrap();
-        assert_eq!(bytecode_output, "9\n4\n4\n5\n6\n7\n".replace("4\n4", "4\n5"));
+        assert_eq!(bytecode_output, "9\n4\n5\n6\n7\n");
         assert_eq!(bytecode_output, crate::evaluate_source(source, "ai").unwrap());
     }
 
