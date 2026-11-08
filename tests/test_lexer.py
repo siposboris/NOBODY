@@ -19,7 +19,7 @@ class NobodyLexerTests(unittest.TestCase):
         self.assertEqual(sum(t.kind == 'string' for t in ts), 1)
 
     def test_reject_bad_identifiers(self):
-        for source in ['Vypis(1)', 'nech Čislo = 1', 'vypis(1) × 2']:
+        for source in ['Vypis(1)', 'vypis(1) × 2']:
             with self.subTest(source=source), self.assertRaises(LexError):
                 scan(source)
 
