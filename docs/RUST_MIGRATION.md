@@ -53,3 +53,10 @@ The generation environment used for the first Rust commit did not contain `rustc
 ## 0.23 incremental update
 
 A small Rust AST parser is now authored in [`rust/src/syntax.rs`](../rust/src/syntax.rs) and exposed via `nobody-rs parse sk|en|ai FILE`. Parser coverage is intentionally restricted to variable declarations, optional primitive annotations, assignments, literals, basic operators and call syntax. Seven Rust unit tests and three CLI fixtures were added, but **none have been verified as passing in the authoring environment** (Rust toolchain absent). This is **partial migration** only. Python parser and other modules must remain until all existing reference behavior is replaced and differential checks pass.
+
+
+## Rust 0.24 migration update
+
+The Rust parser now has AST node definitions and source parsing for branching, loops, functions, returns and nested blocks for `sk`, `en` and `ai`. This extends the 0.23 subset but **still does not establish feature parity** with the existing Python parser, language tables, translator or runtime. No Python component is eligible for deletion yet.
+
+The Rust build is not confirmed because the local toolchain is unavailable; GitHub Actions must be checked before accepting any further component as verified. New diagnostic categories still require stable Nxxxx numbers and specific documentation.
