@@ -1,6 +1,6 @@
 //! Experimental Phase 4 bytecode compiler + verifier + deterministic stack VM.
 //!
-//! This is an IN-MEMORY, integer-only subset, not a portable file format,
+//! This is an IN-MEMORY, integer-and-boolean subset, not a portable file format,
 //! native compiler, security sandbox, or self-hosting implementation.
 //! Unsupported programs fail explicitly rather than falling back to Python
 //! or to the existing AST evaluator.
@@ -17,6 +17,7 @@ const MAX_EXPR_DEPTH: usize = 64;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
     Push(i128),
+    PushBool(bool),
     Load(usize),
     Define(usize),
     Store(usize),
@@ -24,6 +25,15 @@ pub enum Instruction {
     Sub,
     Mul,
     Neg,
+    Not,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    Jump(usize),
+    JumpIfFalse(usize),
     Drop,
     Print(usize),
     Halt,
@@ -53,7 +63,16 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
 
 struct Compiler {
     code: Vec<Instruction>,
-    variables: BTreeMap<String, usize>,
+    // Lexical scope maps prevent a branch-local name from leaking after the
+    // block. Every declaration gets a fresh slot, even inside a loop.
+    scopes: Vec<BTreeMap<String, usize>>,
+    slots: usize,
+    loops: Vec<LoopContext>,
+}
+
+struct LoopContext {
+    continue_target: usize,
+    breaks: Vec<usize>,
 }
 
 impl Compiler {
@@ -65,6 +84,34 @@ impl Compiler {
         Ok(())
     }
 
+    fn mark(&self) -> usize {
+        self.code.len()
+    }
+
+    fn patch(&mut self, position: usize, target: usize) -> Result<(), Diagnostic> {
+        if target >= MAX_INSTRUCTIONS {
+            return Err(diagnostic(4005, "Bytecode jump target exceeds instruction budget"));
+        }
+        match self.code.get_mut(position) {
+            Some(Instruction::Jump(address) | Instruction::JumpIfFalse(address)) => {
+                *address = target;
+                Ok(())
+            }
+            _ => Err(unsupported("Bytecode branch patch location is invalid")),
+        }
+    }
+
+    fn variable(&self, name: &str) -> Option<usize> {
+        self.scopes.iter().rev().find_map(|scope| scope.get(name).copied())
+    }
+
+    fn block(&mut self, body: &[IrStatement]) -> Result<(), Diagnostic> {
+        self.scopes.push(BTreeMap::new());
+        let result = body.iter().try_for_each(|statement| self.statement(statement));
+        self.scopes.pop();
+        result
+    }
+
     fn expression(&mut self, expression: &IrExpr, depth: usize) -> Result<(), Diagnostic> {
         if depth > MAX_EXPR_DEPTH {
             return Err(diagnostic(4005, "Bytecode expression depth exceeded"));
@@ -72,21 +119,18 @@ impl Compiler {
         match expression {
             IrExpr::Number(text) => {
                 if !text.bytes().all(|ch| ch.is_ascii_digit() || ch == b'_') {
-                    return Err(unsupported(
-                        "Bytecode currently supports integer literals only",
-                    ));
+                    return Err(unsupported("Bytecode currently supports integer literals only"));
                 }
-                let value = text
-                    .replace('_', "")
-                    .parse::<i128>()
-                    .map_err(|_| diagnostic(4003, "Integer literal outside signed i128 range"))?;
+                let value = text.replace('_', "").parse::<i128>().map_err(|_| {
+                    diagnostic(4003, "Integer literal outside signed i128 range")
+                })?;
                 self.emit(Instruction::Push(value))
             }
+            IrExpr::Boolean(value) => self.emit(Instruction::PushBool(*value)),
             IrExpr::Name(Name::User(name)) => {
-                let slot = *self
-                    .variables
-                    .get(name)
-                    .ok_or_else(|| diagnostic(4001, format!("Unknown variable {name:?}")))?;
+                let slot = self.variable(name).ok_or_else(|| {
+                    diagnostic(4001, format!("Unknown variable {name:?}"))
+                })?;
                 self.emit(Instruction::Load(slot))
             }
             IrExpr::Unary { op, value } => {
@@ -94,9 +138,8 @@ impl Compiler {
                 match op.as_str() {
                     "+" => Ok(()),
                     "-" => self.emit(Instruction::Neg),
-                    _ => Err(unsupported(format!(
-                        "Unsupported bytecode unary operator {op:?}"
-                    ))),
+                    "not" => self.emit(Instruction::Not),
+                    _ => Err(unsupported(format!("Unsupported bytecode unary operator {op:?}"))),
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
@@ -104,11 +147,13 @@ impl Compiler {
                     "+" => Instruction::Add,
                     "-" => Instruction::Sub,
                     "*" => Instruction::Mul,
-                    _ => {
-                        return Err(unsupported(format!(
-                            "Unsupported bytecode binary operator {op:?}"
-                        )))
-                    }
+                    "==" => Instruction::Eq,
+                    "!=" => Instruction::Ne,
+                    "<" => Instruction::Lt,
+                    "<=" => Instruction::Le,
+                    ">" => Instruction::Gt,
+                    ">=" => Instruction::Ge,
+                    _ => return Err(unsupported(format!("Unsupported bytecode binary operator {op:?}"))),
                 };
                 self.expression(lhs, depth + 1)?;
                 self.expression(rhs, depth + 1)?;
@@ -120,22 +165,20 @@ impl Compiler {
 
     fn statement(&mut self, statement: &IrStatement) -> Result<(), Diagnostic> {
         match statement {
-            IrStatement::Let {
-                name,
-                type_name: None,
-                expr,
-            } => {
-                if self.variables.contains_key(name) {
+            IrStatement::Let { name, type_name: None, expr } => {
+                if self.scopes.last().is_some_and(|scope| scope.contains_key(name)) {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 self.expression(expr, 0)?;
-                let slot = self.variables.len();
+                let slot = self.slots;
                 self.emit(Instruction::Define(slot))?;
-                self.variables.insert(name.clone(), slot);
+                self.slots += 1;
+                self.scopes.last_mut().expect("compiler root scope exists")
+                    .insert(name.clone(), slot);
                 Ok(())
             }
             IrStatement::Assign { name, expr } => {
-                let slot = *self.variables.get(name).ok_or_else(|| {
+                let slot = self.variable(name).ok_or_else(|| {
                     diagnostic(4001, format!("Unknown assignment target {name:?}"))
                 })?;
                 self.expression(expr, 0)?;
@@ -153,7 +196,60 @@ impl Compiler {
                 self.expression(expr, 0)?;
                 self.emit(Instruction::Drop)
             }
-            _ => Err(unsupported("Bytecode statements currently support declarations, assignments, arithmetic and print only")),
+            IrStatement::If { branches, otherwise } => {
+                let mut exits = Vec::with_capacity(branches.len());
+                for (condition, body) in branches {
+                    self.expression(condition, 0)?;
+                    let skip = self.mark();
+                    self.emit(Instruction::JumpIfFalse(usize::MAX))?;
+                    self.block(body)?;
+                    let exit = self.mark();
+                    self.emit(Instruction::Jump(usize::MAX))?;
+                    exits.push(exit);
+                    self.patch(skip, self.mark())?;
+                }
+                if let Some(body) = otherwise {
+                    self.block(body)?;
+                }
+                let end = self.mark();
+                for exit in exits {
+                    self.patch(exit, end)?;
+                }
+                Ok(())
+            }
+            IrStatement::While { condition, body } => {
+                let start = self.mark();
+                self.expression(condition, 0)?;
+                let exit = self.mark();
+                self.emit(Instruction::JumpIfFalse(usize::MAX))?;
+                self.loops.push(LoopContext { continue_target: start, breaks: Vec::new() });
+                let result = self.block(body);
+                let control = self.loops.pop().expect("loop context exists");
+                result?;
+                self.emit(Instruction::Jump(start))?;
+                let end = self.mark();
+                self.patch(exit, end)?;
+                for branch in control.breaks {
+                    self.patch(branch, end)?;
+                }
+                Ok(())
+            }
+            IrStatement::Break => {
+                if self.loops.is_empty() {
+                    return Err(unsupported("Break is only valid inside a bytecode while loop"));
+                }
+                let at = self.mark();
+                self.emit(Instruction::Jump(usize::MAX))?;
+                self.loops.last_mut().expect("loop exists").breaks.push(at);
+                Ok(())
+            }
+            IrStatement::Continue => {
+                let target = self.loops.last().ok_or_else(|| {
+                    unsupported("Continue is only valid inside a bytecode while loop")
+                })?.continue_target;
+                self.emit(Instruction::Jump(target))
+            }
+            _ => Err(unsupported("Bytecode currently supports only untyped declarations, assignments, integer/boolean expressions, conditionals, while, break/continue and print")),
         }
     }
 }
@@ -163,7 +259,9 @@ impl Compiler {
 pub fn compile_ir(module: &Module) -> Result<Bytecode, Diagnostic> {
     let mut compiler = Compiler {
         code: Vec::new(),
-        variables: BTreeMap::new(),
+        scopes: vec![BTreeMap::new()],
+        slots: 0,
+        loops: Vec::new(),
     };
     for statement in &module.statements {
         compiler.statement(statement)?;
@@ -171,7 +269,7 @@ pub fn compile_ir(module: &Module) -> Result<Bytecode, Diagnostic> {
     compiler.emit(Instruction::Halt)?;
     let bytecode = Bytecode {
         version: BYTECODE_VERSION,
-        slots: compiler.variables.len(),
+        slots: compiler.slots,
         code: compiler.code,
     };
     verify(&bytecode)?;
