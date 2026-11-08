@@ -155,3 +155,10 @@ The Rust parser now has AST nodes for `if/elif/else`, `while`, `for`, named func
 Run `cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd` or `... parse ai examples/hello_ai.nbd`. Parsing produces an AST; it does **not** execute, compile to a native binary or statically type-check the program.
 
 The Rust unit tests and GitHub CI smoke checks have been updated, but **Rust compilation/CI has not been verified** in this environment. Python remains as a reference until Rust has proven parity. [Current roadmap](docs/ROADMAP.md) · [Rust parser details](rust/README.md).
+
+
+## Rust 0.25 — control-flow context validation
+
+A separate [Rust AST validator](rust/src/validate.rs) now rejects `return` outside a function and `break`/`continue` outside a loop within the same function. Invalid contexts receive stable [N3008/N3009 error codes](docs/ERROR_CODES.md) with direct repair instructions, including correct handling of a nested function declared inside a loop.
+
+The `nobody-rs validate sk|en|ai FILE` command combines parsing and these specific checks. It **does not execute programs or guarantee type safety**. Authored Rust unit and CLI integration tests are committed, but Rust compilation/CI is still **not independently verified**.
