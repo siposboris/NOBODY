@@ -28,8 +28,7 @@ fn else_branch_and_else_if_chains() {
 #[test]
 fn comparisons_and_boolean_logic() {
     assert_eq!(
-        evaluate_source("print(2 < 3, 2 <= 2, 4 > 3, 4 >= 4, 1 == 1, 1 != 2)", "ai")
-            .unwrap(),
+        evaluate_source("print(2 < 3, 2 <= 2, 4 > 3, 4 >= 4, 1 == 1, 1 != 2)", "ai").unwrap(),
         "true true true true true true\n"
     );
     assert_eq!(
@@ -41,11 +40,7 @@ fn comparisons_and_boolean_logic() {
 #[test]
 fn logical_short_circuit_skips_unsafe_side() {
     assert_eq!(
-        evaluate_source(
-            "print(false and missing, true or missing)",
-            "ai"
-        )
-        .unwrap(),
+        evaluate_source("print(false and missing, true or missing)", "ai").unwrap(),
         "false true\n"
     );
 }
@@ -65,11 +60,7 @@ fn branch_bindings_shadow_without_leaking_and_outer_assignments_persist() {
 #[test]
 fn dead_branches_are_not_evaluated() {
     assert_eq!(
-        evaluate_source(
-            "if false { print(missing) } else { print(42) }",
-            "ai"
-        )
-        .unwrap(),
+        evaluate_source("if false { print(missing) } else { print(42) }", "ai").unwrap(),
         "42\n"
     );
 }
@@ -77,9 +68,7 @@ fn dead_branches_are_not_evaluated() {
 #[test]
 fn non_boolean_condition_is_explicitly_unsupported() {
     assert_eq!(
-        evaluate_source("if 1 { print(1) }", "ai")
-            .unwrap_err()
-            .code,
+        evaluate_source("if 1 { print(1) }", "ai").unwrap_err().code,
         4004
     );
 }
