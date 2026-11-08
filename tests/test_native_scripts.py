@@ -1,4 +1,4 @@
-"""Regression checks of all 28 supported syntax dictionaries."""
+"""Regression checks of all 34 supported syntax dictionaries."""
 import unittest
 from nobody.languages import ALIASES, NATIVE_SCRIPT_PROFILES
 from nobody.translator import translate, validate_language, SyntaxLanguageError
@@ -7,8 +7,8 @@ from nobody.translator import translate, validate_language, SyntaxLanguageError
 class NativeScriptTranslationTests(unittest.TestCase):
     SOURCE = 'nech cislo = 3\nak cislo > 1 {\n vypis("Čau 世界 if 如果") # Čau print\n} inak {\n vypis("Nie")\n}\n'
 
-    def test_all_28(self):
-        self.assertEqual(len(ALIASES), 28)
+    def test_all_34(self):
+        self.assertEqual(len(ALIASES), 34)
         for lang in ALIASES:
             with self.subTest(lang=lang):
                 dest = translate(self.SOURCE, 'sk', lang)
