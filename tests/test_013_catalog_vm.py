@@ -40,9 +40,10 @@ class NewMilestoneTests(unittest.TestCase):
         with self.assertRaisesRegex(ExecutionError,'step limit'):
             execute('pokial pravda { vypis(1) }',max_steps=15,output=lambda *args:None)
 
-    def test_ast_unsupported_declarations(self):
-        with self.assertRaises(Exception):
-            execute('nech n: cele = 1')
+    def test_ast_typed_declarations(self):
+        self.assertEqual(execute('nech n: cele = 1')['environment']['n'],1)
+        with self.assertRaisesRegex(ExecutionError,'Type mismatch'):
+            execute('nech n: cele = "bad"')
 
     def test_ast_unknown_call_rejected(self):
         with self.assertRaises(ExecutionError):
