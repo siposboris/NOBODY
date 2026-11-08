@@ -21,3 +21,10 @@
 - **0.7** Basic explicit typing and restricted immutable-only checking.
 
 Do not confuse these historical notes with published and verified tags.
+
+
+## Experimental 0.9 (local prototype; GitHub source import in progress)
+- Added independent lexical scanner for lowercase ASCII syntax, strings, comments and source positions.
+- Added lexer regression tests and integrated scanner validation into the local compiler frontend.
+- 55 tests passed locally in the complete source tree; this is not a GitHub CI result.
+- Scanner/parser is still incomplete and Python bootstrap remains.
