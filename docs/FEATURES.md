@@ -107,3 +107,11 @@ See [AI syntax](AI_SYNTAX.md), [language list](LANGUAGES.md), [roadmap](ROADMAP.
 - **CLI:** `ast-json`, `ast-validate`, `ast-emit`.
 - **Local tests:** 116 passed in 0.16 complete local tree. GitHub Actions status not yet verified.
 - **Still missing:** full lexer/parser spec, cross-language canonical semantic IR for builtins, lexical scoping, closures, native compilation and self-hosting.
+
+
+## Nobody 0.17 — lexical environment status
+
+- **Implemented in AST interpreter:** lexical block scopes, local shadowing, outer-scope assignment, first-class closure values, recursive calls, runtime primitive annotation checks for captured variables.
+- **Bounded recursion:** configurable interpreter call depth plus step count; not a secure resource-isolation guarantee.
+- **Local verification:** 124 tests passed in full 0.17 development tree. GitHub CI results are not independently confirmed.
+- **Not implemented:** comprehensive module namespaces, lexical captures in native machine code, static ownership checking, independent Python-free runtime, deterministic hard memory limits.
