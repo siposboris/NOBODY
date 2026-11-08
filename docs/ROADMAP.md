@@ -220,3 +220,17 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Develop independent typed IR, separate static type checking and eventually a Python-free native compiler.
 
 **Verification:** Full local source tree passed 124 tests (116 prior + 8 new). GitHub Actions success not yet independently confirmed. The feature is an interpreter milestone, not a native compiler.
+
+
+## Nobody 0.18 — conservative static primitive typing (2026-11-08)
+
+- [x] Implement a separate [AST static type analyzer](../nobody/static_types.py) that parses a Nobody program but never executes it.
+- [x] Identify **provable** primitive errors in annotated declarations/reassignments and unsupported arithmetic between known incompatible types.
+- [x] Detect assignments to undeclared names and repeated declarations within the same lexical scope; respect distinct nested block scopes.
+- [x] Support the `ai` and human-language syntax profiles through the same parser/semantic core.
+- [x] Add [10 regression tests](../tests/test_018_static_types.py), a CLI `type-check` command and GitHub Actions test configuration.
+- [ ] Implement branch-sensitive flow analysis, function signatures and full return-type inference, generics, unions, nullability and advanced type checks.
+- [ ] Precisely distinguish declared vs inferred mutability and model closures with complete static effect analysis.
+- [ ] Confirm GitHub CI passes on a complete source import. Python remains the implementation language for this phase; native/self-hosted compiler still pending.
+
+**Local archive:** 134 tests passed (124 previous + 10 new). Successful analysis does **not** guarantee runtime type safety. Unknown/dynamic expression types are not assumed to be safe.
