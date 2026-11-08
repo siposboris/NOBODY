@@ -419,3 +419,27 @@ count = 2
 **Repair:** Use ordinary assignment to update a variable, rename the duplicate declaration, or give each function parameter a unique name. A separate child block can intentionally introduce a local shadowing declaration.
 
 **Location limitation:** The IR checker still lacks statement-level source spans, so N1003 and N1004 name the affected symbol but do not fabricate line or column positions.
+
+### N1005 — Incorrect argument count for a known function (Rust type checker)
+
+**Exact cause:** A direct call to a function declared in the visible lexical scope supplies a different number of positional arguments than the function's parameter list. For example, a function declared with two parameters is called with one argument. Recursive calls are checked, too.
+
+**Incorrect:**
+
+```text
+fn add(a, b) { return a + b }
+add(1)
+```
+
+**Correct:**
+
+```text
+fn add(a, b) { return a + b }
+add(1, 2)
+```
+
+**Repair:** Add or remove positional arguments to match the declared function parameters, or correct the function signature. A parameter or local variable that shadows an outer function disables the outer function's arity assumption. Unknown dynamic callees are deferred rather than guessed.
+
+**Run:** `cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_bad_ai.nbd`.
+
+**Limitations:** IR v1 does not yet preserve source spans for N1005, and complete closure/overload semantics are not implemented. Successful Rust build/test execution remains unverified.
