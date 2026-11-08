@@ -33,8 +33,13 @@ pub struct Diagnostic {
 }
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "N{:04} riadok {}, stlpec {}: {}. Oprava: {}",
-               self.code, self.line, self.column, self.detail, self.repair)
+        if self.line==0 || self.column==0 {
+            // Unknown AST location: never present fabricated line 0 to the user.
+            write!(f, "N{:04}: {}. Oprava: {}",self.code,self.detail,self.repair)
+        } else {
+            write!(f, "N{:04} riadok {}, stlpec {}: {}. Oprava: {}",
+                self.code,self.line,self.column,self.detail,self.repair)
+        }
     }
 }
 impl std::error::Error for Diagnostic {}
