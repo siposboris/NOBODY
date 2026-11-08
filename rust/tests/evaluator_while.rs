@@ -17,7 +17,8 @@ fn break_and_continue_propagate_out_of_nested_if() {
 
 #[test]
 fn inner_loop_break_does_not_break_outer_loop() {
-    let source = "let outer = 0\nwhile outer < 2 { outer = outer + 1\nwhile true { print(outer)\nbreak } }";
+    let source =
+        "let outer = 0\nwhile outer < 2 { outer = outer + 1\nwhile true { print(outer)\nbreak } }";
     assert_eq!(evaluate_source(source, "ai").unwrap(), "1\n2\n");
 }
 
