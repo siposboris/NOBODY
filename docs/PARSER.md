@@ -34,3 +34,8 @@ The complete local 0.10 tree passed 65 tests. GitHub Actions has a dedicated [fr
 
 
 The [22 language profiles](LANGUAGES.md) are now provided by the shared keyword mapping. Passing a language code to the parser selects its syntax words; coverage is still limited to the parser's documented grammar subset. No natural-language translation of user strings occurs.
+
+
+## Subsequent progress — 0.13
+
+The limited AST parser now accepts primitive type annotations on declarations (e.g. `nech cislo: cele = 3`) and produces a `typed_let` node. The [AST evaluator](../nobody/ast_vm.py) performs primitive runtime checks for `int`, `float`, `str` and `bool`. This is not full static typing, a security sandbox or a native compiler.
