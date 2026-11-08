@@ -53,3 +53,13 @@ Do not confuse these historical notes with published and verified tags.
 - Added CLI `direction` in the complete local prototype and new regression tests.
 - Local complete prototype: **86 tests passing**, including RTL scenarios; **no confirmed full GitHub CI result**.
 - Added [RTL documentation](docs/RTL.md). External RTL editor integration remains a future milestone.
+
+
+## Experimental Nobody 0.13 — language catalogue and AST execution (2026-11-08)
+- Added 249-entry language/script-variant planning catalogue using a publicly reported August 2026 Google Translate list.
+- Added six experimental profiles with original scripts: Hebrew, Greek, Ukrainian, Persian, Swahili and Dutch. 28 profiles can now be selected; other 221 catalogue variants remain unavailable.
+- Extended RTL metadata to Hebrew and Persian.
+- Implemented direct evaluation of a subset of Nobody AST, without generation of Python source. This interpreter still runs on Python.
+- Added primitive annotated declarations and mismatch checks, a runnable GitHub frontend CLI and regression tests.
+- **93 tests passed in the complete local 0.13 tree.** GitHub Actions status has not yet been verified.
+- Full prior bootstrap importer, native backend, full language grammar and independent self-hosting are still planned.
