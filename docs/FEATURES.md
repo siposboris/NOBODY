@@ -45,3 +45,9 @@ A local prototype now adds strict short foreign-keyword checks and validates bot
 ### Native-script translation implementation (experimental)
 
 The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, source-to-source translator and regression tests. Their precise keyword terminology still requires native-speaker review. See [LANGUAGES.md](LANGUAGES.md). GitHub CI run result is not yet verified.
+
+## Experimental 0.12 RTL profile support
+
+- **Implemented in GitHub frontend:** Arabic and Urdu `rtl` display metadata; logical order preservation, prevention of hidden Unicode bidi formatting controls during lexical scanning and [standalone tests](../tests/test_bidi.py).
+- **Not implemented:** automatic RTL paragraph rendering or bidirectional cursor controls in external editors. [Details](RTL.md).
+- **Local prototype:** 86 tests passed; this is not GitHub CI confirmation.
