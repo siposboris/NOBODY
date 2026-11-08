@@ -51,4 +51,15 @@ if [[ "$native_output" != "$expected" ]]; then
   printf 'Native Nobody output mismatch.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: verified in-memory bytecode VM smoke =='
+vm_ai=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/eval_basic_ai.nbd)
+vm_sk=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode sk rust/examples/eval_basic_sk.nbd)
+if [[ "$vm_ai" != "$expected" || "$vm_sk" != "$expected" ]]; then
+  printf 'Bytecode VM differs from existing Rust interpreter output.\n' >&2
+  exit 1
+fi
+if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/bytecode_bad_unsupported_ai.nbd; then
+  printf 'Bytecode VM unexpectedly accepted an unsupported control-flow statement.\n' >&2
+  exit 1
+fi
 printf '%s\n' 'Nobody Rust verification passed.'
