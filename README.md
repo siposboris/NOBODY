@@ -1,53 +1,38 @@
-# Nobody — universal configurable programming language
+# Nobody — universal configurable multilingual programming language
 
-**Status: experimental prototype. Not production-ready.**
+**Status:** experimental, independent open-source project. Not production-ready.
 
-Nobody is an independent open-source programming language project aiming to combine useful ideas from Python, Rust, C/C++, Go, Erlang, Haskell, Lisp, Julia, Ada/SPARK, Lean and more. Not all features can be active simultaneously.
+Nobody aims to enable programming in original human writing systems, with optional language/runtime features, while preserving a common semantic core. It is **not** an official OpenAI product.
 
-## Core design rules
-- **One of 22 selected human syntax languages per source file**, never mixing syntax languages. [Full language list](docs/LANGUAGES.md).
-- **Lowercase syntax in each language's native writing system**: ASCII-friendly Latin profiles; Cyrillic, Arabic, Chinese, Japanese, Korean, Devanagari, Bengali, Tamil and Thai where appropriate. Vietnamese retains lowercase accents. Unicode is allowed in strings/comments. [Language rules](docs/LANGUAGES.md).
-- Source-to-source translation: Nobody `.nbd` → Nobody `.nbd`, **not Python output**.
-- Configurable typing, memory, performance, safety and target modes — **only implemented modes may run**. Planned options must fail clearly.
-- Long-term aim: a compiler written in Nobody that generates native executables. Python is currently a temporary bootstrap runtime.
+## Progress — 2026-11-08
+- **249 language/script variants** recorded in a [reference catalogue](nobody/data/google_translate_249.txt), following a publicly reported August 2026 Google Translate list. This is a *planning catalogue*, not 249 implemented syntax translations.
+- **28 experimental syntax dictionaries** with source-to-source translation (Nobody → Nobody), including Hebrew, Greek, Ukrainian, Persian, Swahili and Dutch added in milestone 0.13. **221 catalogue entries remain planned**.
+- One language profile per file; original writing systems; no mixed-language keyword syntax. Lowercase writing where that distinction exists. Latin-script profiles generally use ASCII-friendly forms, but Vietnamese retains accents.
+- Arabic, Urdu, Hebrew and Persian have RTL direction metadata, with logical Unicode source order. No full direction-aware editor yet.
+- Basic [lexer](nobody/lexer.py), [AST parser](nobody/parser.py), [AST evaluator](nobody/ast_vm.py), [source translator](nobody/translator.py) and [CLI](nobody/__main__.py).
+- The new AST evaluator runs supported declarations, arithmetic, basic types, lists, function calls, branching and loops directly, **without generating Python source code**. The interpreter implementation is still in Python, **not** a native self-hosted compiler.
+- Local full prototype archive 0.13 passed **93 tests**; that number is **not** a claim about GitHub Actions. The complete older bootstrap source and its full tests are not yet imported here.
 
-## Project status
-The earlier Nobody 0.7 prototype was prepared outside this repository. Its code/tests are **not yet verified as a GitHub release**. This repository currently contains design documents, not a complete working release. See [feature status](docs/FEATURES.md).
+## Try the GitHub frontend
 
-## Documentation
-- [Complete roadmap](docs/ROADMAP.md)
-- [Feature implementation status](docs/FEATURES.md)
-- [Version history](CHANGELOG.md)
-- [Release process](docs/RELEASING.md)
-- [Release template](docs/RELEASE_TEMPLATE.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
-- [AI assistance](AI_DISCLOSURE.md)
-- [MIT license](LICENSE)
+Requires Python 3.11+ (temporary bootstrap):
+
+```bash
+python3 -m nobody info
+python3 -m nobody languages
+python3 -m nobody languages --json
+python3 -m nobody ast-run examples/hello_sk.nbd --lang sk
+python3 -m nobody translate examples/hello_sk.nbd --from-lang sk --to he
+python3 -m nobody direction fa
+python3 -m unittest discover -s tests -p 'test_013_catalog_vm.py' -v
+```
+
+**Never run untrusted Nobody code.** This experimental interpreter is not a security sandbox; its step budget does not enforce a hard RAM limit.
+
+## Project documents
+
+[Roadmap](docs/ROADMAP.md) · [Languages](docs/LANGUAGES.md) · [Feature status](docs/FEATURES.md) · [Changelog](CHANGELOG.md) · [Release process](docs/RELEASING.md) · [RTL](docs/RTL.md) · [MIT license](LICENSE) · [AI disclosure](AI_DISCLOSURE.md) · [Contribution guide](CONTRIBUTING.md)
 
 ## Attribution
-Created as an independent project from its founder's requirements with software development and documentation assistance from **ChatGPT by OpenAI**. This is **not** an official OpenAI project, and OpenAI does not sponsor or certify it.
 
-
-## Development update (2026-11-08)
-
-[Experimental Nobody 0.8 notes](docs/PROTOTYPE_0_8.md), [example](examples/hello_sk.nbd), and [new regression tests](tests/test_language_barriers.py) are published. 49 tests passed in the full **local** tree, but the full source is not yet mirrored here. **No GitHub CI success or official GitHub v0.8 release is claimed.**
-
-
-## Latest experimental development (2026-11-08)
-
-A stand-alone [Nobody lexer](nobody/lexer.py) and [lexer unit tests](tests/test_lexer.py) are now committed. The complete working 0.9 prototype is available as a separate source archive in the development conversation but **has not yet been fully imported into this repository**. The complete local prototype passed 55 tests. GitHub CI for the complete interpreter has not run; do not interpret these commits as an official verified release.
-
-
-## Experimental milestone: Nobody 0.10 AST parser (2026-11-08)
-
-The new [AST parser](nobody/parser.py), [tests](tests/test_parser.py) and [frontend CI workflow](.github/workflows/frontend-tests.yml) are now available. Parser accepts a documented subset of brace-based Nobody syntax in the 22 configured language profiles and produces an abstract syntax tree rather than Python source. It is **not** a full grammar, execution engine or native compiler. Earlier interpreter, semantic checker and Nobody compiler source are **not yet fully imported to GitHub**. The full local working tree passed **65 tests**; GitHub CI results for this commit have not been confirmed. [Detailed limitations](docs/PARSER.md).
-
-
-## Languages (experimental)
-
-Nobody now defines **22 syntax profiles** with original writing systems, not romanized Chinese, Japanese, Russian or Arabic. See [the complete list and examples](docs/LANGUAGES.md). The source-to-source translation module is committed as [nobody/translator.py](nobody/translator.py), and [test_native_scripts.py](tests/test_native_scripts.py) checks round trips. The full compiler/runtime is still being imported; this does not establish production readiness.
-
-## Experimental Nobody 0.12 — right-to-left syntax support
-
-Arabic (`ar`) and Urdu (`ur`) now have explicit **RTL direction metadata** in [nobody/bidi.py](nobody/bidi.py), and lexical scanning blocks hidden Unicode bidi-override controls. The source remains in logical character order. [RTL specification and limitations](docs/RTL.md), [regression tests](tests/test_bidi.py). **A direction-aware editor is not yet implemented.** The complete local development tree passed 86 tests; GitHub CI status is not implied by that number.
+The independent Nobody project was initiated from its creator's requirements with substantial programming and documentation assistance from **ChatGPT by OpenAI**. OpenAI does not endorse, sponsor, own or guarantee this project.
