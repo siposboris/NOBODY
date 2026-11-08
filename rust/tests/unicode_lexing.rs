@@ -27,15 +27,34 @@ fn rtl_profiles_keep_logical_token_order_and_original_spelling() {
 }
 
 #[test]
-fn combining_marks_after_letter_are_part_of_one_identifier() {
+fn decomposed_latin_identifier_requires_nfc() {
     let source = "let cafe\u{301} = 1";
+    let error = scan(source).unwrap_err();
+    assert_eq!(error.code, 2008);
+    assert_eq!((error.line, error.column), (1, 5));
+    assert!(error.repair.contains("NFC"));
+}
+
+#[test]
+fn canonical_nfc_and_noncomposing_marks_remain_valid() {
+    for source in ["let café = 1", "let مَ = 1", "let かな漢字 = 1"] {
+        parse_validated(source, "ai").unwrap_or_else(|e| panic!("{source}: {e}"));
+    }
+}
+
+#[test]
+fn non_nfc_strings_and_comments_are_not_rewritten() {
+    let source = "let x = \"cafe\u{301}\" # cafe\u{301}";
     let tokens = scan(source).unwrap();
-    let name = &tokens[1];
-    assert_eq!(name.value, "cafe\u{301}");
-    assert_eq!(name.column, 5);
-    assert_eq!(&source[name.start..name.end], name.value);
-    assert_eq!(name.end - name.start, name.value.len());
-    parse_validated(source, "ai").unwrap();
+    assert_eq!(tokens[3].value, "\"cafe\u{301}\"");
+    assert_eq!(tokens[4].value, "# cafe\u{301}");
+}
+
+#[test]
+fn non_nfc_identifier_is_rejected_before_translation() {
+    let source = "let cafe\u{301} = 1";
+    let error = translate_source(source, "ai", "sk").unwrap_err();
+    assert_eq!(error.code, 2008);
 }
 
 #[test]
