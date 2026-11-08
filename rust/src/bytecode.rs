@@ -42,7 +42,8 @@ fn diagnostic(code: u16, detail: impl Into<String>) -> Diagnostic {
         line: 0,
         column: 0,
         detail: detail.into(),
-        repair: "Use the documented integer bytecode subset; verify the program before executing it.",
+        repair:
+            "Use the documented integer bytecode subset; verify the program before executing it.",
     }
 }
 
@@ -71,17 +72,21 @@ impl Compiler {
         match expression {
             IrExpr::Number(text) => {
                 if !text.bytes().all(|ch| ch.is_ascii_digit() || ch == b'_') {
-                    return Err(unsupported("Bytecode currently supports integer literals only"));
+                    return Err(unsupported(
+                        "Bytecode currently supports integer literals only",
+                    ));
                 }
-                let value = text.replace('_', "").parse::<i128>().map_err(|_| {
-                    diagnostic(4003, "Integer literal outside signed i128 range")
-                })?;
+                let value = text
+                    .replace('_', "")
+                    .parse::<i128>()
+                    .map_err(|_| diagnostic(4003, "Integer literal outside signed i128 range"))?;
                 self.emit(Instruction::Push(value))
             }
             IrExpr::Name(Name::User(name)) => {
-                let slot = *self.variables.get(name).ok_or_else(|| {
-                    diagnostic(4001, format!("Unknown variable {name:?}"))
-                })?;
+                let slot = *self
+                    .variables
+                    .get(name)
+                    .ok_or_else(|| diagnostic(4001, format!("Unknown variable {name:?}")))?;
                 self.emit(Instruction::Load(slot))
             }
             IrExpr::Unary { op, value } => {
@@ -89,7 +94,9 @@ impl Compiler {
                 match op.as_str() {
                     "+" => Ok(()),
                     "-" => self.emit(Instruction::Neg),
-                    _ => Err(unsupported(format!("Unsupported bytecode unary operator {op:?}"))),
+                    _ => Err(unsupported(format!(
+                        "Unsupported bytecode unary operator {op:?}"
+                    ))),
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
@@ -182,7 +189,9 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
         return Err(unsupported("Unknown bytecode version"));
     }
     if program.code.is_empty() || program.code.len() > MAX_INSTRUCTIONS {
-        return Err(unsupported("Bytecode instruction count outside verifier limits"));
+        return Err(unsupported(
+            "Bytecode instruction count outside verifier limits",
+        ));
     }
     if program.slots > MAX_INSTRUCTIONS {
         return Err(unsupported("Bytecode slot count outside verifier limits"));
@@ -212,22 +221,23 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     return Err(unsupported("Bytecode slot redeclaration"));
                 }
                 *flag = true;
-                stack_depth = stack_depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode stack underflow at declaration")
-                })?;
+                stack_depth = stack_depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode stack underflow at declaration"))?;
             }
             Instruction::Store(slot) => {
                 if !initialized.get(*slot).copied().unwrap_or(false) {
                     return Err(unsupported("Store references an undefined slot"));
                 }
-                stack_depth = stack_depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode stack underflow at assignment")
-                })?;
+                stack_depth = stack_depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode stack underflow at assignment"))?;
             }
             Instruction::Add | Instruction::Sub | Instruction::Mul => {
-                stack_depth = stack_depth.checked_sub(1).filter(|depth| *depth >= 1).ok_or_else(|| {
-                    unsupported("Bytecode arithmetic stack underflow")
-                })?;
+                stack_depth = stack_depth
+                    .checked_sub(1)
+                    .filter(|depth| *depth >= 1)
+                    .ok_or_else(|| unsupported("Bytecode arithmetic stack underflow"))?;
             }
             Instruction::Neg => {
                 if stack_depth == 0 {
@@ -235,14 +245,14 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                 }
             }
             Instruction::Drop => {
-                stack_depth = stack_depth.checked_sub(1).ok_or_else(|| {
-                    unsupported("Bytecode drop stack underflow")
-                })?;
+                stack_depth = stack_depth
+                    .checked_sub(1)
+                    .ok_or_else(|| unsupported("Bytecode drop stack underflow"))?;
             }
             Instruction::Print(count) => {
-                stack_depth = stack_depth.checked_sub(*count).ok_or_else(|| {
-                    unsupported("Bytecode print stack underflow")
-                })?;
+                stack_depth = stack_depth
+                    .checked_sub(*count)
+                    .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
             Instruction::Halt => unreachable!(),
         }
@@ -264,27 +274,37 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
         match instruction {
             Instruction::Push(value) => stack.push(*value),
             Instruction::Load(slot) => {
-                let value = variables[*slot].ok_or_else(|| unsupported("Uninitialized bytecode slot"))?;
+                let value =
+                    variables[*slot].ok_or_else(|| unsupported("Uninitialized bytecode slot"))?;
                 stack.push(value);
             }
             Instruction::Define(slot) | Instruction::Store(slot) => {
                 variables[*slot] = stack.pop();
             }
             Instruction::Add | Instruction::Sub | Instruction::Mul => {
-                let right = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
-                let left = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
+                let right = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
+                let left = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
                 let result = match instruction {
                     Instruction::Add => left.checked_add(right),
                     Instruction::Sub => left.checked_sub(right),
                     _ => left.checked_mul(right),
-                }.ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
+                }
+                .ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
                 stack.push(result);
             }
             Instruction::Neg => {
-                let value = stack.pop().ok_or_else(|| unsupported("VM stack underflow"))?;
-                stack.push(value.checked_neg().ok_or_else(|| {
-                    diagnostic(4003, "Bytecode unary negation overflow")
-                })?);
+                let value = stack
+                    .pop()
+                    .ok_or_else(|| unsupported("VM stack underflow"))?;
+                stack.push(
+                    value
+                        .checked_neg()
+                        .ok_or_else(|| diagnostic(4003, "Bytecode unary negation overflow"))?,
+                );
             }
             Instruction::Drop => {
                 stack.pop();
@@ -295,7 +315,8 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                     .iter()
                     .map(i128::to_string)
                     .collect::<Vec<_>>()
-                    .join(" ") + "\n";
+                    .join(" ")
+                    + "\n";
                 if output.len().saturating_add(rendered.len()) > MAX_OUTPUT {
                     return Err(diagnostic(4005, "Bytecode output budget exceeded"));
                 }
@@ -319,8 +340,14 @@ mod tests {
     #[test]
     fn bytecode_matches_interpreter_on_ai_and_slovak() {
         for (language, source) in [
-            ("ai", "let a = 4\nlet b = 5\nprint(a + b)\na = a * 2\nprint(a)"),
-            ("sk", "nech a = 4\nnech b = 5\nvypis(a + b)\na = a * 2\nvypis(a)"),
+            (
+                "ai",
+                "let a = 4\nlet b = 5\nprint(a + b)\na = a * 2\nprint(a)",
+            ),
+            (
+                "sk",
+                "nech a = 4\nnech b = 5\nvypis(a + b)\na = a * 2\nvypis(a)",
+            ),
         ] {
             let output = execute_source(source, language).unwrap();
             assert_eq!(output, "9\n8\n");
@@ -330,11 +357,23 @@ mod tests {
 
     #[test]
     fn verifier_rejects_invalid_stack_and_slots() {
-        let bad = Bytecode { version: BYTECODE_VERSION, slots: 0, code: vec![Instruction::Add, Instruction::Halt] };
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![Instruction::Add, Instruction::Halt],
+        };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
-        let bad = Bytecode { version: BYTECODE_VERSION, slots: 1, code: vec![Instruction::Load(0), Instruction::Drop, Instruction::Halt] };
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 1,
+            code: vec![Instruction::Load(0), Instruction::Drop, Instruction::Halt],
+        };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
-        let bad = Bytecode { version: BYTECODE_VERSION, slots: 0, code: vec![Instruction::Halt, Instruction::Push(3)] };
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![Instruction::Halt, Instruction::Push(3)],
+        };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
     }
 
@@ -349,7 +388,13 @@ mod tests {
         let program = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
-            code: vec![Instruction::Push(i128::MAX), Instruction::Push(1), Instruction::Add, Instruction::Drop, Instruction::Halt],
+            code: vec![
+                Instruction::Push(i128::MAX),
+                Instruction::Push(1),
+                Instruction::Add,
+                Instruction::Drop,
+                Instruction::Halt,
+            ],
         };
         assert_eq!(execute(&program).unwrap_err().code, 4003);
     }
