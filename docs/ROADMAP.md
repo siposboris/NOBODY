@@ -34,7 +34,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Create a dependency-free Rust crate at [`rust/`](../rust/) and its [Rust CI workflow](../.github/workflows/rust.yml).
 - [x] Independently verify Rust compilation, formatting, Clippy and CI. **Verified** on GitHub Actions [run #42501364426](https://github.com/siposboris/NOBODY/actions/runs/42501364426), commit `e1437613639c5428babc0e6d406795215762fce4`: complete Rust gate passed, 109 unit tests plus integration tests, strict Clippy, formatting and CLI smoke. The local authoring container still lacks Cargo.
 - [ ] Import **all** tested legacy bootstrap sources and corresponding fixtures to GitHub without accidentally discarding work.
-- [ ] Establish release tags, checksums, CI-attested builds and reproducible acceptance tests.
+- [ ] Establish release tags, checksums, CI-attested builds and reproducible acceptance tests. **Verified input locking:** Cargo-generated `rust/Cargo.lock` is committed, all Rust build/test/Clippy/smoke commands use `--locked`, and [GitHub CI #42504352399](https://github.com/siposboris/NOBODY/actions/runs/42504352399) passed. Release tags, signed/checksummed distribution artifacts, CI attestations and reproducible binary output remain open.
 - [ ] Remove Python from the regular execution path **only after** Rust replacements are fully tested.
 
 ## Phase 1 — Lexer, syntax, parser, AST and translation
@@ -202,6 +202,8 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 **Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. The Phase 0 Rust verification item was closed after inspecting the successful run #42501364426 and job steps/logs. Totals are now **41 checked / 68 open**.
 
 ## Verified GitHub CI results (2026-11-08)
+
+- **Reproducible Rust dependency graph:** [CI #42504352399](https://github.com/siposboris/NOBODY/actions/runs/42504352399) verified committed `rust/Cargo.lock`, Cargo `--locked` dependency resolution, formatting, tests, strict Clippy and CLI smoke. Python frontend [#42504352371](https://github.com/siposboris/NOBODY/actions/runs/42504352371) and lexer [#42504352340](https://github.com/siposboris/NOBODY/actions/runs/42504352340) also passed. This is not a release attestation nor bit-identical binary guarantee.
 
 - **N2008 Unicode NFC canonicalization gate:** [Rust #42503823825](https://github.com/siposboris/NOBODY/actions/runs/42503823825) passed all Rust checks with pinned `unicode-normalization = "=0.1.24"`. Test coverage proves representative precomposed/decomposed names, unchanged strings/comments and translation safety; it does not certify all Unicode security concerns.
 
