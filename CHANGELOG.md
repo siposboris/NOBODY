@@ -28,3 +28,12 @@ Do not confuse these historical notes with published and verified tags.
 - Added lexer regression tests and integrated scanner validation into the local compiler frontend.
 - 55 tests passed locally in the complete source tree; this is not a GitHub CI result.
 - Scanner/parser is still incomplete and Python bootstrap remains.
+
+
+## Experimental Nobody 0.10 — AST parser milestone (2026-11-08)
+- Added independent recursive-descent AST parser (brace-based subset) and 10 regression tests.
+- Supports basic declarations, functions, control flow, calls, lists and arithmetic operator precedence.
+- Supports SK/EN/CS/DE syntax profiles with foreign keyword rejection.
+- Added standalone GitHub frontend CI workflow (results not yet confirmed).
+- Full local working tree passed 65 tests; GitHub does not yet have the entire interpreter/compiler source.
+- Not a native compiler; typed declaration parsing and indentation grammar are not yet included.
