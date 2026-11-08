@@ -1,7 +1,7 @@
 //! Unicode/RTL lexer acceptance fixtures: logical order, UTF-8 byte spans,
 //! scalar-value columns and explicit rejection of invisible bidi controls.
 //! This does not claim Unicode normalization or confusable detection.
-use nobody::{scan, parse_validated, translate_source, TokenKind};
+use nobody::{parse_validated, scan, translate_source, TokenKind};
 use nobody::profiles::word;
 
 #[test]
@@ -17,7 +17,11 @@ fn rtl_profiles_keep_logical_token_order_and_original_spelling() {
         assert_eq!(tokens[1].start, declaration.len() + 1, "{code}");
         assert_eq!(&source[tokens[1].start..tokens[1].end], "قيمة", "{code}");
         assert_eq!(tokens[1].column, declaration.chars().count() + 2, "{code}");
-        assert_eq!(tokens.iter().find(|t| t.line == 2).unwrap().value, printer, "{code}");
+        assert_eq!(
+            tokens.iter().find(|t| t.line == 2).unwrap().value,
+            printer,
+            "{code}"
+        );
         parse_validated(&source, code).unwrap();
     }
 }
