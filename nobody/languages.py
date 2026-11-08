@@ -54,6 +54,15 @@ for _code, _spelling in _ADDED_PROFILES.items():
         raise ValueError("Invalid experimental language profile: " + _code)
     ALIASES[_code] = dict(zip(_words, _CANONICAL_NEW))
 
+
+# Nobody 0.14: additional candidate profiles, pending native-speaker review.
+_EXTRA_014 = {"bg":"ако иначе иначе_ако докато за във функция върни вярно невярно нищо и или не прекъсни продължи нека печатай диапазон дължина сума минимум максимум абсолютна закръгли цяло десетично текст логическо","ro":"daca altfel altfel_daca cat_timp pentru in functie returneaza adevarat fals nimic si sau nu intrerupe continua fie afiseaza interval lungime suma minim maxim absolut rotunjeste intreg zecimal text logic","sv":"om annars annars_om medan for inom funktion returnera sant fals inget och eller inte bryt fortsatt lat skriv intervall langd summa minimum maximum absolut avrunda heltal decimaltal text logisk","fi":"jos muuten muuten_jos kunnes varten sisalla funktio palauta tosi epatosi tyhja ja tai ei katkaise jatka olkoon tulosta vali pituus summa minimi maksimi itseisarvo pyorista kokonaisluku desimaali teksti totuusarvo","hy":"եթե այլապես այլապես_եթե քանի_դեռ համար մեջ գործառույթ վերադարձ ճիշտ սխալ ոչինչ և կամ ոչ ընդհատել շարունակել թող տպել միջակայք երկարություն գումար նվազագույն առավելագույն բացարձակ կլորացնել ամբողջ տասնորդական տեքստ տրամաբանական","ka":"თუ სხვაგვარად სხვაგვარად_თუ სანამ ყოველ შიგნით ფუნქცია დააბრუნე ჭეშმარიტი მცდარი არაფერი და ან არა შეწყვიტე გააგრძელე დაე ბეჭდე დიაპაზონი სიგრძე ჯამი მინიმუმი მაქსიმუმი აბსოლუტური დაამრგვალე მთელი ათწილადი ტექსტი ლოგიკური"}
+_CANON_014 = "if else elif while for in def return True False None and or not break continue let print range len sum min max abs round int float str bool".split()
+for _code, _words in _EXTRA_014.items():
+    _keys = _words.split()
+    if len(_keys) != len(_CANON_014) or len(set(_keys)) != len(_keys):
+        raise ValueError("Invalid 0.14 profile: " + _code)
+    ALIASES[_code] = dict(zip(_keys, _CANON_014))
 PREFERRED = {}
 for lang, aliases in ALIASES.items():
     preferred = {}
@@ -88,3 +97,6 @@ NATIVE_SCRIPT_PROFILES = ("ru", "zh", "hi", "ar", "bn", "ur", "ja", "ko", "ta", 
 
 LANGUAGE_NAMES.update({"he":"Hebrew","el":"Greek","uk":"Ukrainian","fa":"Persian","sw":"Swahili","nl":"Dutch"})
 NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("he","el","uk","fa")
+
+LANGUAGE_NAMES.update({"bg":"Bulgarian","ro":"Romanian","sv":"Swedish","fi":"Finnish","hy":"Armenian","ka":"Georgian"})
+NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("bg","hy","ka")
