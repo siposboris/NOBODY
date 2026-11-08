@@ -49,7 +49,8 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [ ] Expand to complete language grammar, all syntax profiles, static semantic checks, proper spans and runtime behavior. **The current parser is not full frontend parity and does not execute programs.**
 - [x] Implement a limited Python-reference AST parser for declarations, assignments, expressions, functions, loops, calls and blocks, with experimental 0.10–0.21 extensions.
 - [x] Implement JSON `nobody.ast.v1` export/import validation and Nobody-source re-emission for a subset in the Python reference.
-- [ ] Port language-neutral typed AST/IR, JSON AST validator and deterministic source emitter into Rust, including round-trip equivalence checks.
+- [x] Introduce a versioned **canonical Rust IR v1 source representation** (declarations, expressions, branching, loops, functions) with conservative normalized built-ins and structural cross-profile comparison; implementation and tests committed, Rust build unverified.
+- [ ] Port complete typed AST/IR semantics, JSON AST validator, deterministic source emitter and true semantic round-trip validation to Rust. The new IR v1 is in-memory only.
 - [x] Implement a prototype Nobody-to-Nobody translation tool in the Python reference that preserves strings and comments.
 - [x] Implement preliminary Rust **Nobody-to-Nobody** keyword translation using token spans, preserving strings and comments, with roundtrip unit tests across selected native-script profiles.
 - [x] Add a Rust **N3011 collision guard**: reject non-keyword source identifiers that coincide with reserved words in the destination profile; include line/column and concrete rename instructions, plus unit/integration tests.
@@ -166,11 +167,12 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.25 source snapshot | Rust contextual validator, N3008/N3009 errors, native `validate` CLI and authored integration tests | Rust compilation/CI **unverified** |
 | 0.26 source snapshot | All 39 human keyword tables in Rust; redesigned familiar `ai` syntax, old-prefix migration, 40-profile source translator and test fixtures | **Rust build and parity checks unverified** |
 | 0.27 source snapshot | Rust translator rejects target keyword collisions (N3011), five new integration tests, precise repair docs | Rust build / CI **not yet verified** |
+| 0.28 source snapshot | Canonical IR v1 and CLI `ir`/`compare-ir`, eight unit tests and four integration tests | **Build and CI unverified; structure comparison is not semantics proof** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 ## Immediate priorities (in dependency order)
 
-1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Current unverified Rust tests include the parser and contextual validator.**
+1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
 2. **Compile, test and verify** the expanded Rust AST parser for `sk`, `en`, and `ai`, with numbered syntax errors including N3002 and N3006. Confirm the authored Rust unit tests and CLI smoke fixtures run successfully. **Parsing is not execution, and the subset is not full frontend parity.**
 3. **Compile and verify** the now-committed 40 Rust language tables, AI migration and source translation using the complete Rust test suite; then compare fixture outputs against the Python reference.
 4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
