@@ -12,6 +12,7 @@ from .translator import translate
 from .ast_vm import execute
 from .parser import parse_source
 from .bidi import direction_for_language, editor_advice
+from .errors import CATALOG,BY_NUMBER,render_exception
 
 def main(argv=None):
     p=argparse.ArgumentParser(prog='nobody')
@@ -44,8 +45,15 @@ def main(argv=None):
     direction.add_argument('language')
     info=sub.add_parser('info')
     audit=sub.add_parser('audit-languages',help='Audit keyword completeness, lowercase and Unicode safety')
+    errors=sub.add_parser('errors',help='List or explain a numbered Nobody error')
+    errors.add_argument('number',nargs='?',type=int)
     args=p.parse_args(argv)
-    if args.command=='languages':
+    if args.command=='errors':
+        entries=([BY_NUMBER[args.number]] if args.number in BY_NUMBER else sorted(CATALOG.values(),key=lambda x:x.number))
+        for entry in entries:
+            print(f'N{entry.number:04d} [{entry.symbol}]: {entry.title}\n  Príčina: {entry.cause}\n  Oprava: {entry.fix}')
+        if args.number is not None and args.number not in BY_NUMBER:raise SystemExit(1)
+    elif args.command=='languages':
         if args.json:
             print(json.dumps({'summary':status(),'entries':[vars(x) for x in languages()]},ensure_ascii=False,indent=2))
         else:
@@ -73,7 +81,7 @@ def main(argv=None):
         from .static_types import analyze
         result=analyze(Path(args.file).read_text(encoding='utf-8'),args.lang)
         for item in (*result.diagnostics,*result.warnings):
-            print(f'{item.line}: {item.code}: {item.message}')
+            print(item.detailed_message)
         if not result.ok: raise SystemExit(1)
         print('OK: no proven primitive type errors; not a full type-safety proof')
     elif args.command=='direction':
