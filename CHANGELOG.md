@@ -138,3 +138,13 @@ Do not confuse these historical notes with published and verified tags.
 - **No Python files removed yet**: Python parser, translator, checker and interpreter have not passed parity gates against their future Rust replacements.
 - Rust source authored and committed; local compilation unverified because `cargo`/`rustc` are not installed here. GitHub Rust workflow outcome unconfirmed.
 - Long-term architecture: Rust bootstrap → native Nobody compiler → reproducible Nobody-in-Nobody self-hosting.
+
+
+## Rust 0.23 development snapshot — English roadmap and partial AST (2026-11-08)
+
+- Rewrote the **entire canonical roadmap in English** and reviewed each checkbox for claimed implemented status vs. pending verification.
+- Added Rust typed AST types and a restricted recursive-descent/precedence parser for `sk`, `en`, and `ai` declarations, assignments, arithmetic/comparison and call expressions.
+- Added seven Rust parser unit tests and separate SK/EN/AI source fixtures; Rust CLI now exposes `parse <lang> <file>`.
+- Assigned N3006 and N3007 for unsupported constructs and Rust profile selection; documented exact causes and repairs.
+- Updated GitHub Actions Rust workflow with parser smoke checks and added Rust-specific README.
+- **Build/test not verified**: `cargo`/`rustc` unavailable in the current authoring environment. No Python modules removed; no native compilation, execution, or self-hosting claimed.
