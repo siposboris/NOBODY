@@ -11,13 +11,14 @@ Nobody aims to enable programming in original human writing systems, with option
 - Arabic, Urdu, Hebrew and Persian have RTL direction metadata, with logical Unicode source order. No full direction-aware editor yet.
 - Basic [lexer](nobody/lexer.py), [AST parser](nobody/parser.py), [AST evaluator](nobody/ast_vm.py), [source translator](nobody/translator.py) and [CLI](nobody/__main__.py).
 - The new AST evaluator runs supported declarations, arithmetic, basic types, lists, function calls, branching and loops directly, **without generating Python source code**. The interpreter implementation is still in Python, **not** a native self-hosted compiler.
-- Local full prototype archive 0.13 passed **93 tests**; that number is **not** a claim about GitHub Actions. The complete older bootstrap source and its full tests are not yet imported here.
+- Local full prototype archive 0.13 passed **95 tests**; that number is **not** a claim about GitHub Actions. The complete older bootstrap source and its full tests are not yet imported here.
 
 ## Try the GitHub frontend
 
 Requires Python 3.11+ (temporary bootstrap):
 
 ```bash
+python3 -m nobody audit-languages
 python3 -m nobody info
 python3 -m nobody languages
 python3 -m nobody languages --json
