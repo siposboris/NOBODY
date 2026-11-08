@@ -27,14 +27,8 @@ jobs:
           cargo --version
           rustfmt --version
           cargo clippy --version
-      - name: Generate reproducible dependency lock snapshot
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo generate-lockfile --manifest-path rust/Cargo.toml
-          printf '%s\n' 'NOBODY_LOCK_BEGIN'
-          cat rust/Cargo.lock
-          printf '%s\n' 'NOBODY_LOCK_END'
+      - name: Verify committed dependency lock
+        run: cargo metadata --locked --manifest-path rust/Cargo.toml --format-version 1 --no-deps > /dev/null
       - name: Unified Rust verification gate
         run: |
           set -o pipefail
@@ -50,45 +44,45 @@ jobs:
       - name: Format Rust sources
         run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
       - name: Compile and unit tests
-        run: cargo test --manifest-path rust/Cargo.toml --all-targets
+        run: cargo test --locked --manifest-path rust/Cargo.toml --all-targets
       - name: Clippy
-        run: cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path rust/Cargo.toml --all-targets -- -D warnings
       - name: CLI lex and parser subset smoke
         run: |
-          cargo run --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
-          cargo run --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd
-          cargo run --manifest-path rust/Cargo.toml -- parse en rust/examples/basic_en.nbd
-          cargo run --manifest-path rust/Cargo.toml -- parse ai rust/examples/basic_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
-          cargo run --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- validate sk examples/hello_sk.nbd
-          cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- parse sk rust/examples/basic_sk.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- parse en rust/examples/basic_en.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- parse ai rust/examples/basic_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- parse sk examples/hello_sk.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- validate sk examples/hello_sk.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
       - name: All 40 syntax profiles and AI migration smoke
         run: |
-          cargo run --manifest-path rust/Cargo.toml -- list-languages
-          cargo run --manifest-path rust/Cargo.toml -- translate sk ai examples/hello_sk.nbd > /tmp/translated_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/translated_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > /tmp/migrated_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- validate ai /tmp/migrated_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- list-languages
+          cargo run --locked --manifest-path rust/Cargo.toml -- translate sk ai examples/hello_sk.nbd > /tmp/translated_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- validate ai /tmp/translated_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- migrate-ai examples/hello_ai_legacy.nbd > /tmp/migrated_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- validate ai /tmp/migrated_ai.nbd
 
       - name: Canonical IR v1 and structural comparison smoke
         run: |
-          cargo run --manifest-path rust/Cargo.toml -- ir sk rust/examples/basic_sk.nbd
-          cargo run --manifest-path rust/Cargo.toml -- ir ai examples/hello_ai.nbd
-          cargo run --manifest-path rust/Cargo.toml -- compare-ir sk rust/examples/basic_sk.nbd en rust/examples/ir_match_en.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- ir sk rust/examples/basic_sk.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- ir ai examples/hello_ai.nbd
+          cargo run --locked --manifest-path rust/Cargo.toml -- compare-ir sk rust/examples/basic_sk.nbd en rust/examples/ir_match_en.nbd
 
       - name: Rust static type checker smoke
         run: |
-          cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd
-          if cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_bad_ai.nbd; then
+          cargo run --locked --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd
+          if cargo run --locked --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_bad_ai.nbd; then
             echo "Expected N1001 rejection, but typecheck succeeded" >&2
             exit 1
           fi
 
       - name: Known function arity (N1005)
         run: |
-          cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_good_ai.nbd
-          if cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_bad_ai.nbd; then
+          cargo run --locked --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_good_ai.nbd
+          if cargo run --locked --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_bad_ai.nbd; then
             echo "Expected N1005 arity rejection" >&2
             exit 1
           fi
