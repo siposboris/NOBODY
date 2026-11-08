@@ -17,6 +17,28 @@ The compiled **`nobody` Rust executable** is the primary user-facing command for
 
 The older inventory below records original migration planning and is **historical**, not a current source-code status table. No complete Python module has yet passed every removal criterion. Do not delete Python reference files until their exact supported semantics and tests have been replaced; delete module by module after a dedicated review.
 
+## Updated component-level status — 2026-11-08
+
+The following is a **qualitative inventory**, not a time or effort percentage. Across nine broad workstreams, seven have partial Rust implementations and two still lack their planned complete implementations. Even the seven partial modules are **not** full Python replacements. The native `nobody` CLI is independently executable without Python for its explicitly supported subset.
+
+| Workstream | Rust status | What remains before replacing Python completely |
+|---|---|---|
+| Lexer / Unicode source safety | Partial | Full Python behavior and source-location parity across Unicode edge cases |
+| Syntax language profiles | Partial (40 active profiles) | Full historical catalogue distinction, terminology review, collisions and compatibility |
+| Parser / AST | Partial | Complete grammar, source spans and stable lossless tree representation |
+| Source translation | Partial | All keyword collisions, semantic equivalence and round-trip correctness |
+| Interpreter / scopes / functions | Partial | Closures, first-class functions, full numeric/built-in behavior and supported runtime semantics |
+| Static typing | Partial | Flow, return-value, annotation and diagnostic parity |
+| Error catalogue | Partial | Consistent complete error codes, position reporting and CLI interfaces |
+| AST JSON interchange | Not yet complete in Rust | Versioned deterministic import, export, validation and source emission |
+| Native compiler / backend | Not yet implemented | Bytecode or machine-code generation, reproducible build and deployment |
+
+This inventory intentionally does **not** divide tasks into a numeric percentage: comparable line counts, implementation effort, and acceptance coverage are unavailable. The homepage's **39%** is a separate *unweighted roadmap checklist* metric and is **not** the Python-to-Rust migration percentage.
+
+**Current added migration slice:** the `nobody audit-languages` command performs a Rust-only structural audit of the **40 active profiles**: keyword counts/duplicates, uppercase/control characters, NFC and forbidden bidi controls. This replaces a specific user-facing **subset** of Python `audit-languages`; the Python reference audits its own legacy vocabulary and remains in regression tests. It is not a linguistic/native-speaker audit or a reason to delete `nobody/profile_validator.py`.
+
+**Next migration gates (in priority order):** (1) compare Python and Rust profile audit findings for the common 39 human-language profiles, allowing for the intentionally different `ai` dialect; (2) port deterministic AST JSON v1 and its round-trip tests; (3) implement closure semantics and built-ins with differential tests; (4) retire individual Python modules *only after* explicit replacement and regression gates. Then begin staged self-hosting of the compiler in Nobody. No Python module has been removed in this slice.
+
 ## Current migration inventory
 
 | Component | Python reference | Rust replacement | Status |
