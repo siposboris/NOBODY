@@ -117,9 +117,16 @@ class Parser:
     def statement(self):
         if token := self.keyword('let'):
             name = self.identifier()
+            annotation = None
+            if self.accept(':'):
+                annotation = self.take()
+                if annotation.kind != 'name' or self.canonical(annotation) not in ('int','float','str','bool'):
+                    raise self.error('Expected supported type int/float/str/bool')
             self.expect('=')
             expr = self.expression()
             self.accept(';')
+            if annotation is not None:
+                return Node('typed_let', token.line, (name.value,self.canonical(annotation)), (expr,))
             return Node('let', token.line, name.value, (expr,))
         if token := self.keyword('return'):
             expr = self.expression()
