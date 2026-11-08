@@ -1,0 +1,3 @@
+nech vek: cele = 30
+vek = vek + 1
+vypis(vek)
