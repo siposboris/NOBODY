@@ -99,7 +99,11 @@ impl Cursor<'_> {
     }
 
     fn separator(&mut self) {
-        if self.tokens.get(self.at).is_some_and(|token| token.value == ";") {
+        if self
+            .tokens
+            .get(self.at)
+            .is_some_and(|token| token.value == ";")
+        {
             self.at += 1;
         }
     }
@@ -264,7 +268,8 @@ impl Cursor<'_> {
                 otherwise,
             } => {
                 let first = self.keyword("if")?;
-                let mut nodes = Vec::with_capacity(branches.len() + usize::from(otherwise.is_some()));
+                let mut nodes =
+                    Vec::with_capacity(branches.len() + usize::from(otherwise.is_some()));
                 for (index, (condition, body)) in branches.iter().enumerate() {
                     let line = if index == 0 {
                         first.line
