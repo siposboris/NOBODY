@@ -18,8 +18,16 @@ fn bytecode_matches_the_existing_ast_runtime_for_three_profiles() {
         let file = format!("{}/examples/{}", env!("CARGO_MANIFEST_DIR"), file);
         let regular = launch(&["run", language, &file]);
         let vm = launch(&["run-bytecode", language, &file]);
-        assert!(regular.status.success(), "{language}: {}", String::from_utf8_lossy(&regular.stderr));
-        assert!(vm.status.success(), "{language}: {}", String::from_utf8_lossy(&vm.stderr));
+        assert!(
+            regular.status.success(),
+            "{language}: {}",
+            String::from_utf8_lossy(&regular.stderr)
+        );
+        assert!(
+            vm.status.success(),
+            "{language}: {}",
+            String::from_utf8_lossy(&vm.stderr)
+        );
         assert_eq!(regular.stdout, vm.stdout, "{language}");
     }
 }
