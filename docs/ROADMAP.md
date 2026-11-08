@@ -259,7 +259,7 @@ The Rust `run` evaluator now has verified basic assignments, conditionals, bound
 4. **Preserve existing guarantees:** one syntax profile per file, checked integer math, numbered diagnostics, no implicit execution from `parse`/`typecheck`, no dependency on Python inside the Rust `run` implementation.
 5. **Completion gate:** formatting, locked compilation/tests, strict Clippy, multilingual CLI smoke, and both Python workflows green. Do not mark full Phase 4 complete or remove Python on the strength of a single fixture.
 
-### Following slices — only after the 0.39 gate
+**Named Rust functions (2026-11-08, pending CI):** The experimental `run` evaluator now has a deliberately limited named-function subset: parameter binding, `return`, function calls and bounded rejection of recursion. Calls see snapshot top-level variables and local parameters, not their caller's local scopes; global writes inside functions do not persist. Closures, nested function declarations, first-class function values, recursion, full Python parity and native compilation remain unsupported. Runtime arity errors use N4007. This is **not** the complete 0.39 or Phase 4 milestone.\n\n### Following slices — only after the 0.39 gate
 
 1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.
 2. Extend flow-sensitive types (branch joins and loop writes) conservatively, with regression tests for false positive/false negative boundaries.
