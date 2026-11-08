@@ -35,15 +35,15 @@ impl Language {
             || (self.code=="en" && semantic=="def" && spelling=="def")
     }
     fn is_unsupported_keyword(self,spelling:&str)->bool{
-        crate::profiles::is_reserved(self.code,spelling)
+        matches!(
+            crate::profiles::semantic(self.code,spelling),
+            Some("if"|"else"|"elif"|"while"|"for"|"in"|"def"|"return"|
+                 "break"|"continue"|"let"|"true"|"false"|"none"|"and"|"or"|"not")
+        )
     }
     fn legacy_ai_keyword(self,spelling:&str)->bool{
-        self.code=="ai" && spelling.starts_with("ai_") &&
-            crate::profiles::CANONICAL.iter().any(|canonical| {
-                spelling.strip_prefix("ai_")==Some(
-                    match *canonical { "true"=>"true","false"=>"false",
-                        "none"=>"none","def"=>"def",other=>other})
-            })
+        self.code=="ai" && spelling.strip_prefix("ai_").is_some_and(|suffix|
+            crate::profiles::CANONICAL.contains(&suffix))
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,18 +138,15 @@ impl Parser {
                     return Err(error(3010,line,col,
                         format!("Legacy AI keyword {:?}; new syntax removes ai_ prefixes",tok.value)));
                 }
-                if self.language.is_unsupported_keyword(&tok.value) {
-                    return Err(error(3006,line,col,
-                        format!("Keyword {:?} is not implemented by the Rust subset parser",tok.value)));
-                }
                 if let Some(b)=self.language.boolean(&tok.value) {
                     Expr::Boolean(b)
                 } else if self.language.kw("none",&tok.value) {
                     Expr::Null
                 } else if self.language.kw("not",&tok.value) {
                     Expr::Unary {op:"not".into(),value:Box::new(self.expression(3)?)}
-                } else if tok.value == self.language.let_word() {
-                    return Err(error(3005,line,col,"Declaration cannot appear in an expression"));
+                } else if self.language.is_unsupported_keyword(&tok.value) {
+                    return Err(error(3006,line,col,
+                        format!("Reserved grammar keyword {:?} cannot start an expression here",tok.value)));
                 } else {
                     Expr::Name(tok.value)
                 }
