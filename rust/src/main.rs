@@ -1,27 +1,38 @@
 use std::{env,fs,process};
-use nobody::{scan,TokenKind};
+use nobody::{parse,scan,TokenKind};
 
 fn usage() {
-    eprintln!("Nobody Rust frontend (experimental)\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <sk|en|ai> <file.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
-    if arguments.len() != 3 || !matches!(arguments[1].as_str(),"lex"|"check") {
-        usage();
-        process::exit(2);
-    }
-    let source=match fs::read_to_string(&arguments[2]) {
+    let valid = match arguments.get(1).map(String::as_str) {
+        Some("lex"|"check") if arguments.len()==3 => true,
+        Some("parse") if arguments.len()==4 => true,
+        _ => false
+    };
+    if !valid {usage();process::exit(2);}
+    let command=arguments[1].as_str();
+    let filename=arguments.last().expect("validated CLI args");
+    let source=match fs::read_to_string(filename) {
         Ok(x)=>x,
         Err(e)=>{
-            eprintln!("N9001: Neda sa precitat {:?}: {}. Oprava: skontroluj existenciu suboru a UTF-8.", arguments[2],e);
+            eprintln!("N9001: Cannot read {:?}: {}. Repair: verify file path, permissions and UTF-8.",filename,e);
             process::exit(1);
         }
     };
+    if command=="parse" {
+        match parse(&source,&arguments[2]) {
+            Ok(tree)=>println!("{:#?}",tree),
+            Err(error)=>{eprintln!("{}",error);process::exit(1);}
+        }
+        return;
+    }
     match scan(&source) {
-        Err(d)=>{eprintln!("{}",d);process::exit(1);}
+        Err(error)=>{eprintln!("{}",error);process::exit(1);}
         Ok(tokens)=>{
-            if arguments[1]=="check" {
-                println!("Lexer OK: {} tokenov; parser a semantika este nie su portovane do Rustu.", tokens.len());
+            if command=="check" {
+                println!("Lexical scan passed ({} tokens). Parse, types and execution NOT checked.",tokens.len());
             } else {
                 for token in tokens {
                     let kind=match token.kind {
