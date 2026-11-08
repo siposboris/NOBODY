@@ -19,7 +19,7 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 - **40 experimental syntax profiles** — 39 human languages plus canonical `ai`. One syntax language per source file.
 - **Rust frontend** — lexer, parser subset, source translation, canonical IR and conservative type checks.
 - **Experimental Rust `run`** — variables, integer arithmetic, `print`, conditions, bounded loops and **basic named functions with parameters and `return`**. Closures, recursion, complete semantics, native compilation and self-hosting are not ready.
-- **Python reference** stays available until behavioral parity is proven.
+- **Primary CLI is Rust:** run the compiled `nobody` executable without Python for the documented subset. The Python reference remains **test-only** until full parity is proven.
 
 ## Try Nobody
 
@@ -27,8 +27,8 @@ Requires Rust/Cargo. Run from the repository root:
 
 ```bash
 bash scripts/verify-rust.sh
-cargo run --locked --manifest-path rust/Cargo.toml -- list-languages
-cargo run --locked --manifest-path rust/Cargo.toml -- run ai rust/examples/eval_basic_ai.nbd
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- languages
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run ai rust/examples/eval_basic_ai.nbd
 ```
 
 Do not run untrusted programs; the evaluator is not a security sandbox.
