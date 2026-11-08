@@ -2,9 +2,16 @@
 //! This data is executable-independent: Rust does not import Python at runtime.
 //! Word choice is experimental and still needs native-speaker reviews.
 //! The `ai` profile intentionally uses familiar code keywords, not `ai_` prefixes.
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
-pub struct Profile {pub code: &'static str, pub words: &'static str}
-pub const CANONICAL: [&str;29] = ["if","else","elif","while","for","in","def","return","true","false","none","and","or","not","break","continue","let","print","range","len","sum","min","max","abs","round","int","float","str","bool"];
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Profile {
+    pub code: &'static str,
+    pub words: &'static str,
+}
+pub const CANONICAL: [&str; 29] = [
+    "if", "else", "elif", "while", "for", "in", "def", "return", "true", "false", "none", "and",
+    "or", "not", "break", "continue", "let", "print", "range", "len", "sum", "min", "max", "abs",
+    "round", "int", "float", "str", "bool",
+];
 pub const PROFILES: [Profile;40] = [
     Profile { code: "ai", words: "if else elif while for in fn return true false null and or not break continue let print range len sum min max abs round int float str bool" },
     Profile { code: "ar", words: "إذا وإلا وإلا_إذا طالما لكل في دالة أرجع صحيح خطأ لاشيء و أو ليس اكسر تابع دع اطبع مدى طول مجموع أصغر أكبر مطلق قرب عدد_صحيح عشري نص منطقي" },
@@ -47,44 +54,51 @@ pub const PROFILES: [Profile;40] = [
     Profile { code: "vi", words: "nếu nếu_không nếu_không_nếu trong_khi cho trong hàm trả_về đúng sai rỗng và hoặc không dừng tiếp_tục đặt in phạm_vi độ_dài tổng nhỏ_nhất lớn_nhất tuyệt_đối làm_tròn số_nguyên số_thực văn_bản luận_lý" },
     Profile { code: "zh", words: "如果 否则 否则如果 当 对于 在 函数 返回 真 假 空 并且 或者 非 跳出 继续 设 打印 范围 长度 求和 最小 最大 绝对值 四舍五入 整数 小数 文本 布尔" },
 ];
-pub fn profile(code:&str)->Option<&'static Profile>{
-    PROFILES.iter().find(|p|p.code==code)
+pub fn profile(code: &str) -> Option<&'static Profile> {
+    PROFILES.iter().find(|p| p.code == code)
 }
-pub fn word(code:&str,semantic:&str)->Option<&'static str>{
-    let p=profile(code)?;
-    let index=CANONICAL.iter().position(|&x|x==semantic)?;
+pub fn word(code: &str, semantic: &str) -> Option<&'static str> {
+    let p = profile(code)?;
+    let index = CANONICAL.iter().position(|&x| x == semantic)?;
     p.words.split_whitespace().nth(index)
 }
-pub fn semantic(code:&str,spelling:&str)->Option<&'static str>{
-    let p=profile(code)?;
-    p.words.split_whitespace().position(|x|x==spelling)
-        .map(|index|CANONICAL[index])
+pub fn semantic(code: &str, spelling: &str) -> Option<&'static str> {
+    let p = profile(code)?;
+    p.words
+        .split_whitespace()
+        .position(|x| x == spelling)
+        .map(|index| CANONICAL[index])
 }
-pub fn is_reserved(code:&str,spelling:&str)->bool{
-    semantic(code,spelling).is_some()
+pub fn is_reserved(code: &str, spelling: &str) -> bool {
+    semantic(code, spelling).is_some()
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]fn all_profiles_have_unique_full_vocab(){
-        assert_eq!(PROFILES.len(),40);
-        for p in PROFILES{
-            let terms:Vec<_>=p.words.split_whitespace().collect();
-            assert_eq!(terms.len(),CANONICAL.len(),"{}",p.code);
-            let mut sorted=terms.clone();sorted.sort();sorted.dedup();
-            assert_eq!(sorted.len(),terms.len(),"{}",p.code);
+    #[test]
+    fn all_profiles_have_unique_full_vocab() {
+        assert_eq!(PROFILES.len(), 40);
+        for p in PROFILES {
+            let terms: Vec<_> = p.words.split_whitespace().collect();
+            assert_eq!(terms.len(), CANONICAL.len(), "{}", p.code);
+            let mut sorted = terms.clone();
+            sorted.sort();
+            sorted.dedup();
+            assert_eq!(sorted.len(), terms.len(), "{}", p.code);
         }
     }
-    #[test]fn ai_syntax_is_conventional(){
-        assert_eq!(word("ai","def"),Some("fn"));
-        assert_eq!(word("ai","let"),Some("let"));
-        assert_eq!(word("ai","true"),Some("true"));
-        assert_eq!(word("ai","none"),Some("null"));
-        assert!(semantic("ai","ai_if").is_none());
+    #[test]
+    fn ai_syntax_is_conventional() {
+        assert_eq!(word("ai", "def"), Some("fn"));
+        assert_eq!(word("ai", "let"), Some("let"));
+        assert_eq!(word("ai", "true"), Some("true"));
+        assert_eq!(word("ai", "none"), Some("null"));
+        assert!(semantic("ai", "ai_if").is_none());
     }
-    #[test]fn native_script_words_are_preserved(){
-        assert_eq!(word("ar","if"),Some("إذا"));
-        assert_eq!(word("ja","if"),Some("もし"));
-        assert_eq!(word("he","if"),Some("אם"));
+    #[test]
+    fn native_script_words_are_preserved() {
+        assert_eq!(word("ar", "if"), Some("إذا"));
+        assert_eq!(word("ja", "if"), Some("もし"));
+        assert_eq!(word("he", "if"), Some("אם"));
     }
 }

@@ -5,22 +5,30 @@
 
 use std::fmt;
 
-pub mod profiles;
 pub mod ir;
+pub mod profiles;
 pub mod typecheck;
-pub use typecheck::{check_ir,check_source,Type as StaticType};
-pub use ir::{lower_source,same_ir,Module as IrModule,IrExpr,IrStatement,Name as IrName,IR_VERSION};
+pub use ir::{
+    lower_source, same_ir, IrExpr, IrStatement, Module as IrModule, Name as IrName, IR_VERSION,
+};
+pub use typecheck::{check_ir, check_source, Type as StaticType};
 pub mod translator;
 pub use translator::translate_source;
 pub mod ai_migration;
 pub use ai_migration::migrate_legacy_ai;
 pub mod syntax;
 pub mod validate;
-pub use validate::{parse_validated,validate_program};
 pub use syntax::{parse, Expr, Language, Program, Statement};
+pub use validate::{parse_validated, validate_program};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenKind { Name, Number, String, Comment, Symbol }
+pub enum TokenKind {
+    Name,
+    Number,
+    String,
+    Comment,
+    Symbol,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
@@ -42,12 +50,19 @@ pub struct Diagnostic {
 }
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.line==0 || self.column==0 {
+        if self.line == 0 || self.column == 0 {
             // Unknown AST location: never present fabricated line 0 to the user.
-            write!(f, "N{:04}: {}. Oprava: {}",self.code,self.detail,self.repair)
+            write!(
+                f,
+                "N{:04}: {}. Oprava: {}",
+                self.code, self.detail, self.repair
+            )
         } else {
-            write!(f, "N{:04} riadok {}, stlpec {}: {}. Oprava: {}",
-                self.code,self.line,self.column,self.detail,self.repair)
+            write!(
+                f,
+                "N{:04} riadok {}, stlpec {}: {}. Oprava: {}",
+                self.code, self.line, self.column, self.detail, self.repair
+            )
         }
     }
 }
@@ -63,7 +78,13 @@ fn failure(code: u16, line: usize, column: usize, detail: impl Into<String>) -> 
         2006 => "Použi platný desiatkový literál, napríklad 12, 12.5 alebo 1e-3; oddeľ identifikátor medzerou.",
         _ => "Oprav uvedený zdrojový úsek.",
     };
-    Diagnostic { code, line, column, detail: detail.into(), repair }
+    Diagnostic {
+        code,
+        line,
+        column,
+        detail: detail.into(),
+        repair,
+    }
 }
 
 pub fn is_bidi_control(c: char) -> bool {
@@ -89,7 +110,9 @@ fn is_combining_mark(c: char) -> bool {
         0x0D3B..=0x0D4D | 0x0E31..=0x0E4E)
 }
 
-fn is_name_start(c: char) -> bool { c.is_alphabetic() || c == '_' }
+fn is_name_start(c: char) -> bool {
+    c.is_alphabetic() || c == '_'
+}
 fn is_name_continue(c: char) -> bool {
     c.is_alphanumeric() || c == '_' || is_combining_mark(c)
 }
@@ -111,10 +134,12 @@ fn valid_decimal_literal(s: &str) -> bool {
             if bytes[*at].is_ascii_digit() {
                 *count += 1;
                 *at += 1;
-            } else if bytes[*at] == b'_' && *at > start
+            } else if bytes[*at] == b'_'
+                && *at > start
                 && *at + 1 < bytes.len()
-                && bytes[*at-1].is_ascii_digit()
-                && bytes[*at+1].is_ascii_digit() {
+                && bytes[*at - 1].is_ascii_digit()
+                && bytes[*at + 1].is_ascii_digit()
+            {
                 *at += 1;
             } else {
                 break;
@@ -122,26 +147,39 @@ fn valid_decimal_literal(s: &str) -> bool {
         }
     };
     consume_digits(&mut at, &mut digits);
-    if digits == 0 { return false; }
+    if digits == 0 {
+        return false;
+    }
     if at < bytes.len() && bytes[at] == b'.' {
         at += 1;
         let mut fractional = 0;
         consume_digits(&mut at, &mut fractional);
-        if fractional == 0 { return false; }
+        if fractional == 0 {
+            return false;
+        }
     }
     if at < bytes.len() && matches!(bytes[at], b'e' | b'E') {
         at += 1;
-        if at < bytes.len() && matches!(bytes[at], b'+' | b'-') { at += 1; }
+        if at < bytes.len() && matches!(bytes[at], b'+' | b'-') {
+            at += 1;
+        }
         let mut exponent = 0;
         consume_digits(&mut at, &mut exponent);
-        if exponent == 0 { return false; }
+        if exponent == 0 {
+            return false;
+        }
     }
     at == bytes.len()
 }
 
 fn advance_position(text: &str, line: &mut usize, col: &mut usize) {
     for c in text.chars() {
-        if c == '\n' { *line += 1; *col = 1; } else { *col += 1; }
+        if c == '\n' {
+            *line += 1;
+            *col = 1;
+        } else {
+            *col += 1;
+        }
     }
 }
 
@@ -151,8 +189,12 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
     let (mut check_line, mut check_col) = (1, 1);
     for ch in source.chars() {
         if is_bidi_control(ch) {
-            return Err(failure(2005, check_line, check_col,
-                format!("Skryty Unicode riadiaci znak U+{:04X}", ch as u32)));
+            return Err(failure(
+                2005,
+                check_line,
+                check_col,
+                format!("Skryty Unicode riadiaci znak U+{:04X}", ch as u32),
+            ));
         }
         advance_position(&ch.to_string(), &mut check_line, &mut check_col);
     }
@@ -168,10 +210,17 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
         }
         let (start, tok_line, tok_col) = (pos, line, col);
         let (kind, end) = if c == '#' {
-            let end = source[pos..].find('\n').map(|n| pos + n).unwrap_or(source.len());
+            let end = source[pos..]
+                .find('\n')
+                .map(|n| pos + n)
+                .unwrap_or(source.len());
             (TokenKind::Comment, end)
         } else if c == '"' || c == '\'' {
-            let opener = if source[pos..].starts_with(&c.to_string().repeat(3)) { 3 } else { 1 };
+            let opener = if source[pos..].starts_with(&c.to_string().repeat(3)) {
+                3
+            } else {
+                1
+            };
             let mut end = pos + opener;
             let mut closed = false;
             while end < source.len() {
@@ -184,7 +233,12 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                     continue;
                 }
                 if opener == 1 && t == '\n' {
-                    return Err(failure(2001, tok_line, tok_col, "Textovy literal presahuje koniec riadku"));
+                    return Err(failure(
+                        2001,
+                        tok_line,
+                        tok_col,
+                        "Textovy literal presahuje koniec riadku",
+                    ));
                 }
                 if source[end..].starts_with(&c.to_string().repeat(opener)) {
                     end += opener;
@@ -193,45 +247,82 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                 }
                 end += t.len_utf8();
             }
-            if !closed { return Err(failure(2001, tok_line, tok_col, "Chyba uzatvaracia uvodzovka")); }
+            if !closed {
+                return Err(failure(
+                    2001,
+                    tok_line,
+                    tok_col,
+                    "Chyba uzatvaracia uvodzovka",
+                ));
+            }
             (TokenKind::String, end)
         } else if is_name_start(c) {
             let mut end = pos + c.len_utf8();
             while let Some(t) = next_char(source, end) {
-                if !is_name_continue(t) { break; }
+                if !is_name_continue(t) {
+                    break;
+                }
                 end += t.len_utf8();
             }
             let value = &source[pos..end];
             if value.chars().any(|ch| !is_lowercase(ch)) {
-                return Err(failure(2002, tok_line, tok_col,
-                    format!("Nazov {:?} obsahuje velke pismena", value)));
+                return Err(failure(
+                    2002,
+                    tok_line,
+                    tok_col,
+                    format!("Nazov {:?} obsahuje velke pismena", value),
+                ));
             }
             (TokenKind::Name, end)
         } else if c.is_ascii_digit() {
             let mut end = pos + 1;
             while let Some(t) = next_char(source, end) {
-                if t.is_ascii_alphanumeric() || t == '.' || t == '_' ||
-                   ((t == '+' || t == '-') && end > pos &&
-                    matches!(source.as_bytes()[end-1], b'e' | b'E')) {
+                if t.is_ascii_alphanumeric()
+                    || t == '.'
+                    || t == '_'
+                    || ((t == '+' || t == '-')
+                        && end > pos
+                        && matches!(source.as_bytes()[end - 1], b'e' | b'E'))
+                {
                     end += t.len_utf8();
-                } else { break; }
+                } else {
+                    break;
+                }
             }
             if !valid_decimal_literal(&source[pos..end]) {
-                return Err(failure(2006, tok_line, tok_col,
-                    format!("Neplatny ciselny literal {:?}", &source[pos..end])));
+                return Err(failure(
+                    2006,
+                    tok_line,
+                    tok_col,
+                    format!("Neplatny ciselny literal {:?}", &source[pos..end]),
+                ));
             }
             (TokenKind::Number, end)
         } else if is_combining_mark(c) {
-            return Err(failure(2003, tok_line, tok_col,
-                format!("Osamotena kombinujuca znacka U+{:04X}", c as u32)));
+            return Err(failure(
+                2003,
+                tok_line,
+                tok_col,
+                format!("Osamotena kombinujuca znacka U+{:04X}", c as u32),
+            ));
         } else if !c.is_ascii() {
-            return Err(failure(2004, tok_line, tok_col,
-                format!("Nepovoleny Unicode znak U+{:04X} mimo textu", c as u32)));
+            return Err(failure(
+                2004,
+                tok_line,
+                tok_col,
+                format!("Nepovoleny Unicode znak U+{:04X} mimo textu", c as u32),
+            ));
         } else {
             (TokenKind::Symbol, pos + c.len_utf8())
         };
-        result.push(Token { kind, value: source[start..end].into(),
-            line: tok_line, column: tok_col, start, end });
+        result.push(Token {
+            kind,
+            value: source[start..end].into(),
+            line: tok_line,
+            column: tok_col,
+            start,
+            end,
+        });
         advance_position(&source[pos..end], &mut line, &mut col);
         pos = end;
     }
@@ -250,16 +341,18 @@ mod tests {
     }
     #[test]
     fn native_keywords() {
-        for language in ["إذا صحيح { اطبع(\"مرحبا\") }",
-                         "もし 真 { 表示(\"こんにちは\") }",
-                         "如果 真 { 打印(\"你好\") }",
-                         "եթե ճշմարիտ { }"] {
+        for language in [
+            "إذا صحيح { اطبع(\"مرحبا\") }",
+            "もし 真 { 表示(\"こんにちは\") }",
+            "如果 真 { 打印(\"你好\") }",
+            "եթե ճշմարիտ { }",
+        ] {
             assert!(!scan(language).unwrap().is_empty());
         }
     }
     #[test]
     fn prohibit_visual_override_in_comments() {
-        let error=scan("# secret\u{202E}").unwrap_err();
+        let error = scan("# secret\u{202E}").unwrap_err();
         assert_eq!(error.code, 2005);
     }
     #[test]
@@ -273,29 +366,31 @@ mod tests {
     #[test]
     fn numeric_literals_accept_decimal_and_exponent() {
         for input in ["0", "123", "1_000", "12.50", "1e3", "1e-3", "1.2E+10"] {
-            let tokens=scan(input).unwrap();
-            assert_eq!(tokens.len(),1,input);
-            assert_eq!(tokens[0].kind,TokenKind::Number,input);
-            assert_eq!(tokens[0].value,input);
+            let tokens = scan(input).unwrap();
+            assert_eq!(tokens.len(), 1, input);
+            assert_eq!(tokens[0].kind, TokenKind::Number, input);
+            assert_eq!(tokens[0].value, input);
         }
     }
     #[test]
     fn malformed_numeric_literals_report_n2006() {
         for input in ["12abc", "1__2", "12_", "1.2.3", "1e", "1e+", "1._2", "0xFF"] {
-            let error=scan(input).unwrap_err();
-            assert_eq!(error.code,2006,"{input}");
-            assert_eq!((error.line,error.column),(1,1));
+            let error = scan(input).unwrap_err();
+            assert_eq!(error.code, 2006, "{input}");
+            assert_eq!((error.line, error.column), (1, 1));
         }
     }
     #[test]
     fn binary_minus_is_not_absorbed_by_number() {
-        let tokens=scan("1-2").unwrap();
-        assert_eq!(tokens.iter().map(|t|t.value.as_str()).collect::<Vec<_>>(),
-            vec!["1","-","2"]);
+        let tokens = scan("1-2").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.value.as_str()).collect::<Vec<_>>(),
+            vec!["1", "-", "2"]
+        );
     }
     #[test]
     fn string_preserved() {
-        let t=scan("vypis(\"ak 如果 إذا\")").unwrap();
-        assert_eq!(t.iter().filter(|t| t.kind==TokenKind::String).count(), 1);
+        let t = scan("vypis(\"ak 如果 إذا\")").unwrap();
+        assert_eq!(t.iter().filter(|t| t.kind == TokenKind::String).count(), 1);
     }
 }
