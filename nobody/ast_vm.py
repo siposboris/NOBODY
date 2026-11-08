@@ -75,12 +75,18 @@ class Machine:
         if node.kind=='call':
             callee=self.expr(node.children[0],env)
             args=[self.expr(n,env) for n in node.children[1:]]
-            if isinstance(callee,tuple) and callee[0]=='function':
-                params,body=self.functions[callee[1]]
-                if len(args)!=len(params:raise ExecutionError('Wrong argument count')
-                try:self.block(body,dict(zip(params,args)),in_function=True)
-                except _Return as returned:return returned.value
-                return None
+            if isinstance(callee,Function):
+                if len(args)!=len(callee.params):raise ExecutionError('Wrong argument count')
+                if self.call_depth>=self.max_call_depth:
+                    raise ExecutionError('Maximum function call depth exceeded')
+                frame=Scope(callee.closure)
+                for name,arg in zip(callee.params,args):frame.declare(name,arg)
+                self.call_depth+=1
+                try:
+                    try:self.block(callee.body,frame,in_function=True)
+                    except _Return as returned:return returned.value
+                    return None
+                finally:self.call_depth-=1
             if callee in self.builtins.values():return callee(*args)
             raise ExecutionError('Call not permitted')
         raise ExecutionError('Unsupported expression: '+node.kind)
@@ -113,8 +119,9 @@ class Machine:
                     except _Break:break
             elif node.kind=='for':
                 for value in self.expr(node.children[0],env):
-                    env[node.value]=value
-                    try:self.block(node.children[1].children,env,True,in_function)
+                    frame=Scope(env)
+                    frame.declare(node.value,value)
+                    try:self.block(node.children[1].children,frame,True,in_function)
                     except _Continue:continue
                     except _Break:break
             elif node.kind=='return':
@@ -132,6 +139,6 @@ class Machine:
 def execute(source,language='sk',*,max_steps=10000,output=None):
     machine=Machine(language,max_steps,output)
     tree=parse_source(source,language)
-    frame={}
+    frame=Scope()
     machine.block(tree.children,frame)
-    return {'environment':frame,'steps':machine.steps,'ast':tree}
+    return {'environment':dict(frame.values),'steps':machine.steps,'ast':tree}
