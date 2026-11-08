@@ -49,8 +49,20 @@ fn mixed_latin_cyrillic_and_greek_report_actual_character_column() {
 #[test]
 fn mixed_scripts_allowed_in_literals_and_comments() {
     let tokens = scan("print(\"pаypal α\") # pаypal α").unwrap();
-    assert_eq!(tokens.iter().filter(|t| t.kind == TokenKind::String).count(), 1);
-    assert_eq!(tokens.iter().filter(|t| t.kind == TokenKind::Comment).count(), 1);
+    assert_eq!(
+        tokens
+            .iter()
+            .filter(|t| t.kind == TokenKind::String)
+            .count(),
+        1
+    );
+    assert_eq!(
+        tokens
+            .iter()
+            .filter(|t| t.kind == TokenKind::Comment)
+            .count(),
+        1
+    );
 }
 
 #[test]
