@@ -453,3 +453,13 @@ add(1, 2)
 **Correct:** `let total = 5 + 5` (numeric addition), or `let total = "five" + " items"` (string concatenation).
 
 **Repair:** Change both operands to compatible numbers, or use two strings for concatenation. Nested expressions and function-call arguments are checked. Unknown operand types are deferred; a passing result does **not** establish runtime safety. IR v1 still lacks statement-level source spans.
+
+### N1006 — Invalid operand for unary numeric operator (Rust checker)
+
+**Exact cause:** Unary `+` or `-` is applied to a value whose primitive type is known to be nonnumeric, such as a string or boolean.
+
+**Incorrect:** `let x = -"oops"`
+
+**Correct:** `let x = -3` or `let x = +2.5`.
+
+**Repair:** Use an integer or floating-point value, or explicitly convert the input to a numeric type. Unknown/dynamic values are deferred rather than assumed invalid. The Rust IR checker currently lacks statement source spans; N1006 does not invent a line number.
