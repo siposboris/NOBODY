@@ -3,8 +3,8 @@
 The independent [parser](../nobody/parser.py) uses the [lexer](../nobody/lexer.py) to create a tree of `Node(kind, line, value, children)` objects. It does **not** execute a program or emit Python.
 
 ## Supported subset
-- One explicit human syntax language per file: Slovak (`sk`), English (`en`), Czech (`cs`), German (`de`).
-- Lowercase ASCII names; Unicode accepted in comments and strings.
+- One explicit syntax language per file, chosen from [22 supported experimental profiles](LANGUAGES.md), using native writing systems.
+- Lowercase for cased syntax; Unicode native-script names and keywords are tokenized, and strings/comments may contain Unicode. Native-language grammar is still experimental.
 - `let`-style declaration, `if/elif/else`, `while`, `for/in`, functions, returns, break and continue.
 - Braces for blocks, arithmetic/comparison/logical operator precedence, function calls, indexing and list literals.
 - Source spans from lexer, line-aware AST nodes and clear failures on unsupported grammar.
@@ -31,3 +31,6 @@ PY
 
 ## Tests
 The complete local 0.10 tree passed 65 tests. GitHub Actions has a dedicated [frontend workflow](../.github/workflows/frontend-tests.yml), but its execution result has not yet been verified.
+
+
+The [22 language profiles](LANGUAGES.md) are now provided by the shared keyword mapping. Passing a language code to the parser selects its syntax words; coverage is still limited to the parser's documented grammar subset. No natural-language translation of user strings occurs.
