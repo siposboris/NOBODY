@@ -287,11 +287,18 @@ impl Evaluator {
                 type_name: None,
                 expr,
             } => {
-                if self.scopes.last().is_some_and(|scope| scope.contains_key(name)) {
+                if self
+                    .scopes
+                    .last()
+                    .is_some_and(|scope| scope.contains_key(name))
+                {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 let value = self.eval(expr, 1)?;
-                self.scopes.last_mut().expect("root scope exists").insert(name.clone(), value);
+                self.scopes
+                    .last_mut()
+                    .expect("root scope exists")
+                    .insert(name.clone(), value);
                 Ok(())
             }
             IrStatement::Assign { name, expr } => {
@@ -311,11 +318,16 @@ impl Evaluator {
                 self.eval(expr, 1)?;
                 Ok(())
             }
-            IrStatement::If { branches, otherwise } => {
+            IrStatement::If {
+                branches,
+                otherwise,
+            } => {
                 for (condition, body) in branches {
                     let value = self.eval(condition, 1)?;
                     let RuntimeValue::Bool(yes) = value else {
-                        return Err(unsupported("Conditional expressions must evaluate to a boolean"));
+                        return Err(unsupported(
+                            "Conditional expressions must evaluate to a boolean",
+                        ));
                     };
                     if yes {
                         return self.block(body);
