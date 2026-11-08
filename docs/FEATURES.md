@@ -67,6 +67,6 @@ The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, sour
 | AST interpreter | Python-hosted; does **not generate Python source**, but still depends on Python |
 | Native compiler and true self-hosting | Not implemented |
 | Security / hard memory quotas | Not implemented; not a sandbox |
-| Testing | 93 tests passed in full **local** 0.13 source tree; separate GitHub CI outcome unconfirmed |
+| Testing | 95 tests passed in full **local** 0.13 source tree; separate GitHub CI outcome unconfirmed |
 
 [Source catalogue](../nobody/data/google_translate_249.txt) · [Implementation statuses](../nobody/catalog.py) · [Full roadmap](ROADMAP.md)
