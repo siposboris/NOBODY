@@ -384,10 +384,14 @@ impl Evaluator {
                     return Err(unsupported("For loops currently require range(...)"));
                 };
                 if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
-                    return Err(unsupported("For loops currently require unshadowed range(...)"));
+                    return Err(unsupported(
+                        "For loops currently require unshadowed range(...)",
+                    ));
                 }
                 if !(1..=3).contains(&args.len()) {
-                    return Err(unsupported("range requires one, two or three integer arguments"));
+                    return Err(unsupported(
+                        "range requires one, two or three integer arguments",
+                    ));
                 }
                 let mut numbers = Vec::with_capacity(args.len());
                 for arg in args {
