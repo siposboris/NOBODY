@@ -91,6 +91,12 @@ fn floor_div_rem(a: i128, b: i128) -> Option<(i128, i128)> {
         Some((quotient, remainder))
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Flow {
+    Next,
+    Break,
+    Continue,
+}
 struct Evaluator {
     scopes: Vec<BTreeMap<String, RuntimeValue>>,
     steps: usize,
@@ -120,11 +126,20 @@ impl Evaluator {
         }
         false
     }
-    fn block(&mut self, statements: &[IrStatement]) -> Result<(), Diagnostic> {
+    fn block(&mut self, statements: &[IrStatement]) -> Result<Flow, Diagnostic> {
         self.scopes.push(BTreeMap::new());
-        let result = statements.iter().try_for_each(|stmt| self.statement(stmt));
+        let result = self.statements(statements);
         self.scopes.pop();
         result
+    }
+    fn statements(&mut self, statements: &[IrStatement]) -> Result<Flow, Diagnostic> {
+        for stmt in statements {
+            let control = self.statement(stmt)?;
+            if control != Flow::Next {
+                return Ok(control);
+            }
+        }
+        Ok(Flow::Next)
     }
     fn eval(&mut self, expr: &IrExpr, depth: usize) -> Result<RuntimeValue, Diagnostic> {
         self.tick(depth)?;
@@ -279,7 +294,7 @@ impl Evaluator {
             )),
         }
     }
-    fn statement(&mut self, stmt: &IrStatement) -> Result<(), Diagnostic> {
+    fn statement(&mut self, stmt: &IrStatement) -> Result<Flow, Diagnostic> {
         self.tick(0)?;
         match stmt {
             IrStatement::Let {
@@ -299,7 +314,7 @@ impl Evaluator {
                     .last_mut()
                     .expect("root scope exists")
                     .insert(name.clone(), value);
-                Ok(())
+                Ok(Flow::Next)
             }
             IrStatement::Assign { name, expr } => {
                 // Evaluate the RHS before mutating an existing binding.
@@ -312,11 +327,11 @@ impl Evaluator {
                 }
                 let value = self.eval(expr, 1)?;
                 self.assign(name, value);
-                Ok(())
+                Ok(Flow::Next)
             }
             IrStatement::Expression(expr) => {
                 self.eval(expr, 1)?;
-                Ok(())
+                Ok(Flow::Next)
             }
             IrStatement::If {
                 branches,
@@ -334,10 +349,31 @@ impl Evaluator {
                     }
                 }
                 if let Some(body) = otherwise {
-                    self.block(body)?;
+                    return self.block(body);
                 }
-                Ok(())
+                Ok(Flow::Next)
             }
+            IrStatement::While { condition, body } => {
+                loop {
+                    // Charge each iteration even if the condition contains
+                    // no user expressions or the body is empty.
+                    self.tick(0)?;
+                    let value = self.eval(condition, 1)?;
+                    let RuntimeValue::Bool(yes) = value else {
+                        return Err(unsupported("While conditions must evaluate to a boolean"));
+                    };
+                    if !yes {
+                        break;
+                    }
+                    match self.block(body)? {
+                        Flow::Next | Flow::Continue => {}
+                        Flow::Break => break,
+                    }
+                }
+                Ok(Flow::Next)
+            }
+            IrStatement::Break => Ok(Flow::Break),
+            IrStatement::Continue => Ok(Flow::Continue),
             _ => Err(unsupported(
                 "This statement is not supported by the first Rust evaluator slice",
             )),
@@ -351,10 +387,10 @@ pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
         steps: 0,
         output: String::new(),
     };
-    for stmt in &module.statements {
-        evaluator.statement(stmt)?;
+    match evaluator.statements(&module.statements)? {
+        Flow::Next => Ok(evaluator.output),
+        Flow::Break | Flow::Continue => Err(unsupported("Loop control outside a loop")),
     }
-    Ok(evaluator.output)
 }
 pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic> {
     evaluate_ir(&lower_source(source, profile)?)
