@@ -38,7 +38,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     error(
         4004,
         detail,
-        "Use only integer, boolean, null, text, declarations, assignments, arithmetic and print in the initial Rust evaluator.",
+        "Use only the documented Rust evaluator subset: basic values, declarations, assignments, conditionals, arithmetic and print.",
     )
 }
 fn literal_text(raw: &str) -> Result<String, Diagnostic> {
