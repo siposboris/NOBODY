@@ -1,279 +1,168 @@
-# Nobody — complete development roadmap
+# Nobody — Development Roadmap
 
-**Updated:** 2026-11-08. **Status:** planned directions, not guarantees or shipped capabilities.
+**Last reviewed:** November 8, 2026  
+**Language:** English (the canonical roadmap language).  
+**Status:** Experimental. Checked boxes describe *implemented artifacts*, not proof that all features are production-ready.
 
-Nobody aims to be a configurable multilingual programming language with a common semantic core. The design borrows useful ideas from Python, C, C++, Rust, Go, Erlang, Haskell, Lisp, Julia, Ada/SPARK, Lean, SQL, Nix and other languages. Their features cannot all be enabled simultaneously: every profile must specify consistent semantics.
+Nobody is an independent, MIT-licensed programming language project with an eventual **self-hosted Nobody compiler**. Rust is the temporary implementation language for the compiler and runtime; Python is retained only as a legacy comparison baseline until replacements pass parity tests. The project is not an official OpenAI product.
 
-## Non-negotiable language rules
+## How to read this roadmap
 
-1. **One human language of syntax per source file.** No mixed keyword languages inside one file. Language is configured explicitly; translation must preserve program meaning.
-2. **Lowercase syntax in the selected language's native writing system.** Latin-based profiles generally keep ASCII-friendly spelling (Vietnamese uses lowercase native diacritics); other scripts use original glyphs instead of romanization. Strings and comments may contain arbitrary Unicode. See [22 syntax languages](LANGUAGES.md).
-3. **Nobody source → Nobody source.** A source translator must not silently output Python. A future native backend may produce executable machine code, but its *compiler implementation* should ultimately be written in Nobody.
-4. No pretend switches: implemented configurations must change real behavior; unsupported configurations must produce explicit errors.
-5. Never claim self-hosting, sandboxing, hard RAM guarantees, or native compilation before independently repeatable tests prove them.
-6. Open source, tested changes, documented limitations, changelog per release, transparent acknowledgement of ChatGPT by OpenAI.
+- **[x] Implemented:** a specific capability or file has been committed or reproduced in a local prototype, as described. A checkmark does **not** imply full Rust parity, production reliability or successful GitHub CI.
+- **[ ] Partial:** implementation has begun but the acceptance criterion remains unmet.
+- **[ ] Planned:** not implemented or independently verified.
+- Historical prototypes, local test totals and CI results must remain distinct. A newly created Rust module without a verified build is **not considered completed** at the component level.
+- Each new diagnostic category must receive a stable **Nxxxx** number, a precise cause, a concrete remedy, documentation and regression tests. Numbers must never be reassigned.
 
-## Milestones
+## Non-negotiable requirements
 
-### Phase 0 — Foundation (v0.1–v0.7 prototype history; partially implemented, not independently re-audited in GitHub)
-- [x] Experimental Python-based interpreter and Nobody syntax prototypes exist in earlier local release bundles.
-- [x] Basic multilingual keyword sets and Nobody → Nobody rewriting were prototyped.
-- [x] Configuration catalog of 22 option groups was prototyped; many choices are unsupported.
-- [x] Preliminary typed declarations and restricted immutable-only checks were prototyped.
-- [ ] Import exact tested v0.7 sources, examples and test suite to this repository; rerun CI before marking a GitHub release.
-- [ ] Audit correctness, security and the claimed number of tests.
-- [ ] Adopt versioned language specification and stability policy.
+- [x] Adopt **one syntax-language profile per source file**, with separate human-readable and machine-readable `ai` profiles in the experimental Python reference.
+- [x] Preserve native writing systems, including Arabic/Urdu/Hebrew/Persian RTL *logical source order* and original non-Latin scripts in the experimental implementation.
+- [x] Record 249 human language/script variants in the planning catalogue, **not** as implemented syntax.
+- [x] Provide 39 experimental human syntax dictionaries plus one `ai` canonical profile in the Python reference; natural-language accuracy remains unreviewed.
+- [x] Keep Nobody-to-Nobody syntax translation conceptually distinct from compiling to machine code.
+- [x] License the project under MIT and clearly attribute ChatGPT by OpenAI as an assistance tool, with no endorsement implied.
+- [ ] Guarantee that all profiles and all semantics work end-to-end in the Rust compiler.
+- [ ] Publish a stable, versioned language specification and compatibility policy.
 
-### Phase 1 — Reliable frontend (next)
-- [ ] Formal lexical grammar with ASCII lowercase constraints and robust Unicode string/comment handling.
-- [ ] Per-file syntax language header/config; reject foreign-language keywords deterministically.
-- [ ] Tokenizer, parser, source-span tracking, useful errors and recovery.
-- [ ] Common AST / IR independent of syntax language.
-- [ ] Formatters, syntax-aware translation, round-trip equivalence tests and deterministic output.
-- [ ] Test naming collisions, strings, comments, escape sequences and ambiguous translated words.
-- [ ] Stable grammar for variables, functions, scopes, loops, conditionals, structured data and modules.
+## Phase 0 — Foundation, project hygiene and migration
 
-### Phase 2 — Strong semantics and typing
-- [ ] Lexical scoping, closures, module/import system, packages and namespaces.
-- [ ] Strict, inferred and gradual typing modes with precisely defined boundaries.
-- [ ] Algebraic data types, enums, pattern matching, type inference and generics.
-- [ ] Interfaces/traits, parametric polymorphism and coherent extension methods.
-- [ ] Nullable/optional types, result/error types, safe arithmetic and bounds checks.
-- [ ] Immutability and mutability semantics including deep immutability and aliasing.
-- [ ] Static analyzer, linter, detailed diagnostics and source mapping.
+- [x] Publish repository `siposboris/NOBODY` with source, examples, MIT license, AI disclosure, feature matrix, changelog and release guidance.
+- [x] Preserve the earlier Python bootstrap/interpreter prototypes and Nobody-authored bootstrap source in local development archives.
+- [x] Add a historical experimental Python test suite and separate GitHub frontend test workflow.
+- [x] Document [Rust-first migration acceptance gates](RUST_MIGRATION.md), including Python deletion only *after* verified behavioral equivalence.
+- [x] Create a dependency-free Rust crate at [`rust/`](../rust/) and its [Rust CI workflow](../.github/workflows/rust.yml).
+- [ ] Independently verify Rust compilation, formatting, Clippy and CI; the development environment used for initial Rust authoring has no `cargo` or `rustc`.
+- [ ] Import **all** tested legacy bootstrap sources and corresponding fixtures to GitHub without accidentally discarding work.
+- [ ] Establish release tags, checksums, CI-attested builds and reproducible acceptance tests.
+- [ ] Remove Python from the regular execution path **only after** Rust replacements are fully tested.
 
-### Phase 3 — Memory and resource-control profiles
-- [ ] Automatic GC profile.
-- [ ] Ownership/borrowing, move semantics and lifetime safety profile.
-- [ ] Arena/region allocation, reference-counting and explicit manual allocation profiles.
-- [ ] Safe interoperability boundaries among memory modes.
-- [ ] Resource limits: allocation budgets, CPU time, recursion limits and deterministic cancellation.
-- [ ] Distinguish tracked allocation budgets from OS-enforced process RAM caps.
-- [ ] Sanitizers, leak/race detectors, fuzzing and validated memory safety guarantees.
+## Phase 1 — Lexer, syntax, parser, AST and translation
 
-### Phase 4 — Compiler and self-hosting
-- [ ] Nobody-written compiler frontend with reproducible bootstrapping.
-- [ ] Compiler IR, optimizations, debug info and platform-independent backend interface.
-- [ ] Portable interpreter and deterministic bytecode VM.
-- [ ] Native Linux x86-64 backend and executable/linker toolchain.
-- [ ] ARM64, Windows, macOS and WebAssembly targets.
-- [ ] Self-compilation stage 1 → stage 2 → stage 3; compare reproducible outputs.
-- [ ] Eliminate Python from normal end-user compile/run path only once verified.
-- [ ] Publish compiler binaries and verify checksums and reproducibility.
+- [x] Implement a native UTF-8 token scanner *prototype* in Rust for names, literals, symbols and comments, with byte spans and native-script letters; expose `nobody-rs lex` and lexer-only `check`.
+- [x] Assign numbered Rust lexer diagnostics N2001–N2005 for string, case, combining-mark, unsupported-glyph and bidi-control errors.
+- [ ] Complete the Rust lexer against Unicode normalization, combining characters, RTL, confusables, token boundaries and reference regression fixtures.
+- [ ] Port all 39 human syntax profiles and one `ai` profile into Rust, preserving original script, lowercase rules, conflict handling and deterministic language selection.
+- [ ] Build a full Rust recursive-descent/Pratt parser with source spans, precedence, diagnostics and structured AST. **A small incremental Rust parser subset is the next development target; it is not full grammar support.**
+- [x] Implement a limited Python-reference AST parser for declarations, assignments, expressions, functions, loops, calls and blocks, with experimental 0.10–0.21 extensions.
+- [x] Implement JSON `nobody.ast.v1` export/import validation and Nobody-source re-emission for a subset in the Python reference.
+- [ ] Port language-neutral typed AST/IR, JSON AST validator and deterministic source emitter into Rust, including round-trip equivalence checks.
+- [x] Implement a prototype Nobody-to-Nobody translation tool in the Python reference that preserves strings and comments.
+- [ ] Port source translation to Rust; test reserved-word collisions, escaped literals, filenames, identifiers and round trips across all supported syntax profiles.
+- [ ] Finish complete grammar: declarations, types, assignments, functions, lexical scope, collections, structured data, imports and modules.
+- [ ] Build formatter, useful source diagnostics and parser error recovery.
 
-### Phase 5 — Performance and runtime profiles
-- [ ] Debug, fast-build, balanced, maximum-speed, minimum-size and low-energy profiles.
-- [ ] Inlining, constant folding, dead code elimination, vectorization, SIMD and profiling.
-- [ ] CPU architecture selection and portable fallback.
-- [ ] Predictable FFI with C; interoperable libraries.
-- [ ] Deterministic concurrency/error handling for supported profiles.
-- [ ] Performance benchmarks against representative C, Rust, Go, Python and Julia tasks, with reproducible methods.
+## Phase 2 — Semantic analysis, typing and error reporting
 
-### Phase 6 — Concurrency and distributed execution
-- [ ] Async/await, structured concurrency and cancellation.
-- [ ] Threads, lightweight tasks, message passing and channels.
-- [ ] Actor isolation, supervisor trees and fault tolerance.
-- [ ] Data race prevention and scheduling policies.
-- [ ] Distributed processes, serialization, networking and secure service communication.
+- [x] Prototype lexical scopes, captured closures and basic runtime type annotations in Python.
+- [x] Prototype static primitive type checks, lexical-scope diagnostics, conditional path joins and known-function arity checks in Python.
+- [x] Prototype conservative function return-type inference, including unknown results when branches or dynamic calls cannot be proved, in Python.
+- [x] Introduce an **append-only numbered error catalogue** in the Python frontend and [documentation with causes and repairs](ERROR_CODES.md).
+- [ ] Port scopes, closures, type analysis, return inference and all applicable **Nxxxx** diagnostics to Rust.
+- [ ] Implement strict, inferred and gradual typing modes with explicit boundaries and stable semantics.
+- [ ] Implement function parameter/return annotations, type inference for dynamic values, control-flow narrowing and union/optional/result/error types.
+- [ ] Implement generics, algebraic data types, enums, pattern matching, traits and interfaces.
+- [ ] Implement deep immutability, safe aliasing, borrow/move semantics and fully specified mutability.
+- [ ] Develop semantic linter, source mappings, high-quality diagnostics and editor quick fixes.
+- [ ] Eliminate legacy fallback `N9999` by assigning precise numbered categories with regression tests.
 
-### Phase 7 — GPU, scientific computing and AI
-- [ ] Dense arrays, tensor operations, linear algebra and multiple-dispatch options.
-- [ ] GPU kernel language and CPU fallback.
-- [ ] Portable GPU strategy where possible, backend-specific accelerators where necessary.
-- [ ] Scientific numerics, reproducibility modes and floating-point policies.
-- [ ] AI/ML integration with transparent runtime and hardware constraints.
+## Phase 3 — Memory, safety and resource management
 
-### Phase 8 — Advanced language features and verification
-- [ ] Hygienic macros and metaprogramming, staged/compile-time evaluation.
-- [ ] Controlled effects and effect handlers.
-- [ ] Design by contract, refinement/dependent-type experiments.
-- [ ] Optional formal verification and machine-checkable proofs.
-- [ ] Declarative query/collection APIs; DSL construction with explicit safety limits.
+- [ ] Implement a real garbage-collected memory profile with measured pauses and memory use.
+- [ ] Implement ownership/borrowing, moves and lifetime rules, with formal safety invariants.
+- [ ] Implement arena/region, reference-counted and deliberately unsafe manual profiles.
+- [ ] Specify safe interoperability and FFI boundaries between memory profiles.
+- [ ] Implement allocation budgets, recursion budgets, CPU timeouts and deterministic cancellation, distinguishing software counters from OS-enforced limits.
+- [ ] Add fuzzing, sanitizers, race/leak detection and separately verified memory safety claims.
 
-### Phase 9 — Developer experience and ecosystem
-- [ ] Configurator UI with *supported/experimental/planned* states for every choice.
-- [ ] Project and per-module profile negotiation with compatibility checking.
-- [ ] Language server (LSP), autocomplete, debugger, formatter, refactoring.
-- [ ] Reproducible package/build manager, lockfiles, dependency provenance and offline mode.
-- [ ] Standard library (files, processes, network, crypto interfaces, collections, time, JSON).
-- [ ] Security review, dependency scanning, release CI and signed/checksummed artifacts.
-- [ ] Stable documentation in supported human languages; tutorials and migration tools.
-- [ ] Hot reload for supported targets, incremental builds and editor mode switching.
+## Phase 4 — Compiler pipeline, runtime and self-hosting
 
-### Phase 10 — Production maturity
-- [ ] Published compatibility and specification tests.
-- [ ] Measured security, reliability, performance and memory characteristics.
-- [ ] External audit and contributor governance.
-- [ ] Version 1.0 only when core language/runtime/tooling meet stated acceptance criteria.
+- [ ] Implement a complete Rust parser and typed intermediate representation with reusable passes.
+- [ ] Build a portable Nobody bytecode format, verifier and deterministic VM in Rust.
+- [ ] Build compiler optimizations, debug information and a platform-neutral backend interface.
+- [ ] Produce a working **Linux x86-64 native executable** with a tested linker/toolchain.
+- [ ] Add Linux ARM64, Windows, macOS and WebAssembly targets with test suites.
+- [ ] Remove Python from the normal compile/run workflow after Rust parity and stable integration tests.
+- [ ] Rewrite compiler/runtime components in Nobody after the language can express them.
+- [ ] Demonstrate self-hosting with reproducible stage 1 → stage 2 → stage 3 compiler builds and matching outputs.
+- [ ] Distribute documented, verified binaries and checksums. **No native/self-hosting milestone has yet been met.**
 
-## Configuration dimensions (not all implemented)
+## Phase 5 — Optimization and performance
 
-Human syntax language; simple/advanced/expert syntax; high/hybrid/low abstraction; inferred/explicit/gradual/dependent typing; automatic/ownership/arena/refcount/manual memory; strict/balanced/expert safety; interpreted/bytecode/JIT/native/WASM execution; CPU/GPU/hybrid parallelism; sequential/async/threads/actors/distributed concurrency; speed/size/energy/build-time optimization; platform and CPU; diagnostics; errors; immutability; arithmetic semantics; IO permissions; proof level; dependency resolution; reproducibility; build mode; RAM/CPU quotas. Each option requires tests documenting the exact observed behavior.
+- [ ] Add debug, fast-build, balanced, maximum-speed, minimum-size and low-energy execution profiles.
+- [ ] Implement constant folding, dead-code elimination, inlining, SIMD/vectorization and profile-guided optimization.
+- [ ] Implement architecture-specific code generation with portable fallback.
+- [ ] Support safe C interoperability and explicitly versioned library ABI.
+- [ ] Publish reproducible benchmarks against C, Rust, Go, Python and Julia where appropriate.
+
+## Phase 6 — Concurrency and distributed systems
+
+- [ ] Add structured async/await, cancellation and task lifetimes.
+- [ ] Add threads, light tasks, channels and typed message passing.
+- [ ] Add isolated actors, supervisor trees and recoverable failures.
+- [ ] Specify race prevention, deterministic scheduling options and synchronization behavior.
+- [ ] Add distributed processes, network serialization and authenticated service communication.
+
+## Phase 7 — Scientific computing, GPU and AI tooling
+
+- [ ] Add dense arrays, tensors, linear algebra and numerical dispatch policies.
+- [ ] Add GPU kernels with explicit CPU fallback and measured portability.
+- [ ] Define floating-point and reproducibility profiles.
+- [ ] Implement AI/ML integration with clear hardware, resource and security limitations.
+- [x] Prototype an `ai` **keyword profile** plus a versioned JSON AST interchange format in the Python reference.
+- [ ] Port and validate `ai` syntax + AST interchange in Rust; benchmark whether they actually help AI coding tools.
+- [ ] Provide safe developer-agent APIs without claiming that source syntax grants AI autonomy or consciousness.
+
+## Phase 8 — Advanced language design and formal verification
+
+- [ ] Add hygienic macros, compile-time evaluation and controlled metaprogramming.
+- [ ] Add effect checking and explicit capability restrictions.
+- [ ] Experiment with design-by-contract, refinements and dependent types.
+- [ ] Support machine-checkable proofs only where the soundness boundaries are explicit.
+- [ ] Introduce safe query/collection DSLs and composable language extensions.
+
+## Phase 9 — Tooling and developer experience
+
+- [ ] Build a configurator where each feature is labeled implemented, experimental or planned, without fake switches.
+- [ ] Implement module-level profile negotiation and consistency checks.
+- [ ] Build an LSP server, diagnostics, completion, refactoring, formatter and debugger.
+- [ ] Build a reproducible package/build manager with dependency provenance and offline mode.
+- [ ] Implement a versioned standard library: collections, JSON, files, processes, networking, time and cryptography interfaces.
+- [ ] Add release CI, supply-chain scanning, signed/checksummed builds and reproducible Linux packaging.
+- [ ] Publish tutorials and verified examples in human syntax profiles, with RTL-aware editor support.
+- [ ] Add optional incremental compilation, hot reload and editor syntax-mode switching.
+
+## Phase 10 — Production readiness
+
+- [ ] Publish complete compatibility/specification tests and results for every claimed platform.
+- [ ] Perform independent safety/security audits and benchmark memory, performance and reliability.
+- [ ] Establish contributor governance, API stability promises and public deprecation policy.
+- [ ] Release 1.0 **only** after the language, runtime, compiler and tooling satisfy written acceptance criteria.
+
+## Configuration dimensions (not implemented simply because listed)
+
+Syntax language, syntax complexity, abstraction level, strict/inferred/gradual typing, automatic/ownership/arena/reference-counted/manual memory, safety strictness, interpreted/bytecode/JIT/native/WASM execution, CPU/GPU distribution, sync/async/threads/actors concurrency, speed/size/energy/build-time optimization, platform/CPU target, diagnostics, errors, immutability, arithmetic behavior, IO permissions, proof level, dependencies, reproducibility and quotas. A selectable configuration requires an implemented behavioral difference and reproducible tests.
+
+## Verified milestone ledger
+
+| Milestone | What actually exists | Verification boundary |
+|---|---|---|
+| 0.1–0.9 | Experimental local Python translator/interpreter, Nobody bootstrap sources and archives | Historical, not all imported into GitHub |
+| 0.10–0.15 | Python-reference AST parser, Unicode profiles, RTL metadata, experimental AST runtime and `ai` syntax | Local tests reported; no native compiler |
+| 0.16–0.17 | Python-reference AST JSON import/emitter and lexical closures | Subset only; still Python |
+| 0.18–0.21 | Python-reference type checker, branch joins, numbered errors and return-type inference | Static analysis remains conservative |
+| 0.22 | Rust crate, partial lexer and CLI, GitHub Rust workflow | Source committed; **local Rust build unverified** |
+| Next | Verified Rust CI, incremental parser, syntax profile port, differential tests | Incomplete |
+
+## Immediate priorities (in dependency order)
+
+1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks.
+2. Add a **small, tested Rust AST parser** for explicitly selected `sk`, `en` and `ai` syntax, with numbered errors and explicit unsupported features. **Do not mistake this subset for completed frontend parity.**
+3. Bring all language tables and Unicode lexer behavior into Rust; run automated fixture comparisons with the Python reference.
+4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
+5. Remove superseded Python modules in separate changes after parity is demonstrated.
+6. Develop bytecode/native backends, then self-host the compiler in Nobody.
 
 ## Release acceptance criteria
 
-Every release must include: source code, tests and reported results; supported vs planned feature matrix; changes, limitations and known security issues; exact run/build instructions; license and AI disclosure; updated roadmap; tagged version and checksums for downloadable artifacts. No version numbers or dates are promised in advance.
-
-
-### Progress note — 2026-11-08
-- [x] Prototype lexer implemented locally: lowercase ASCII identifiers, strings/comments, line/column positions and errors; lexer source and tests committed to GitHub.
-- [ ] Complete source import and live GitHub CI test of 0.9 pending.
-- [ ] Full independent parser, proper typed AST and formal specification still pending.
-
-
-### Progress note — experimental Nobody 0.10 (2026-11-08)
-- [x] First independently written **subset AST parser** with explicit source-language selection, brace blocks, function declarations, conditions, loops, calls, lists and binary expression precedence. Parser, language aliases and regression tests committed to GitHub.
-- [x] Added Github Actions frontend test configuration. Successful GitHub workflow execution not yet confirmed.
-- [ ] Finish complete grammar: typed declarations, reassignments, indentation syntax, richer expressions, unambiguous tokens and structured error recovery.
-- [ ] Import complete interpreter/compiler bootstrap and all previous tests to GitHub.
-- [ ] Implement execution/code generation from the independent AST, replacing Python syntax translation.
-
-
-### Multilingual roadmap update — 2026-11-08
-- [x] Commit syntax dictionaries for **22 human languages**, including native Chinese, Japanese, Arabic, Urdu, Russian, Hindi, Bengali, Korean, Tamil and Thai glyphs and Vietnamese accented Latin spelling. [Full language list](LANGUAGES.md).
-- [x] Commit Unicode-aware lexical scanning and a Nobody-to-Nobody keyword translator with regression tests.
-- [ ] Obtain native-speaker and grammar reviews for all profiles; ensure no hidden romanization remains.
-- [ ] Formalize script-aware identifier rules, normalization, keyword boundaries, Unicode security and bidirectional display for Arabic/Urdu.
-- [x] Local Nobody-written bootstrap compiler tables expanded from 4 to 22 languages; native-script output round-tripped in the local Python bootstrap. Full bootstrap source is not yet published to this GitHub repository.\n- [ ] Add end-to-end parser/runtime tests, language-specific diagnostics and complete compiler/runtime source import.
-- [ ] Add further languages only after profile tests, documentation and native-speaker review.
-
-### Experimental 0.12 progress — RTL source safety (2026-11-08)
-- [x] Add direction metadata for native Arabic and Urdu (`rtl`); preserve logical Unicode source order.
-- [x] Lexically reject invisible Unicode bidi overrides and isolate formatting controls across source, including strings/comments.
-- [x] Add RTL regression tests, standalone GitHub CI configuration and [RTL specification](RTL.md).
-- [ ] Implement real direction-aware editor rendering, cursor behavior and mixed-direction punctuation handling. **Not shipped.**
-- [ ] Review Unicode normalization/confusables and native speaker translations.
-- [ ] Import the full runtime and Nobody-written bootstrap compiler to GitHub and verify complete CI.
-
-
-## Milestone 0.13 — expanded linguistic catalogue and AST execution (2026-11-08)
-
-**Reference scope:** 249 Google Translate language/script variants according to the publicly reported August 2026 list (https://en.wikipedia.org/wiki/Google_Translate#Supported_languages). **Do not claim that all 249 are implemented.**
-
-- [x] Store [249 named catalogue entries](../nobody/data/google_translate_249.txt), including variants in different scripts.
-- [x] Record experimental/unsupported status for every entry in [catalog.py](../nobody/catalog.py).
-- [x] Add six experimental working syntax dictionaries: Hebrew (`he`), Greek (`el`), Ukrainian (`uk`), Persian (`fa`), Swahili (`sw`), Dutch (`nl`). Total **28 active experimental dictionaries; 221 planned entries**.
-- [x] Add RTL direction metadata for Hebrew and Persian alongside Arabic and Urdu; source remains in logical order.
-- [x] Add a [Python-hosted interpreter that executes Nobody AST nodes](../nobody/ast_vm.py) without generating Python source; restricted functions, lists, loops, branches and primitive typed declarations supported.
-- [x] Add [GitHub CLI frontend](../nobody/__main__.py) and [regression tests](../tests/test_013_catalog_vm.py).
-- [ ] Review each new syntax dictionary with native speakers, test Unicode normalization, identifier collisions and language-specific tokenization.
-- [ ] Implement the remaining 221 listed variants **one at a time**, each with native script, a complete keyword set and regression tests; reject unavailable profiles explicitly.
-- [ ] Complete AST grammar and independent execution semantics. Python still hosts the compiler frontend and AST evaluator.
-- [ ] Import full bootstrap interpreter and Nobody-written compiler into GitHub, with verified CI and release tags.
-- [ ] Build a native code backend; independently verify self-hosting. No milestone date is guaranteed.
-
-- [x] Add [language-profile auditing](../nobody/profile_validator.py) with completeness, Unicode normalization and lowercase checks; 95 tests pass locally. Native linguistic quality still needs human review.
-
-
-## Milestone Nobody 0.14 — expanded profiles and AST assignment
-
-- [x] Six additional candidate syntax dictionaries: Bulgarian `bg`, Romanian `ro`, Swedish `sv`, Finnish `fi`, Armenian `hy`, Georgian `ka`. **34 experimental profiles**, **215 catalogue variants still unavailable**.
-- [x] Update both the standalone Github translator and local Nobody-authored bootstrap keyword tables for all six; validate round-trip translations.
-- [x] Support assignment to existing variables in the experimental AST parser and evaluator (`pocet = pocet + 1`) and reject assignment to undeclared variables.
-- [x] Add regression tests and GitHub CI configuration; **104 local tests passed**, separate from any GitHub CI result.
-- [ ] Check assignment against annotated type/mutability policies and add lexical block scopes.
-- [ ] Add full bootstrap sources to GitHub; finish self-hosting independently of Python.
-- [ ] Review translation quality with native speakers; resolve cross-language keyword/identifier collisions and Unicode security cases.
-- [ ] Implement the remaining catalogue entries, one profile at a time with full test coverage.
-
-
-## Nobody 0.15 (2026-11-08) — five human scripts + machine-friendly syntax + runtime typing
-
-- [x] Add five provisional native-script syntax profiles: Nepali `ne`, Marathi `mr`, Gujarati `gu`, Kannada `kn`, Telugu `te`.
-- [x] Add `ai` canonical syntax profile: keyword names prefixed `ai_`; same semantics as the other human syntaxes. [Specification](AI_SYNTAX.md).
-- [x] Add a stable, versioned, deterministic AST JSON exporter `nobody.ast.v1` for coding tools.
-- [x] Check primitive explicit type annotations on reassignment in the AST interpreter (initial declaration and later assignments).
-- [x] Add six regression tests in version 0.15 (110 tests passing in the full **local** archive).
-- [ ] Implement full native-speaker terminology review for all human profiles, correct collisions and Unicode normalization.
-- [ ] Implement a schema validator and AST-to-Nobody source re-emitter with semantic roundtrip tests.
-- [ ] Fix lexical scopes, closure captures, type inference and generics; ensure typed variables retain annotations through all scopes.
-- [ ] Import previous complete Nobody-language bootstrap compiler and test it on GitHub Actions.
-- [ ] Complete real Python-independent runtime and native compiler, with externally reproducible proof of self-hosting.
-
-**Current scope:** 39 human syntax profiles + AI profile = **40** total; **249** human language/script entries in reference catalogue, **210** still without a Nobody syntax dictionary. The `ai` profile is not a Google Translate language.
-
-
-## Nobody 0.16 — AST validation and source regeneration (2026-11-08)
-
-- [x] Implement [AST v1 JSON schema validation and import](../nobody/ast_format.py) with explicit allowed node types and fields, structured child checks, depth/node limits, and version rejection.
-- [x] Implement `emit_source(tree, language)`: generate valid **Nobody** source for the supported AST subset, in the selected language. No Python source is generated.
-- [x] Add [regression tests](../tests/test_016_ast_format.py) for multilingual round-trips, deterministic output and malformed AST rejection.
-- [x] Add `ast-validate` and `ast-emit` CLI commands to the GitHub frontend; update GitHub Actions test configuration.
-- [ ] Design a complete typed AST specification and ensure cross-language semantic identity for built-ins and identifiers.
-- [ ] Complete the entire expression/statement grammar, lexical scoping and closures, and a formally verified emitter.
-- [ ] Validate GitHub CI results and import the rest of the historical Nobody bootstrap source. The implementation still requires Python.
-
-**Local full-project test run:** 116 tests passed on 2026-11-08; this is not a GitHub Actions result. Full AST round-trips only apply to the currently supported syntax subset. The complete native compiler remains unimplemented.
-
-
-## Nobody 0.17 — lexical scopes and closures (2026-11-08)
-
-- [x] Introduce [lexical environments](../nobody/scopes.py) that distinguish local declarations from surrounding scope bindings.
-- [x] Nested blocks can shadow an outer variable without overwriting it; an assignment resolves to the nearest previously declared lexical owner.
-- [x] Functions capture their definition environment and can return callable closures that retain captured variables after outer function return.
-- [x] Primitive type annotations remain enforced when a closure updates a captured binding.
-- [x] A recursion call-depth guard and execution step budget are present in the experimental Python-hosted AST evaluator.
-- [x] Add [0.17 regression tests](../tests/test_017_scopes.py) and CI test configuration.
-- [ ] Formalize shadowing semantics across all supported profiles and namespace rules, including per-language identifier conflicts.
-- [ ] Improve closures, nested function lifetime, block-local captures, and avoid Python recursion/RAM hazards; interpreter remains **not a sandbox**.
-- [ ] Import all historical bootstrap sources and run full GitHub Actions verification before declaring a tagged public release.
-- [ ] Develop independent typed IR, separate static type checking and eventually a Python-free native compiler.
-
-**Verification:** Full local source tree passed 124 tests (116 prior + 8 new). GitHub Actions success not yet independently confirmed. The feature is an interpreter milestone, not a native compiler.
-
-
-## Nobody 0.18 — conservative static primitive typing (2026-11-08)
-
-- [x] Implement a separate [AST static type analyzer](../nobody/static_types.py) that parses a Nobody program but never executes it.
-- [x] Identify **provable** primitive errors in annotated declarations/reassignments and unsupported arithmetic between known incompatible types.
-- [x] Detect assignments to undeclared names and repeated declarations within the same lexical scope; respect distinct nested block scopes.
-- [x] Support the `ai` and human-language syntax profiles through the same parser/semantic core.
-- [x] Add [10 regression tests](../tests/test_018_static_types.py), a CLI `type-check` command and GitHub Actions test configuration.
-- [ ] Implement branch-sensitive flow analysis, function signatures and full return-type inference, generics, unions, nullability and advanced type checks.
-- [ ] Precisely distinguish declared vs inferred mutability and model closures with complete static effect analysis.
-- [ ] Confirm GitHub CI passes on a complete source import. Python remains the implementation language for this phase; native/self-hosted compiler still pending.
-
-**Local archive:** 134 tests passed (124 previous + 10 new). Successful analysis does **not** guarantee runtime type safety. Unknown/dynamic expression types are not assumed to be safe.
-
-
-## Nobody 0.19 — conservative control-flow type analysis (2026-11-08)
-
-- [x] Improve the experimental static type checker to evaluate `if/elif/else` alternatives independently and **merge inferred types only when all possible paths agree**. Include the no-branch path for conditionals without `else`.
-- [x] Apply conservative zero-iteration joins for `while` and `for` loops, avoiding unjustified assumptions that a loop body must execute.
-- [x] Detect wrong argument counts for direct calls to statically known user-defined functions, including nested lexical functions. Emit `E_ARITY`.
-- [x] Add ten [new regression tests](../tests/test_019_flow_types.py), expand GitHub Actions frontend workflow, and retain all earlier human-language profiles plus `ai`.
-- [ ] Add sound function return-type inference, parameter types, union types and flow-sensitive narrowing; dynamic function values and unknown names remain uncertain.
-- [ ] Improve cross-language reserved keyword conflicts and per-profile identifiers. The letter `y`, for example, is a reserved keyword in a different supported profile, which currently prevents using it as a Slovak variable.
-- [ ] Implement checked modules/namespaces, independent compiler IR, native backend and the pending complete bootstrap source import; verify GitHub CI before official releases.
-
-**Verification:** 144 unit tests passed in the complete local 0.19 tree (134 from 0.18 + 10 new). GitHub Actions run result is not yet verified. This remains a conservative partial analyzer, not proof of type soundness.
-
-
-## Nobody 0.20 — stabilné čísla a presné opravy chýb (2026-11-08)
-
-- [x] Zaviesť **priebežne prideľované, nikdy nerecyklované čísla Nxxxx** pre diagnostiky s garantovaným popisom a konkrétnym postupom opravy.
-- [x] Vytvoriť 24-položkový [katalóg príčin, opráv a ukážok](ERROR_CODES.md) s číselnými rozsahmi pre typy, lexer/Unicode, parser, vykonávanie, AST a CLI.
-- [x] Zachovať staré symbolické API kódy `E_TYPE`, `E_ARITY` a ďalšie; doplniť `.number` a `.detailed_message` do statických diagnostík.
-- [x] Doplniť `nobody errors [číslo]`, číslovanie chýb CLI argumentov a klasifikáciu bežných výnimiek na príkazovom riadku.
-- [x] Doplniť 12 testov čísiel, presného kontextu, vysvetlení a výpisu CLI; kompletný lokálny balík má **156 úspešných testov**.
-- [ ] Postupne odstrániť náhradné `N9999`: všetkým **ostávajúcim** starším výnimkám prideliť presnú samostatnú kategóriu a pokryť ju testami.
-- [ ] Lokalizovať celé diagnostiky do všetkých podporovaných profilov, zachovať jednotné číslo pri každom jazyku.
-- [ ] Pridať presné zdrojové rozsahy (riadok/stĺpec) a opravné úpravy (quick fixes) pre editory/LSP.
-
-**Dôležité:** 0.20 je experimentálna implementácia, nie sľub, že všetky staršie knižničné chyby už majú svoj špecifický kód. Python-free runtime a natívny kompilátor naďalej nie sú hotové.
-
-
-## Architecture decision — Rust first, ultimately Nobody self-hosting (2026-11-08)
-
-- [x] Establish a **Rust 2021 Cargo crate** with no third-party dependencies and initial UTF-8 tokenization/source checking.
-- [x] Preserve native-script keywords and apply existing N2001–N2005 error numbers where implemented.
-- [x] Add GitHub Actions workflow for `cargo test`, formatting and Clippy (workflow outcome not yet verified).
-- [x] Document [per-component migration gates](RUST_MIGRATION.md) and prohibition of deleting Python components before feature parity.
-- [ ] Install/validate Rust toolchain and achieve a **verified successful build**. The current working container has neither `cargo` nor `rustc`, so local Rust tests have not run.
-- [ ] Port all 39 human-language tables and `ai` profile plus complete Unicode lexer parity to Rust.
-- [ ] Port typed AST parser, error catalog, source translation, static analyzer, source emitter, interpreter and scope/closure runtime, with differential tests and measurable coverage.
-- [ ] Delete Python components **only when their Rust equivalents demonstrably replace them**. Keep archived versions/source history for recovery.
-- [ ] Implement compiler/VM/native backend in Rust; eliminate Python from compile/run path and make a self-contained binary.
-- [ ] Write compiler in Nobody and prove stages 1→2→3 reproducible, then retire Rust when safely replaced.
-
-**Previous 0.21 Python return-inference experiment:** not a reason to keep expanding Python. Treat it as legacy reference. The engineering priority has now shifted to Rust parity, not further Python milestones.
+Every release must contain source, tests, truthful supported-vs-planned feature status, exact build/run commands, documented known limitations, a complete numbered error catalogue, MIT license and AI assistance disclosure, a reproducible CI result, an updated English roadmap, checksums and a tagged version. Until these conditions are met, milestones are **development snapshots**, not audited production releases.
