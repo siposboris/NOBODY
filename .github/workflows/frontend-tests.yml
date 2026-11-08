@@ -21,3 +21,4 @@ jobs:
           python -m unittest discover -s tests -p 'test_lexer.py' -v
           python -m unittest discover -s tests -p 'test_parser.py' -v
           python -m unittest discover -s tests -p 'test_native_scripts.py' -v
+          python -m unittest discover -s tests -p 'test_bidi.py' -v
