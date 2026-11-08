@@ -63,6 +63,18 @@ for _code, _words in _EXTRA_014.items():
     if len(_keys) != len(_CANON_014) or len(set(_keys)) != len(_keys):
         raise ValueError("Invalid 0.14 profile: " + _code)
     ALIASES[_code] = dict(zip(_keys, _CANON_014))
+
+# Nobody 0.15: native-script candidate profiles (terminology not certified).
+_MORE_015 = {"ne":"यदि नत्र नत्र_यदि जबसम्म लागि भित्र कार्य फर्काऊ सत्य असत्य शून्य र वा होइन रोक जारी राख छाप दायरा लम्बाइ योग न्यूनतम अधिकतम निरपेक्ष गोलाई पूर्णांक दशमलव पाठ तर्क","mr":"जर अन्यथा अन्यथा_जर जोपर्यंत साठी मध्ये कार्य परत सत्य असत्य शून्य आणि किंवा नाही थांब पुढे चल छापा श्रेणी लांबी बेरीज किमान कमाल निरपेक्ष गोलाकार पूर्णांक दशांश मजकूर तर्क","gu":"જો અન્યથા અન્યથા_જો જ્યાંસુધી માટે માં કાર્ય પરત સાચું ખોટું શૂન્ય અને અથવા નહીં રોકો ચાલુ રાખો છાપો શ્રેણી લંબાઈ સરવાળો ન્યૂનતમ મહત્તમ નિરપેક્ષ ગોળ પૂર્ણાંક દશાંશ લખાણ તર્ક","kn":"ಯದಿ ಇಲ್ಲದಿದ್ದರೆ ಇಲ್ಲದಿದ್ದರೆ_ಯದಿ ತನಕ ಗಾಗಿ ಒಳಗೆ ಕಾರ್ಯ ಹಿಂತಿರುಗಿಸು ಸತ್ಯ ಸುಳ್ಳು ಶೂನ್ಯ ಮತ್ತು ಅಥವಾ ಅಲ್ಲ ನಿಲ್ಲಿಸು ಮುಂದುವರಿಸು ಇಡು ಮುದ್ರಿಸು ವ್ಯಾಪ್ತಿ ಉದ್ದ ಮೊತ್ತ ಕನಿಷ್ಠ ಗರಿಷ್ಠ ನಿರಪೇಕ್ಷ ಸುತ್ತುಗೊಳಿಸು ಪೂರ್ಣಾಂಕ ದಶಮಾಂಶ ಪಠ್ಯ ತಾರ್ಕಿಕ","te":"ఒకవేళ లేకపోతే లేకపోతే_ఒకవేళ వరకు కోసం లో కార్యం తిరిగి నిజం అబద్ధం శూన్యం మరియు లేదా కాదు ఆపు కొనసాగించు ఉంచు ముద్రించు పరిధి పొడవు మొత్తం కనిష్టం గరిష్టం నిరపేక్షం గుండ్రం పూర్ణసంఖ్య దశాంశం పాఠ్యం తార్కికం"}
+_CANONICAL_015 = ["if","else","elif","while","for","in","def","return","True","False","None","and","or","not","break","continue","let","print","range","len","sum","min","max","abs","round","int","float","str","bool"]
+for _code, _words in _MORE_015.items():
+    _spellings = _words.split()
+    if len(_spellings) != len(_CANONICAL_015) or len(set(_spellings)) != len(_spellings):
+        raise ValueError("Invalid Nobody 0.15 syntax profile: "+_code)
+    ALIASES[_code] = dict(zip(_spellings, _CANONICAL_015))
+# The AI profile is a structured canonical syntax, not a claim of AI sentience.
+ALIASES["ai"] = {"ai_"+name.lower(): name for name in _CANONICAL_015}
+
 PREFERRED = {}
 for lang, aliases in ALIASES.items():
     preferred = {}
@@ -100,3 +112,6 @@ NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("he","el","uk","fa")
 
 LANGUAGE_NAMES.update({"bg":"Bulgarian","ro":"Romanian","sv":"Swedish","fi":"Finnish","hy":"Armenian","ka":"Georgian"})
 NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("bg","hy","ka")
+
+LANGUAGE_NAMES.update({"ne":"Nepali","mr":"Marathi","gu":"Gujarati","kn":"Kannada","te":"Telugu","ai":"AI canonical syntax"})
+NATIVE_SCRIPT_PROFILES = tuple(NATIVE_SCRIPT_PROFILES) + ("ne","mr","gu","kn","te")
