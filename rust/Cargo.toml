@@ -1,5 +1,6 @@
 [package]
 name = "nobody"
+default-run = "nobody-rs"
 version = "0.38.0"
 edition = "2021"
 license = "MIT"
