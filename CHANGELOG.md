@@ -193,3 +193,10 @@ Do not confuse these historical notes with published and verified tags.
 - Function names are visible inside their own bodies, including recursive references, while previous statements keep their earlier bindings.
 - Added three Rust unit tests for before/after shadowing, initializer lookup and recursion.
 - **Verification:** cargo/rustc unavailable in the authoring container; tests have not been executed. This remains a partial static IR, not a runtime or a semantic equivalence guarantee.
+
+## Rust 0.30 — conservative static typing (source snapshot, 2026-11-08)
+
+- Added `rust/src/typecheck.rs`: type checking for known primitive literals, typed declarations, subsequent assignments, numeric expressions, local branches and function bodies.
+- Added `nobody-rs typecheck PROFILE FILE` CLI and documented N1001 exact mismatch diagnostics.
+- Added eight unit tests, two CLI integration tests, good/bad AI fixtures and CI smoke steps.
+- **Limitations:** unknown types deferred, no source spans in IR v1, no control-flow type joins or complete lexical symbol table. Cargo compilation and tests are **not verified**.
