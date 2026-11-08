@@ -1,0 +1,5 @@
+nech a = 4
+nech b = 5
+vypis(a + b)
+a = a * 2
+vypis(a)
