@@ -32,7 +32,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [x] Add a historical experimental Python test suite and separate GitHub frontend test workflow.
 - [x] Document [Rust-first migration acceptance gates](RUST_MIGRATION.md), including Python deletion only *after* verified behavioral equivalence.
 - [x] Create a dependency-free Rust crate at [`rust/`](../rust/) and its [Rust CI workflow](../.github/workflows/rust.yml).
-- [ ] Independently verify Rust compilation, formatting, Clippy and CI; the development environment used for initial Rust authoring has no `cargo` or `rustc`.
+- [x] Independently verify Rust compilation, formatting, Clippy and CI. **Verified** on GitHub Actions [run #42501364426](https://github.com/siposboris/NOBODY/actions/runs/42501364426), commit `e1437613639c5428babc0e6d406795215762fce4`: complete Rust gate passed, 109 unit tests plus integration tests, strict Clippy, formatting and CLI smoke. The local authoring container still lacks Cargo.
 - [ ] Import **all** tested legacy bootstrap sources and corresponding fixtures to GitHub without accidentally discarding work.
 - [ ] Establish release tags, checksums, CI-attested builds and reproducible acceptance tests.
 - [ ] Remove Python from the regular execution path **only after** Rust replacements are fully tested.
@@ -195,11 +195,11 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 - [x] Conservatively invalidate known Rust function arity after potential reassignment in conditional branches and loops, without leaking local shadowing or iterator bindings; add four regression tests. **Build/test execution unverified.**
 ## Current acceptance-gate evidence (2026-11-08)
 
-**Rust compilation / formatting / Clippy / test success: NOT VERIFIED.** The authoring environment has no Cargo, rustc or rustfmt and cannot access GitHub through its local shell. The GitHub connector used for source edits does not expose ordinary push-triggered Actions runs via its commit workflow lookup. No CI success is inferred from a committed workflow.
+**Historical status before the first successful CI run: NOT VERIFIED.** The authoring environment has no Cargo, rustc or rustfmt and cannot access GitHub through its local shell. The GitHub connector used for source edits does not expose ordinary push-triggered Actions runs via its commit workflow lookup. A successful GitHub run is now independently confirmed: [#42501364426](https://github.com/siposboris/NOBODY/actions/runs/42501364426).
 
-The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly configured Rust toolchain and retains `rust-verification.log` as a downloadable artifact even if the gate fails. The gate is deliberately strict and must not be marked complete without a successful result. A targeted source review also corrected a preexisting arity-tracking error where lexical shadowing inside branches could discard an outer function signature; four new regression tests are authored but not yet executed.
+The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly configured Rust toolchain and retains `rust-verification.log` as a downloadable artifact even if the gate fails. The gate was verified to pass on GitHub run #42501364426; future changes still require fresh CI. A targeted source review also corrected a preexisting arity-tracking error where lexical shadowing inside branches could discard an outer function signature; four new regression tests are authored but not yet executed.
 
-**Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. Close the Phase 0 Rust verification item only after the full CI job succeeds and its run URL/logs have been inspected. Until then the totals remain **40 checked / 69 open**.
+**Progress accounting rule:** Do not add a completed checklist item, close an open checklist item, or claim a release milestone based solely on authoring tests or editing CI. The Phase 0 Rust verification item was closed after inspecting the successful run #42501364426 and job steps/logs. Totals are now **41 checked / 68 open**.
 
 ## Latest work toward existing open items (2026-11-08)
 
@@ -209,8 +209,8 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 
 ## Immediate priorities (in dependency order)
 
-1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
-2. **Compile, test and verify** the expanded Rust AST parser for `sk`, `en`, and `ai`, with numbered syntax errors including N3002 and N3006. Confirm the authored Rust unit tests and CLI smoke fixtures run successfully. **Parsing is not execution, and the subset is not full frontend parity.**
+1. **Completed initial verification gate:** Rust crate compiles; formatting, unit/integration tests, Clippy, and smoke pass on GitHub run #42501364426. Continue enforcing this gate on every future Rust change; do not infer full language parity.
+2. Extend the now-compiled Rust parser beyond its currently tested subset and independently verify full frontend parity across profiles. **Parsing is not execution.**
 3. **Compile and verify** the now-committed 40 Rust language tables, AI migration and source translation using the complete Rust test suite; then compare fixture outputs against the Python reference.
 4. Port the canonical AST, source emitter, scopes and static analyzer; implement executable behavior only after Rust parses it.
 5. Remove superseded Python modules in separate changes after parity is demonstrated.
