@@ -1,4 +1,18 @@
-# Nobody — 22 syntax languages and native writing systems
+# Nobody — 39 experimental human syntax profiles + canonical AI
+
+**Current Rust-first source snapshot (0.26):** 39 human language keyword
+tables + one new `ai` profile. The original 249 human language/script entries
+remain a **planning catalogue**; 210 reference variants are not yet implemented
+as Nobody syntax profiles. [Rust tables](../rust/src/profiles.rs) include the
+original writing systems and preliminary native-script parser tests.
+
+**Important:** Original native-speaker terminology and Unicode edge cases are
+not certified. The Rust build and full 40-profile runtime parity have **not yet
+been verified**. The `ai` vocabulary now uses `let/fn/if/return/true`, unlike
+the old Python-reference `ai_` dialect.
+[AI syntax documentation](AI_SYNTAX.md).
+
+## Historical first 22 language profiles
 
 **Experimental support, 2026-11-08.** This is a syntax-profile catalog, not a claim of native-speaker certified translations. The 22 entries are a practical multilingual selection, not a verified UN or Ethnologue ranking of the 22 largest languages.
 
@@ -133,3 +147,9 @@ The source-code profiles are provisional and still require native-speaker review
 | `ai` | Machine-friendly canonical Nobody syntax | Lowercase ASCII | `ai_if` |
 
 **Counts:** 39 experimental human syntaxes + 1 machine-friendly `ai` syntax profile = 40. The catalogue remains 249 human language/script variants, of which 210 are pending. `ai` is not a human language or a Google Translate catalogue entry. These human translations are provisional, not native-speaker certified. [AI profile guide](AI_SYNTAX.md).
+
+## Current Rust profile codes
+
+`ai ar bg bn cs de el en es fa fi fr gu he hi hy id it ja ka kn ko mr ne nl pl pt ro ru sk sv sw ta te th tr uk ur vi zh`
+
+The 39 human codes and `ai` are implemented as Rust keyword tables and can be listed with `cargo run --manifest-path rust/Cargo.toml -- list-languages`. A complete checked runtime for all languages is **not yet implemented**.
