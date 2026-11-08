@@ -117,3 +117,7 @@ The Rust profile tests now use lowercase canonical semantic keys; the IR type ch
 ## 0.34 — verification gate
 
 Run `bash scripts/verify-rust.sh` from the repository root. The script checks toolchain prerequisites, runs `cargo fmt --check`, `cargo test --all-targets`, strict `cargo clippy`, and successful/failing CLI smoke cases without changing source files. The Rust GitHub Actions workflow also supports manual dispatch. **This is a verification harness, not proof that the crate compiles**: the authoring environment lacks Cargo and the CI result remains unverified.
+
+## 0.35 — arithmetic type checks
+
+The Rust `typecheck` command now also reports **N1002** for definitely incompatible primitive arithmetic, such as `let x = "text" - 1`. Six unit tests were authored. Unknown operand types remain deferred; source spans and complete runtime type semantics remain future work. **Compilation/CI unverified.**
