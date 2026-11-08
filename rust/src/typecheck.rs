@@ -72,7 +72,17 @@ fn check_binary_types(expr:&IrExpr,env:&BTreeMap<String,Type>)->Result<(),Diagno
             check_binary_types(callee,env)?;
             for arg in args{check_binary_types(arg,env)?;}
         }
-        IrExpr::Unary{value,..}=>check_binary_types(value,env)?,
+        IrExpr::Unary{op,value}=>{
+            check_binary_types(value,env)?;
+            let operand=infer(value,env);
+            if matches!(op.as_str(),"+"|"-") &&
+                operand!=Type::Unknown &&
+                !matches!(operand,Type::Int|Type::Float) {
+                return Err(diagnostic(1006,
+                    format!("Unary operator {op:?} requires a numeric operand, but found {operand:?}"),
+                    "Use a number with unary '+' or '-', or convert the operand to a numeric type."));
+            }
+        },
         _=>{}
     }
     Ok(())
@@ -307,6 +317,21 @@ mod tests{
     }
     #[test]fn localized_float_accepts_integer_initializer(){
         check_source("nech pomer: desatinne = 2","sk").unwrap();
+    }
+    #[test]fn rejects_negative_string(){
+        assert_eq!(check_source("let x = -\"oops\"","ai").unwrap_err().code,1006);
+    }
+    #[test]fn rejects_positive_boolean(){
+        assert_eq!(check_source("let x = +true","ai").unwrap_err().code,1006);
+    }
+    #[test]fn accepts_numeric_unary_operators(){
+        check_source("let x = -2\nlet y = +3.5","ai").unwrap();
+    }
+    #[test]fn defers_unknown_unary_operand(){
+        check_source("let x = -mystery","ai").unwrap();
+    }
+    #[test]fn checks_nested_unary_in_call(){
+        assert_eq!(check_source("print(-\"bad\")","ai").unwrap_err().code,1006);
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
