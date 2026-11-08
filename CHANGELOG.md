@@ -241,3 +241,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added structural IR parity checks for typed declarations across all 40 profiles and additional Slovak checker regression cases.
 - Unknown annotation names are left untouched for future validation; complete semantic/type checking is not claimed.
 - **Cargo build, test and CI execution remain unverified.**
+
+## Rust 0.37 — numeric unary diagnostics and CI trigger fix (source snapshot, 2026-11-08)
+
+- Added N1006 for definitely nonnumeric operands of unary plus/minus, including nested expressions.
+- Added five unit tests and an actionable diagnostic entry.
+- Rust workflow now triggers on changes to `scripts/verify-rust.sh`, as well as Rust sources and the workflow itself.
+- **Cargo build, Clippy and GitHub CI results remain unverified.**
