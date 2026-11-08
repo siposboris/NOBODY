@@ -97,3 +97,7 @@ legacy keyword without conversion produces **N3010**, documented in
 The Rust `translate FROM TO FILE` command now reports **N3011** if a legal source identifier would become a target-profile reserved keyword. For example, Slovak `nech fn = 3` cannot translate to AI `let fn = 3`. Rename `fn` in the source to a name not reserved in the destination profile, then retry. See [translation-safety specification](../docs/TRANSLATION_SAFETY.md) and [error catalogue](../docs/ERROR_CODES.md).
 
 The check preserves strings/comments and reports source line/column, but full scope-aware renaming and semantic parity are still planned. The Rust build and test results are not yet independently verified.
+
+## 0.30 — Rust static type checks
+
+`cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd` checks known primitive types and declarations without executing the program. `typecheck_bad_ai.nbd` intentionally fails with documented **N1001**. Unknown expressions are deferred; this is not a sound whole-program checker. The source is committed but Cargo tests/CI remain **unverified**. See [error catalogue](../docs/ERROR_CODES.md).
