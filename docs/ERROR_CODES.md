@@ -379,3 +379,43 @@ cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typechec
 ```
 
 **Important limitation:** Canonical IR v1 currently has no statement-level source spans, so this diagnostic **does not invent a line/column**. It gives the exact variable and mismatched types. The type checker is conservative: unknown function results, undeclared assignment analysis, control-flow joins and runtime guarantees require future work. A successful check does not prove that a program is safe or executable.
+
+
+### N1003 — Assignment to an undeclared name (Rust scope checker)
+
+**Exact cause:** An assignment targets a name that has not been declared by `let` or a visible function/parameter in the current or enclosing lexical scope.
+
+**Incorrect:**
+```text
+count = 3
+```
+
+**Correct:**
+```text
+let count = 3
+count = 4
+```
+
+**Repair:** Declare the variable before its first assignment, or correct the misspelled name. The checker permits assignments to a variable declared in an enclosing block. This check is lexical and does not yet model imports, closures or runtime globals.
+
+### N1004 — Duplicate declaration in one lexical block (Rust scope checker)
+
+**Exact cause:** The same variable or function name is declared more than once in a single block, or a function declares the same parameter twice. An inner block may independently shadow an outer declaration.
+
+**Incorrect:**
+```text
+let count = 1
+let count = 2
+```
+
+**Correct:**
+```text
+let count = 1
+count = 2
+```
+
+**Also incorrect:** `fn sum(x, x) { return x }`.
+
+**Repair:** Use ordinary assignment to update a variable, rename the duplicate declaration, or give each function parameter a unique name. A separate child block can intentionally introduce a local shadowing declaration.
+
+**Location limitation:** The IR checker still lacks statement-level source spans, so N1003 and N1004 name the affected symbol but do not fabricate line or column positions.
