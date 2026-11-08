@@ -443,3 +443,13 @@ add(1, 2)
 **Run:** `cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/arity_bad_ai.nbd`.
 
 **Limitations:** IR v1 does not yet preserve source spans for N1005, and complete closure/overload semantics are not implemented. Successful Rust build/test execution remains unverified.
+
+### N1002 — Definitely incompatible arithmetic operands (Rust checker)
+
+**Exact cause:** A primitive arithmetic expression uses two *known* types that do not support the selected operator. For example, `"text" - 1` or `"text" + 1`. Numeric operands can be combined arithmetically, while `+` also supports two strings.
+
+**Incorrect:** `let total = "five" + 5`
+
+**Correct:** `let total = 5 + 5` (numeric addition), or `let total = "five" + " items"` (string concatenation).
+
+**Repair:** Change both operands to compatible numbers, or use two strings for concatenation. Nested expressions and function-call arguments are checked. Unknown operand types are deferred; a passing result does **not** establish runtime safety. IR v1 still lacks statement-level source spans.
