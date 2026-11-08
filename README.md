@@ -86,3 +86,16 @@ vypis(f())
 ```
 
 **124 tests passed in the complete local 0.17 tree.** GitHub CI success is not yet verified. Older bootstrap sources are still not fully mirrored to GitHub. The language remains an experimental, Python-hosted prototype. [Regression tests](tests/test_017_scopes.py) · [Roadmap](docs/ROADMAP.md).
+
+
+## Nobody 0.18 — static primitive type checking
+
+The new [conservative static analyzer](nobody/static_types.py) detects a subset of provable errors **before running the program**, including primitive annotation mismatches and assigning values to undeclared variables. The command is:
+
+```bash
+python3 -m nobody type-check examples/hello_sk.nbd --lang sk
+```
+
+It also supports the `ai` syntax profile. Type inference and control-flow analysis are deliberately incomplete. An `OK` response means **no provable primitive errors were found**; it does not guarantee complete type safety. [Static checking tests](tests/test_018_static_types.py).
+
+Complete **local** Nobody 0.18 source passed **134 tests** (10 added). GitHub CI results have not been independently verified. No native compiler or independent Python-free runtime is claimed.
