@@ -1,8 +1,7 @@
 use nobody::profiles::PROFILES;
 use nobody::{
     check_source, evaluate_source, lower_source, migrate_legacy_ai, parse, parse_validated,
-    same_ir, scan,
-    translate_source, TokenKind,
+    same_ir, scan, translate_source, TokenKind,
 };
 use std::{env, fs, process};
 
