@@ -119,3 +119,11 @@ Every release must include: source code, tests and reported results; supported v
 - [x] Prototype lexer implemented locally: lowercase ASCII identifiers, strings/comments, line/column positions and errors; lexer source and tests committed to GitHub.
 - [ ] Complete source import and live GitHub CI test of 0.9 pending.
 - [ ] Full independent parser, proper typed AST and formal specification still pending.
+
+
+### Progress note — experimental Nobody 0.10 (2026-11-08)
+- [x] First independently written **subset AST parser** with explicit source-language selection, brace blocks, function declarations, conditions, loops, calls, lists and binary expression precedence. Parser, language aliases and regression tests committed to GitHub.
+- [x] Added Github Actions frontend test configuration. Successful GitHub workflow execution not yet confirmed.
+- [ ] Finish complete grammar: typed declarations, reassignments, indentation syntax, richer expressions, unambiguous tokens and structured error recovery.
+- [ ] Import complete interpreter/compiler bootstrap and all previous tests to GitHub.
+- [ ] Implement execution/code generation from the independent AST, replacing Python syntax translation.
