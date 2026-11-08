@@ -113,3 +113,9 @@ Human syntax language; simple/advanced/expert syntax; high/hybrid/low abstractio
 ## Release acceptance criteria
 
 Every release must include: source code, tests and reported results; supported vs planned feature matrix; changes, limitations and known security issues; exact run/build instructions; license and AI disclosure; updated roadmap; tagged version and checksums for downloadable artifacts. No version numbers or dates are promised in advance.
+
+
+### Progress note — 2026-11-08
+- [x] Prototype lexer implemented locally: lowercase ASCII identifiers, strings/comments, line/column positions and errors; lexer source and tests committed to GitHub.
+- [ ] Complete source import and live GitHub CI test of 0.9 pending.
+- [ ] Full independent parser, proper typed AST and formal specification still pending.
