@@ -203,7 +203,7 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 
 ## Latest work toward existing open items (2026-11-08)
 
-- **Phase 1 lexer completeness (still open):** Reject malformed decimal literals such as `12abc`, `1__2` and `1e+` with N2006 and actionable repairs. Preserve decimal/exponent forms and `1-2` token separation. Three new source-level tests authored.
+- **Phase 1 lexer completeness (still open):** Reject malformed decimal literals such as `12abc`, `1__2` and `1e+` with N2006 and actionable repairs. Preserve decimal/exponent forms and `1-2` token separation. Three lexer unit tests and two CLI integration tests authored, with a malformed-number fixture.
 - **Phase 0 Rust verification (still open):** The container has neither `cargo` nor `rustc`, and its network cannot resolve the official Rust toolchain host. No claim of a successful build, formatting gate, Clippy or GitHub Actions run is made. Do not remove the existing acceptance gate.
 - **Accounting:** Existing roadmap totals stay unchanged. Fixes to partial work are not new completed milestones.
 
