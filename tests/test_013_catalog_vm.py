@@ -9,8 +9,8 @@ from nobody.bidi import direction_for_language
 class NewMilestoneTests(unittest.TestCase):
     def test_249_entries_28_active(self):
         self.assertEqual(len(languages()),249)
-        self.assertEqual(len(ALIASES),28)
-        self.assertEqual(status()['planned_reference_variants'],221)
+        self.assertEqual(len(ALIASES),34)
+        self.assertEqual(status()['planned_reference_variants'],215)
 
     def test_six_new_profiles_roundtrip(self):
         source='nech cislo = 3\nak cislo > 2 { vypis("Život") }'
