@@ -171,3 +171,17 @@ Dokumentácia: [ERROR_CODES.md](ERROR_CODES.md). Kompletný lokálny zdrojový b
 | AI `ai` profile | Not ported | No |
 
 See [Rust migration acceptance criteria](RUST_MIGRATION.md). The project **must not be described as Rust-only or Python-free** until parity gates pass.
+
+
+## Rust 0.23 source snapshot
+
+| Capability | Implementation | Verification |
+|---|---|---|
+| Complete English roadmap with audited checklist | [ROADMAP.md](ROADMAP.md) | Committed |
+| Rust AST parser for declarations and expressions (`sk`, `en`, `ai`) | [syntax.rs](../rust/src/syntax.rs) | Code authored; **compilation/CI not yet verified** |
+| Rust CLI `parse <lang> FILE` | [main.rs](../rust/src/main.rs) | Source committed |
+| All other 37 syntax profiles in Rust | Not implemented | Planned |
+| Rust parsing of functions, conditions and loops | Not implemented | Planned |
+| Rust interpreter/native backend and Python removal | Not implemented | Planned |
+
+The Python reference remains experimental and is **not** the target runtime. See [Rust migration contract](RUST_MIGRATION.md).
