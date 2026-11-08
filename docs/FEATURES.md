@@ -115,3 +115,17 @@ See [AI syntax](AI_SYNTAX.md), [language list](LANGUAGES.md), [roadmap](ROADMAP.
 - **Bounded recursion:** configurable interpreter call depth plus step count; not a secure resource-isolation guarantee.
 - **Local verification:** 124 tests passed in full 0.17 development tree. GitHub CI results are not independently confirmed.
 - **Not implemented:** comprehensive module namespaces, lexical captures in native machine code, static ownership checking, independent Python-free runtime, deterministic hard memory limits.
+
+
+## 0.18 — conservative static typing
+
+| Capability | State |
+|---|---|
+| Separate AST type analysis without code execution | Implemented, restricted subset |
+| Type-annotated declarations and reassignment checks | Provably mismatched primitive types are diagnosed |
+| Lexical scope-aware duplicate/undeclared checks | Implemented for supported AST nodes |
+| Warnings for dynamically unknown identifiers | Implemented; unknown does not imply type safety |
+| Full function type inference, branch joins, generics and sound static typing | Not implemented |
+| Native compiler, formal proofs or secure sandbox | Not implemented |
+
+Full local source archive: 134 unit tests passed. GitHub CI status unconfirmed.
