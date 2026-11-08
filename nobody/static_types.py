@@ -5,6 +5,7 @@ A successful check is not a proof of whole-program type safety.
 from dataclasses import dataclass
 from .parser import parse_source
 from .languages import ALIASES
+from .errors import definition, format_diagnostic
 
 UNKNOWN="unknown"
 @dataclass(frozen=True)
@@ -12,6 +13,10 @@ class Diagnostic:
     line:int
     code:str
     message:str
+    @property
+    def number(self):return definition(self.code).number
+    @property
+    def detailed_message(self):return format_diagnostic(self.code,self.message,self.line)
 
 @dataclass(frozen=True)
 class Analysis:
