@@ -74,15 +74,13 @@ fn non_boolean_condition_is_explicitly_unsupported() {
 }
 
 #[test]
-fn while_is_supported_but_functions_are_not_yet_executable() {
+fn while_and_basic_named_functions_are_executable() {
     assert_eq!(
         evaluate_source("while false { print(1) }", "ai").unwrap(),
         ""
     );
     assert_eq!(
-        evaluate_source("fn f() { return 1 }", "ai")
-            .unwrap_err()
-            .code,
-        4004
+        evaluate_source("fn f() { return 1 }\nprint(f())", "ai").unwrap(),
+        "1\n"
     );
 }
