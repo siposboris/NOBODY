@@ -111,3 +111,18 @@ vypis(dvoj(1, 2))  # E_ARITY — expected one argument
 ```
 
 Use `python3 -m nobody type-check program.nbd --lang sk`. The complete local Nobody 0.19 tree passed **144 tests**. GitHub Actions verification remains unconfirmed. This is not a complete type checker, and the interpreter still requires Python. See [test_019_flow_types.py](tests/test_019_flow_types.py).
+
+
+## Nobody 0.20 — číslované a vysvetlené chyby
+
+Každá nová verejná kategória chyby dostane stabilný číselný kód `Nxxxx` (napríklad `N1001` pri nesúlade typu), konkrétnu príčinu a pokyn na opravu. Staršie symbolické názvy diagnostík zostávajú dostupné. Prototypový frontend klasifikuje aj chyby lexera, parsera, vykonávania a CLI; niektoré staršie knižničné výnimky zatiaľ ešte prechádzajú cez náhradnú klasifikáciu `N9999`.
+
+**Katalóg všetkých 24 položiek s príkladmi:** [docs/ERROR_CODES.md](docs/ERROR_CODES.md). Kód katalógu: [nobody/errors.py](nobody/errors.py). Testy: [tests/test_020_errors.py](tests/test_020_errors.py).
+
+```bash
+python3 -m nobody errors         # všetky čísla
+python3 -m nobody errors 1001    # konkrétny význam a oprava
+python3 -m nobody type-check program.nbd --lang sk
+```
+
+V úplnom lokálnom balíku 0.20 prešlo **156 testov**, z toho 12 nových testov chýb a CLI. Úspech GitHub Actions zatiaľ nie je nezávisle potvrdený.
