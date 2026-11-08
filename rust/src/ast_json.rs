@@ -144,11 +144,7 @@ pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic
     // parent's "line" field. The location visitor yields that same postorder.
     // Replacing only the serializer-owned exact field marker cannot affect
     // escaped string literal contents, e.g. \"line\":1 in a quoted value.
-    let markers = crate::ast_json_locations::source_lines(
-        source,
-        profile,
-        &program.statements,
-    )?;
+    let markers = crate::ast_json_locations::source_lines(source, profile, &program.statements)?;
     let parts: Vec<_> = json.split(r#""line":1"#).collect();
     if parts.len() != markers.len() + 1 {
         return Err(unsupported("AST JSON line/node count mismatch"));
