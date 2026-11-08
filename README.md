@@ -41,7 +41,7 @@ A stand-alone [Nobody lexer](nobody/lexer.py) and [lexer unit tests](tests/test_
 
 ## Experimental milestone: Nobody 0.10 AST parser (2026-11-08)
 
-The new [AST parser](nobody/parser.py), [tests](tests/test_parser.py) and [frontend CI workflow](.github/workflows/frontend-tests.yml) are now available. Parser accepts a documented subset of brace-based Nobody syntax in SK/EN/CS/DE and produces an abstract syntax tree rather than Python source. It is **not** a full grammar, execution engine or native compiler. Earlier interpreter, semantic checker and Nobody compiler source are **not yet fully imported to GitHub**. The full local working tree passed **65 tests**; GitHub CI results for this commit have not been confirmed. [Detailed limitations](docs/PARSER.md).
+The new [AST parser](nobody/parser.py), [tests](tests/test_parser.py) and [frontend CI workflow](.github/workflows/frontend-tests.yml) are now available. Parser accepts a documented subset of brace-based Nobody syntax in the 22 configured language profiles and produces an abstract syntax tree rather than Python source. It is **not** a full grammar, execution engine or native compiler. Earlier interpreter, semantic checker and Nobody compiler source are **not yet fully imported to GitHub**. The full local working tree passed **65 tests**; GitHub CI results for this commit have not been confirmed. [Detailed limitations](docs/PARSER.md).
 
 
 ## Languages (experimental)
