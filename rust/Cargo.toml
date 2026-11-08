@@ -14,3 +14,5 @@ name = "nobody-rs"
 path = "src/main.rs"
 
 [dependencies]
+# Pinned Unicode NFC checks; source identifiers are validated, never silently rewritten.
+unicode-normalization = "=0.1.24"
