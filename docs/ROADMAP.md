@@ -204,3 +204,19 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Validate GitHub CI results and import the rest of the historical Nobody bootstrap source. The implementation still requires Python.
 
 **Local full-project test run:** 116 tests passed on 2026-11-08; this is not a GitHub Actions result. Full AST round-trips only apply to the currently supported syntax subset. The complete native compiler remains unimplemented.
+
+
+## Nobody 0.17 — lexical scopes and closures (2026-11-08)
+
+- [x] Introduce [lexical environments](../nobody/scopes.py) that distinguish local declarations from surrounding scope bindings.
+- [x] Nested blocks can shadow an outer variable without overwriting it; an assignment resolves to the nearest previously declared lexical owner.
+- [x] Functions capture their definition environment and can return callable closures that retain captured variables after outer function return.
+- [x] Primitive type annotations remain enforced when a closure updates a captured binding.
+- [x] A recursion call-depth guard and execution step budget are present in the experimental Python-hosted AST evaluator.
+- [x] Add [0.17 regression tests](../tests/test_017_scopes.py) and CI test configuration.
+- [ ] Formalize shadowing semantics across all supported profiles and namespace rules, including per-language identifier conflicts.
+- [ ] Improve closures, nested function lifetime, block-local captures, and avoid Python recursion/RAM hazards; interpreter remains **not a sandbox**.
+- [ ] Import all historical bootstrap sources and run full GitHub Actions verification before declaring a tagged public release.
+- [ ] Develop independent typed IR, separate static type checking and eventually a Python-free native compiler.
+
+**Verification:** Full local source tree passed 124 tests (116 prior + 8 new). GitHub Actions success not yet independently confirmed. The feature is an interpreter milestone, not a native compiler.
