@@ -221,3 +221,10 @@ Do not confuse these historical notes with published and verified tags.
 - Fixed stale known-function arity metadata after assignment, preventing false N1005 diagnostics; added two regression tests.
 - Changed Rust GitHub Actions formatting step to `cargo fmt --all -- --check` so CI detects formatting differences instead of silently modifying the checkout.
 - **Rust compilation, formatting and test success are unverified.** No runtime or Python replacement is claimed.
+
+## Rust 0.34 — reproducible verification gate (source snapshot, 2026-11-08)
+
+- Added `scripts/verify-rust.sh`: non-mutating formatting check, all-target Cargo tests, strict Clippy, successful CLI examples and intentionally failing CLI examples.
+- Added Rust toolchain preflight with explicit failure if Cargo, rustfmt or Clippy is unavailable.
+- Enabled manual `workflow_dispatch` for the Rust GitHub Actions workflow and wired the unified verification script into CI.
+- Shell preflight syntax was checked locally; the local environment has no Cargo, so **Rust build/tests/Clippy and GitHub CI remain unverified**. The roadmap acceptance gate remains open.
