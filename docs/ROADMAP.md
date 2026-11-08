@@ -247,6 +247,8 @@ Roadmap checklist progress is **44/112 (39%)** as of this update. It counts mark
 
 **Range-based for-loop execution slice (2026-11-08, verified):** The Rust `run` evaluator supports bounded `for` over 1–3-argument unshadowed `range`, positive and negative steps, lexical per-iteration variable scope, nested `break`/`continue`, and N4006 for zero step. Nine new integration tests cover these behaviors and iteration overflow/budget guards. All four GitHub workflows passed, including [Rust CI #42512795206](https://github.com/siposboris/NOBODY/actions/runs/42512795206), and the change merged in [PR #10](https://github.com/siposboris/NOBODY/pull/10). This is an incremental Phase 4 capability: generators, arbitrary iterables, functions, native compilation, full Python parity, and hard sandboxing remain open.
 
+**Runtime syntax-profile matrix (2026-11-08, awaiting CI):** Add integration checks that translate two bounded `ai` execution fixtures into all 40 profiles and compare their Rust `run` outputs. These tests strengthen the narrow runtime parity gate but do **not** establish full language parity, native-speaker correctness, or Rust-vs-Python differential equality. Keep broader Phase 4 and 0.39 items open.
+
 ### Next implementable milestone — functions and reference parity
 
 The Rust `run` evaluator now has verified basic assignments, conditionals, bounded `while`, and `range`-based `for` loops. These are **partial** capabilities, not a complete runtime.
