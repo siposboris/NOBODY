@@ -1,6 +1,6 @@
 //! Conservative Rust type checking for canonical Nobody IR.
 //! Unknown expressions are deferred; this is NOT a sound whole-program type system.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap,BTreeSet};
 use crate::{lower_source,Diagnostic};
 use crate::ir::{Module,IrStatement,IrExpr,Name};
 
@@ -47,9 +47,15 @@ fn infer(expr:&IrExpr,env:&BTreeMap<String,Type>)->Type {
     }
 }
 fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Diagnostic>{
+    let mut declared_here=BTreeSet::new();
     for stmt in statements {
         match stmt {
             IrStatement::Let{name,type_name,expr}=>{
+                if !declared_here.insert(name.clone()){
+                    return Err(diagnostic(1004,
+                        format!("Duplicate declaration of {name:?} in the same lexical block"),
+                        "Rename the second declaration, or use assignment without 'let' to update the existing variable."));
+                }
                 let found=infer(expr,env);
                 let declared=type_name.as_deref().map(Type::from_annotation).unwrap_or(found);
                 if !compatible(declared,found){
@@ -68,8 +74,11 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                             "Assign a value compatible with the original declaration, or change that declaration."));
                     }
                 }
-                // Undeclared assignments are intentionally deferred until a
-                // dedicated scope pass can distinguish globals from captures.
+                else {
+                    return Err(diagnostic(1003,
+                        format!("Assignment targets undeclared variable {name:?} in the visible lexical scope"),
+                        "Declare the variable with 'let' before assigning to it, or correct the misspelled name."));
+                }
             }
             IrStatement::If{branches,otherwise}=>{
                 for (_,body) in branches{
@@ -87,9 +96,22 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                 block(body,&mut local)?;
             }
             IrStatement::Function{name,parameters,body}=>{
+                if !declared_here.insert(name.clone()){
+                    return Err(diagnostic(1004,
+                        format!("Duplicate function/variable declaration {name:?} in the same lexical block"),
+                        "Rename the function or remove the earlier declaration in this block."));
+                }
                 env.insert(name.clone(),Type::Unknown);
                 let mut local=env.clone();
-                for param in parameters{local.insert(param.clone(),Type::Unknown);}
+                let mut unique_parameters=BTreeSet::new();
+                for param in parameters {
+                    if !unique_parameters.insert(param.clone()){
+                        return Err(diagnostic(1004,
+                            format!("Function {name:?} repeats parameter {param:?}"),
+                            "Give every parameter in the function signature a unique name."));
+                    }
+                    local.insert(param.clone(),Type::Unknown);
+                }
                 block(body,&mut local)?;
             }
             IrStatement::Return(_)|IrStatement::Break|IrStatement::Continue|
@@ -130,6 +152,28 @@ mod tests{
     }
     #[test]fn typed_shadowing_in_inner_block_does_not_leak(){
         check_source("let x: int = 1\nif true { let x: str = \"ok\" }\nx = 2","ai").unwrap();
+    }
+    #[test]fn rejects_undeclared_assignment(){
+        let err=check_source("missing = 3","ai").unwrap_err();
+        assert_eq!(err.code,1003);assert!(err.detail.contains("missing"));
+    }
+    #[test]fn rejects_duplicate_local_declaration(){
+        let err=check_source("let x = 1\nlet x = 2","ai").unwrap_err();
+        assert_eq!(err.code,1004);
+    }
+    #[test]fn allows_shadowing_in_child_block(){
+        check_source("let x: int = 1\nif true { let x: str = \"ok\" }","ai").unwrap();
+    }
+    #[test]fn rejects_duplicate_function_parameter(){
+        let err=check_source("fn f(x,x) { return x }","ai").unwrap_err();
+        assert_eq!(err.code,1004);
+    }
+    #[test]fn rejects_function_and_variable_same_block(){
+        let err=check_source("let f = 1\nfn f() { return 2 }","ai").unwrap_err();
+        assert_eq!(err.code,1004);
+    }
+    #[test]fn accepts_assignment_to_visible_outer_variable(){
+        check_source("let x: int = 1\nif true { x = 2 }","ai").unwrap();
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
