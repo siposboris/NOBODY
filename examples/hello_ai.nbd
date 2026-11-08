@@ -1,0 +1,2 @@
+ai_let pocet: ai_int = 3
+ai_if pocet > 1 { ai_print("Ahoj, Nobody") }
