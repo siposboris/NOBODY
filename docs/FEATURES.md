@@ -28,3 +28,9 @@ See [full roadmap](ROADMAP.md).
 ## Experimental 0.8 progress
 
 A local prototype now adds strict short foreign-keyword checks and validates both ends of Nobody-to-Nobody source translation. 49 tests passed locally, but the complete code has not yet been imported here. See [0.8 notes](PROTOTYPE_0_8.md). This does not change the status of native compilation, runtime, memory safety or full self-hosting.
+
+
+## Local 0.9 development
+- **Implemented in local prototype:** independent lexer for ASCII identifiers, Unicode strings/comments, source location tracking, and lexical errors. The [lexer source](../nobody/lexer.py) and [unit tests](../tests/test_lexer.py) are published in GitHub.
+- **Not yet complete in repository:** full 0.9 interpreter, integration files, complete tests and CI execution.
+- **Still planned:** full AST parser, native compilation, hard memory profiles, GPU, parallel execution and complete self-hosting.
