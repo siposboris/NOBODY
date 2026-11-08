@@ -98,3 +98,12 @@ The GitHub repo now contains 22 syntax dictionaries, a Unicode-aware lexer, sour
 | Test results | 110 tests passed in full local 0.15 tree; GitHub CI not yet confirmed |
 
 See [AI syntax](AI_SYNTAX.md), [language list](LANGUAGES.md), [roadmap](ROADMAP.md).
+
+
+## Nobody 0.16 new capabilities
+
+- **AST JSON import/validation:** implemented for `nobody.ast.v1` subset; reject malformed schemas and invalid AST shapes, impose depth/count limits.
+- **AST-to-Nobody source emitter:** implemented for supported statements and expressions; chooses a configured syntax language and does not produce Python source. Round-trip coverage is limited to examples and supported grammar, not a formal equivalence guarantee.
+- **CLI:** `ast-json`, `ast-validate`, `ast-emit`.
+- **Local tests:** 116 passed in 0.16 complete local tree. GitHub Actions status not yet verified.
+- **Still missing:** full lexer/parser spec, cross-language canonical semantic IR for builtins, lexical scoping, closures, native compilation and self-hosting.
