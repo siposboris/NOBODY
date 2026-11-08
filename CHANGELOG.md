@@ -65,3 +65,11 @@ Do not confuse these historical notes with published and verified tags.
 - Full prior bootstrap importer, native backend, full language grammar and independent self-hosting are still planned.
 
 - Added experimental profile validator and GitHub CLI `audit-languages`; 95 tests pass in local source archive. GitHub CI result remains unconfirmed.
+
+
+## Experimental Nobody 0.14 (2026-11-08)
+- Added six provisional syntax languages: Bulgarian, Romanian, Swedish, Finnish, Armenian, Georgian. 34 experimental total / 215 reference variants pending.
+- Updated the local Nobody-written source-to-source bootstrap compiler's keyword tables for all 34 profiles.
+- AST parser and evaluator now support assignment to previously declared variables, enabling mutable loop counters; unknown names fail.
+- Added new tests and CI configuration. **104 tests passed locally** in the complete 0.14 archive, not confirmed on GitHub Actions.
+- Known limitations: type constraints on reassignment, block-scoping, complete bootstrap source import, native compilation and native-speaker validation.
