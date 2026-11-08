@@ -45,3 +45,11 @@ jobs:
           cargo run --manifest-path rust/Cargo.toml -- ir sk rust/examples/basic_sk.nbd
           cargo run --manifest-path rust/Cargo.toml -- ir ai examples/hello_ai.nbd
           cargo run --manifest-path rust/Cargo.toml -- compare-ir sk rust/examples/basic_sk.nbd en rust/examples/ir_match_en.nbd
+
+      - name: Rust static type checker smoke
+        run: |
+          cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_good_ai.nbd
+          if cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_bad_ai.nbd; then
+            echo "Expected N1001 rejection, but typecheck succeeded" >&2
+            exit 1
+          fi
