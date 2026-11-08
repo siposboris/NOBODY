@@ -113,3 +113,7 @@ The Rust `typecheck` command also checks direct calls to lexically known functio
 ## 0.33 — regression hardening
 
 The Rust profile tests now use lowercase canonical semantic keys; the IR type checker invalidates previously known function arity when that variable is reassigned. Two regression tests were added. CI now runs `cargo fmt --all -- --check` without mutating files. **Formatting, compilation and tests have not been independently verified.**
+
+## 0.34 — verification gate
+
+Run `bash scripts/verify-rust.sh` from the repository root. The script checks toolchain prerequisites, runs `cargo fmt --check`, `cargo test --all-targets`, strict `cargo clippy`, and successful/failing CLI smoke cases without changing source files. The Rust GitHub Actions workflow also supports manual dispatch. **This is a verification harness, not proof that the crate compiles**: the authoring environment lacks Cargo and the CI result remains unverified.
