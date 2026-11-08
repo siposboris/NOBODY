@@ -14,7 +14,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
         line: 0,
         column: 0,
         detail: detail.into(),
-        repair: "Use the supported, unparenthesized AST JSON subset, or wait for the fully spanned Rust syntax parser.",
+        repair: "Use the supported AST JSON subset; a fully spanned Rust syntax parser is still planned.",
     }
 }
 
