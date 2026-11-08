@@ -28,8 +28,7 @@ fn range_start_stop_and_step() {
 #[test]
 fn loop_variable_and_local_bindings_do_not_escape() {
     assert_eq!(
-        evaluate_source("let i = 99\nfor i in range(2) { print(i) }\nprint(i)", "ai")
-            .unwrap(),
+        evaluate_source("let i = 99\nfor i in range(2) { print(i) }\nprint(i)", "ai").unwrap(),
         "0\n1\n99\n"
     );
     assert_eq!(
@@ -51,11 +50,7 @@ fn break_continue_and_nested_while() {
     let source = "for i in range(6) { if i == 2 { continue }\nif i == 4 { break }\nprint(i) }";
     assert_eq!(evaluate_source(source, "ai").unwrap(), "0\n1\n3\n");
     assert_eq!(
-        evaluate_source(
-            "for i in range(2) { while true { print(i)\nbreak } }",
-            "ai"
-        )
-        .unwrap(),
+        evaluate_source("for i in range(2) { while true { print(i)\nbreak } }", "ai").unwrap(),
         "0\n1\n"
     );
 }
@@ -63,8 +58,11 @@ fn break_continue_and_nested_while() {
 #[test]
 fn iterable_parameters_evaluate_once() {
     assert_eq!(
-        evaluate_source("let limit = 3\nfor i in range(limit) { limit = limit + 1\nprint(i) }\nprint(limit)", "ai")
-            .unwrap(),
+        evaluate_source(
+            "let limit = 3\nfor i in range(limit) { limit = limit + 1\nprint(i) }\nprint(limit)",
+            "ai"
+        )
+        .unwrap(),
         "0\n1\n2\n6\n"
     );
 }
@@ -77,7 +75,11 @@ fn bad_range_parameters_are_explicit() {
         "for i in range(\"2\") { print(i) }",
         "for i in 3 { print(i) }",
     ] {
-        assert_eq!(evaluate_source(source, "ai").unwrap_err().code, 4004, "{source}");
+        assert_eq!(
+            evaluate_source(source, "ai").unwrap_err().code,
+            4004,
+            "{source}"
+        );
     }
     assert_eq!(
         evaluate_source("for i in range(0, 4, 0) { print(i) }", "ai")
