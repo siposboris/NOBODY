@@ -136,6 +136,7 @@ fn error(code: u16, line: usize, column: usize, detail: impl Into<String>) -> Di
     let repair = match code {
         3001 => "Insert the required punctuation or value at the reported location.",
         3002 => "Close the current block with a matching '}' brace.",
+        1007 => "Use a supported primitive type keyword in the selected syntax profile: int, float, str or bool (translated for that profile).",
         3003 => "Use a valid lowercase variable name after the declaration keyword.",
         3005 => "Complete the expression with a valid literal, identifier or parenthesized expression.",
         3006 => "Use only declarations, assignments and expressions in the current Rust parser subset.",
@@ -501,7 +502,7 @@ impl Parser {
                         .ty(&ty.value)
                         .ok_or_else(|| {
                             error(
-                                3003,
+                                1007,
                                 line,
                                 col,
                                 format!("Unknown type {:?} in selected profile", ty.value),
