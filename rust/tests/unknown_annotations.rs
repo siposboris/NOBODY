@@ -5,8 +5,8 @@ use nobody::check_source;
 fn unknown_ai_type_annotation_reports_n1007() {
     let error = check_source("let age: intr = 3", "ai").unwrap_err();
     assert_eq!(error.code, 1007);
-    assert!(error.detail.contains("age"));
     assert!(error.detail.contains("intr"));
+    assert_eq!((error.line, error.column), (1, 10));
     assert!(error.repair.contains("int"));
 }
 
