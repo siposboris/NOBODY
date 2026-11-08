@@ -27,6 +27,28 @@ Run the Rust verification locally with `bash scripts/verify-rust.sh`, or inspect
 
 
 
+## Rust 0.39 work in progress — first opt-in evaluator (verified)
+
+A limited Rust-native Nobody evaluator now runs simple programs through
+`nobody-rs run PROFILE FILE`. It supports basic untyped variable declarations,
+assignment, integer arithmetic, floor division and remainder, strings, booleans,
+null and the unshadowed `print` built-in.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml -- run ai rust/examples/eval_basic_ai.nbd
+cargo run --locked --manifest-path rust/Cargo.toml -- run sk rust/examples/eval_basic_sk.nbd
+```
+
+Both fixtures produce `9` and `8` on separate lines. [Rust CI
+#42510492963](https://github.com/siposboris/NOBODY/actions/runs/42510492963)
+passed compilation, formatting, Clippy, tests and CLI smoke, along with the
+Python frontend and lexer checks. This **does not finish milestone 0.39**:
+functions, control flow, typed runtime declarations, arbitrary precision,
+floating-point execution, full differential parity and hardened resource
+isolation remain open. This is **not a sandbox**; do not execute untrusted code.
+Python remains available as the legacy reference. See
+[Rust execution documentation](rust/README.md).
+
 ## Historical Rust 0.26 milestone: 40 syntax profiles and redesigned AI syntax
 
 The Rust compiler frontend now contains **39 experimental human-language keyword

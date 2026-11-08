@@ -230,13 +230,16 @@ The existing Rust CI now runs `scripts/verify-rust.sh` first with an explicitly 
 
 Roadmap checklist progress is **44/112 (39%)** as of this update. It counts marked checklist entries, including historical prototypes, and **must not** be treated as a percentage of a working language or production readiness. The README bar is generated from checkbox bullets by `scripts/update-roadmap-progress.py` and checked in CI. Counting is deliberately *unweighted*; do not claim that a checked lexer item is equivalent in engineering effort to a native backend or self-hosting.
 
-### 0.39 target — small Rust evaluator foundation (not yet implemented)
+### 0.39 target — small Rust evaluator foundation (partially implemented, CI verified)
 
-1. Add a **separate, opt-in Rust AST/IR evaluator**, initially for integer/string/boolean/null literals, arithmetic, `let` bindings and `print`, with stdout capture for tests. Keep `parse`, `validate`, `typecheck` and `check` as non-executing commands.
+1. Add a **separate, opt-in Rust AST/IR evaluator**, initially for integer/string/boolean/null literals, arithmetic, `let` bindings and `print`, with stdout capture for tests.
+   - **Partial, verified:** [PR #6](https://github.com/siposboris/NOBODY/pull/6) merged basic Rust-only execution, opt-in `run`, simple untyped declarations and assignment, integer arithmetic, print and AI/Slovak fixture parity. Full runtime scope is still open. Keep `parse`, `validate`, `typecheck` and `check` as non-executing commands.
 2. Define deterministic runtime-value and runtime-error types, including numbered Nxxxx diagnostics for division by zero, missing variables and unsupported operations. Avoid inventing source spans where IR does not contain them.
-3. Add execution tests for a simple Slovak and `ai` program with identical observable results; cross-check supported fixtures against the legacy Python AST evaluator. Output must match while keyword syntax remains one language per file.
+3. Add execution tests for a simple Slovak and `ai` program with identical observable results; cross-check supported fixtures against the legacy Python AST evaluator.
+   - **Implemented within a narrow fixture:** AI and Slovak CLI stdout parity is tested. **Still missing:** an independently executed automated Rust-vs-Python reference comparison across shared fixtures and other profiles. Output must match while keyword syntax remains one language per file.
 4. Before a new `run` CLI can claim support, verify guarded step/recursion budgets and document that these are **not** a security sandbox or hard memory/CPU caps.
-5. **Gate:** `cargo fmt --check`, `cargo test --locked --all-targets`, strict Clippy, CLI smoke and Python-vs-Rust fixture comparison must pass in GitHub Actions. Mark the evaluator partial until every claimed behavior has tests. Do **not** delete Python.
+5. **Gate:** `cargo fmt --check`, `cargo test --locked --all-targets`, strict Clippy, CLI smoke and Python-vs-Rust fixture comparison must pass in GitHub Actions.
+   - **Verified gate subset:** [Rust GitHub Actions #42510492963](https://github.com/siposboris/NOBODY/actions/runs/42510492963) passed formatting, locked build/tests, Clippy, CLI evaluator smoke; Python frontend and lexer workflows also passed. **Full gate remains open** until differential parity and agreed safety boundaries are verified. Mark the evaluator partial until every claimed behavior has tests. Do **not** delete Python.
 
 ### Following slices — only after the 0.39 gate
 
