@@ -22,7 +22,11 @@ fn rejects_zero_exponents_and_grouping_in_divisor() {
         "let x = 2 / -0",
         "let x = 2 / +0.0",
     ] {
-        assert_eq!(check_source(source, "ai").unwrap_err().code, 1008, "{source}");
+        assert_eq!(
+            check_source(source, "ai").unwrap_err().code,
+            1008,
+            "{source}"
+        );
     }
 }
 
