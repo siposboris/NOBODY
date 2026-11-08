@@ -38,7 +38,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     error(
         4004,
         detail,
-        "Use only integer, boolean, null, text, declarations, assignments, arithmetic and print in the initial Rust evaluator.",
+        "Use only the documented Rust evaluator subset: basic values, declarations, assignments, conditionals, arithmetic and print.",
     )
 }
 fn literal_text(raw: &str) -> Result<String, Diagnostic> {
@@ -92,7 +92,7 @@ fn floor_div_rem(a: i128, b: i128) -> Option<(i128, i128)> {
     }
 }
 struct Evaluator {
-    vars: BTreeMap<String, RuntimeValue>,
+    scopes: Vec<BTreeMap<String, RuntimeValue>>,
     steps: usize,
     output: String,
 }
@@ -107,6 +107,24 @@ impl Evaluator {
             ));
         }
         Ok(())
+    }
+    fn lookup(&self, name: &str) -> Option<&RuntimeValue> {
+        self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
+    fn assign(&mut self, name: &str, value: RuntimeValue) -> bool {
+        for scope in self.scopes.iter_mut().rev() {
+            if scope.contains_key(name) {
+                scope.insert(name.to_string(), value);
+                return true;
+            }
+        }
+        false
+    }
+    fn block(&mut self, statements: &[IrStatement]) -> Result<(), Diagnostic> {
+        self.scopes.push(BTreeMap::new());
+        let result = statements.iter().try_for_each(|stmt| self.statement(stmt));
+        self.scopes.pop();
+        result
     }
     fn eval(&mut self, expr: &IrExpr, depth: usize) -> Result<RuntimeValue, Diagnostic> {
         self.tick(depth)?;
@@ -131,7 +149,7 @@ impl Evaluator {
             IrExpr::String(text) => Ok(RuntimeValue::Text(literal_text(text)?)),
             IrExpr::Boolean(value) => Ok(RuntimeValue::Bool(*value)),
             IrExpr::Null => Ok(RuntimeValue::Null),
-            IrExpr::Name(Name::User(name)) => self.vars.get(name).cloned().ok_or_else(|| {
+            IrExpr::Name(Name::User(name)) => self.lookup(name).cloned().ok_or_else(|| {
                 error(
                     4001,
                     format!("Unknown variable {name:?}"),
@@ -161,10 +179,39 @@ impl Evaluator {
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
+                // Boolean operations are lazy, so a skipped branch never
+                // evaluates its expressions or produces their side effects.
+                if op == "and" || op == "or" {
+                    let left = self.eval(lhs, depth + 1)?;
+                    let RuntimeValue::Bool(a) = left else {
+                        return Err(unsupported("Logical operators require boolean operands"));
+                    };
+                    if (op == "and" && !a) || (op == "or" && a) {
+                        return Ok(RuntimeValue::Bool(a));
+                    }
+                    let right = self.eval(rhs, depth + 1)?;
+                    let RuntimeValue::Bool(b) = right else {
+                        return Err(unsupported("Logical operators require boolean operands"));
+                    };
+                    return Ok(RuntimeValue::Bool(b));
+                }
                 let left = self.eval(lhs, depth + 1)?;
                 let right = self.eval(rhs, depth + 1)?;
+                if op == "==" || op == "!=" {
+                    let equal = left == right;
+                    return Ok(RuntimeValue::Bool(if op == "==" { equal } else { !equal }));
+                }
                 match (left, right) {
                     (RuntimeValue::Int(a), RuntimeValue::Int(b)) => {
+                        if matches!(op.as_str(), "<" | ">" | "<=" | ">=") {
+                            let yes = match op.as_str() {
+                                "<" => a < b,
+                                ">" => a > b,
+                                "<=" => a <= b,
+                                _ => a >= b,
+                            };
+                            return Ok(RuntimeValue::Bool(yes));
+                        }
                         let number =
                             match op.as_str() {
                                 "+" => a.checked_add(b),
@@ -240,15 +287,23 @@ impl Evaluator {
                 type_name: None,
                 expr,
             } => {
-                if self.vars.contains_key(name) {
+                if self
+                    .scopes
+                    .last()
+                    .is_some_and(|scope| scope.contains_key(name))
+                {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 let value = self.eval(expr, 1)?;
-                self.vars.insert(name.clone(), value);
+                self.scopes
+                    .last_mut()
+                    .expect("root scope exists")
+                    .insert(name.clone(), value);
                 Ok(())
             }
             IrStatement::Assign { name, expr } => {
-                if !self.vars.contains_key(name) {
+                // Evaluate the RHS before mutating an existing binding.
+                if self.lookup(name).is_none() {
                     return Err(error(
                         4001,
                         format!("Assignment to unknown variable {name:?}"),
@@ -256,11 +311,31 @@ impl Evaluator {
                     ));
                 }
                 let value = self.eval(expr, 1)?;
-                self.vars.insert(name.clone(), value);
+                self.assign(name, value);
                 Ok(())
             }
             IrStatement::Expression(expr) => {
                 self.eval(expr, 1)?;
+                Ok(())
+            }
+            IrStatement::If {
+                branches,
+                otherwise,
+            } => {
+                for (condition, body) in branches {
+                    let value = self.eval(condition, 1)?;
+                    let RuntimeValue::Bool(yes) = value else {
+                        return Err(unsupported(
+                            "Conditional expressions must evaluate to a boolean",
+                        ));
+                    };
+                    if yes {
+                        return self.block(body);
+                    }
+                }
+                if let Some(body) = otherwise {
+                    self.block(body)?;
+                }
                 Ok(())
             }
             _ => Err(unsupported(
@@ -272,7 +347,7 @@ impl Evaluator {
 /// Explicit execution entrypoint. Parsing and type-checking never invoke this.
 pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
     let mut evaluator = Evaluator {
-        vars: BTreeMap::new(),
+        scopes: vec![BTreeMap::new()],
         steps: 0,
         output: String::new(),
     };
