@@ -523,7 +523,11 @@ These diagnostics apply to the explicitly invoked `nobody-rs run PROFILE FILE` c
 - **N4001 — Unknown variable:** A variable was read or assigned before declaration. Declare it first.
 - **N4002 — Zero divisor:** Integer division or remainder received zero. Check the divisor.
 - **N4003 — Integer overflow:** Signed 128-bit arithmetic or integer literal exceeds the supported range. Use smaller values.
-- **N4004 — Unsupported runtime feature:** A parsed statement or expression is not in the evaluator subset. Functions, loops, typed declarations and floating-point execution remain unsupported.
+- **N4004 — Unsupported runtime feature:** A parsed statement or expression is not in the evaluator subset. Nested function definitions, closures, function values, typed declarations and floating-point execution remain unsupported.
 - **N4005 — Resource counter reached:** The evaluator has exceeded its step, nesting, text, or output budget. These limits are not an operating-system sandbox or complete resource isolation.
 
-The `run` command supports integer arithmetic, basic text/boolean/null values, simple declarations, assignments and unshadowed `print` only. Parsing and type-checking do not execute programs.
+The `run` command supports integer arithmetic, basic text/boolean/null values, simple declarations, assignments, conditionals, bounded loops, named non-recursive function calls with parameters and `return`, and unshadowed `print`. Function calls use a snapshot of top-level variables and an isolated parameter/local scope; mutations to globals inside calls are not persisted. Parsing and type-checking do not execute programs. Parsing and type-checking do not execute programs.
+
+### N4007 — Wrong runtime function argument count
+
+The experimental Rust `run` evaluator reports **N4007** if a named function is called with an incorrect number of arguments. **Repair:** pass exactly the number of parameters declared for that function. This runtime diagnostic does not replace the conservative static arity check N1005. Recursion remains deliberately rejected as N4005 until a safe execution design is established.
