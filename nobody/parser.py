@@ -167,6 +167,12 @@ class Parser:
             self.accept(';')
             return Node('continue', token.line)
         expr = self.expression()
+        if self.accept('='):
+            if expr.kind != 'name':
+                raise self.error('Assignment target must be a variable')
+            rhs = self.expression()
+            self.accept(';')
+            return Node('assign', expr.line, expr.value, (rhs,))
         self.accept(';')
         return Node('expression_statement', expr.line, children=(expr,))
 
