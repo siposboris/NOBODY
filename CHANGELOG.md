@@ -85,3 +85,11 @@ Do not confuse these historical notes with published and verified tags.
 - Added six new regression tests: **110 passed in complete local development archive**, GitHub CI result unconfirmed.
 - 249 human variants remain in reference catalogue; 210 human variants still have no usable Nobody syntax dictionary.
 - Known limitations: parser grammar subset, Python-hosted interpreter, unverified native linguistic word choice, older bootstrap not yet mirrored in GitHub and no native self-hosting.
+
+
+## Nobody 0.16 experimental milestone (2026-11-08)
+- Added versioned AST JSON importer and validator with whitelisted nodes, child shape checking and explicit rejection of unsupported schemas.
+- Added source emitter from AST to Nobody source for a subset of the grammar (selected SK/EN/AI/Arabic/Japanese/Nepali/Persian/German profiles tested locally).
+- Added bounded-depth and malformed-input regression tests; 116 tests passed in the complete local 0.16 tree.
+- Added `ast-validate` and `ast-emit` commands to the GitHub frontend and expanded frontend CI.
+- Restrictions: Python bootstrap still required, no native executable backend, no formal proof of equivalence, incomplete grammar; GitHub CI success not yet confirmed.
