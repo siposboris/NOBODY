@@ -107,18 +107,25 @@ pub fn audit_profiles() -> Vec<String> {
                 errors.push(format!("{}: duplicate keyword {word:?}", profile.code));
             }
             if word.is_empty()
-                || word.chars().any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
+                || word
+                    .chars()
+                    .any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
             {
                 errors.push(format!("{}: invalid keyword {word:?}", profile.code));
             }
             if word.nfc().collect::<String>() != word {
                 errors.push(format!("{}: non-NFC keyword {word:?}", profile.code));
             }
-            if word.chars().any(|ch| matches!(
-                ch as u32,
-                0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069
-            )) {
-                errors.push(format!("{}: forbidden bidi control in keyword", profile.code));
+            if word.chars().any(|ch| {
+                matches!(
+                    ch as u32,
+                    0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069
+                )
+            }) {
+                errors.push(format!(
+                    "{}: forbidden bidi control in keyword",
+                    profile.code
+                ));
             }
         }
     }
