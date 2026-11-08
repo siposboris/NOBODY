@@ -353,3 +353,29 @@ print(hodnota)
 ```
 
 Quoted string literals and comments are not changed and cannot trigger N3011 merely by containing a reserved word. This is an experimental **fail-closed token check**, not yet a full scope-aware renaming and semantic-equivalence proof.
+
+### N1001 — Known static type mismatch (Rust IR checker)
+
+**Exact cause:** A typed variable is initialized with a value whose type is definitely incompatible with its declared type, or a later assignment to that variable has a definitely incompatible type. For example, a string is not an integer; a Boolean is not an integer. The Rust checker permits assigning an integer to a `float` declaration. Expressions with unknown types are deferred rather than rejected.
+
+**Incorrect AI-profile source:**
+
+```text
+let count: int = "wrong"
+```
+
+The checker reports `N1001` and names `count`, the expected type `Int` and the known actual type `Str`.
+
+**Correct:**
+
+```text
+let count: int = 3
+```
+
+**Run:**
+
+```bash
+cargo run --manifest-path rust/Cargo.toml -- typecheck ai rust/examples/typecheck_bad_ai.nbd
+```
+
+**Important limitation:** Canonical IR v1 currently has no statement-level source spans, so this diagnostic **does not invent a line/column**. It gives the exact variable and mismatched types. The type checker is conservative: unknown function results, undeclared assignment analysis, control-flow joins and runtime guarantees require future work. A successful check does not prove that a program is safe or executable.
