@@ -214,3 +214,10 @@ Do not confuse these historical notes with published and verified tags.
 - Includes recursive calls, lexical parameter shadowing, nested expression traversal and deferred dynamic calls.
 - Six new Rust unit tests, two CLI integration tests, good/bad fixtures and GitHub Actions smoke coverage authored.
 - **Cargo build and CI remain unverified.** This does not implement full scope, closures, overloads or native runtime.
+
+## Rust 0.33 — verification-focused regression repairs (source snapshot, 2026-11-08)
+
+- Corrected AI profile tests to use the canonical lowercase semantic keys `true` and `none`.
+- Fixed stale known-function arity metadata after assignment, preventing false N1005 diagnostics; added two regression tests.
+- Changed Rust GitHub Actions formatting step to `cargo fmt --all -- --check` so CI detects formatting differences instead of silently modifying the checkout.
+- **Rust compilation, formatting and test success are unverified.** No runtime or Python replacement is claimed.
