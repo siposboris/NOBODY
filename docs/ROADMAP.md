@@ -144,3 +144,20 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Implement real direction-aware editor rendering, cursor behavior and mixed-direction punctuation handling. **Not shipped.**
 - [ ] Review Unicode normalization/confusables and native speaker translations.
 - [ ] Import the full runtime and Nobody-written bootstrap compiler to GitHub and verify complete CI.
+
+
+## Milestone 0.13 — expanded linguistic catalogue and AST execution (2026-11-08)
+
+**Reference scope:** 249 Google Translate language/script variants according to the publicly reported August 2026 list (https://en.wikipedia.org/wiki/Google_Translate#Supported_languages). **Do not claim that all 249 are implemented.**
+
+- [x] Store [249 named catalogue entries](../nobody/data/google_translate_249.txt), including variants in different scripts.
+- [x] Record experimental/unsupported status for every entry in [catalog.py](../nobody/catalog.py).
+- [x] Add six experimental working syntax dictionaries: Hebrew (`he`), Greek (`el`), Ukrainian (`uk`), Persian (`fa`), Swahili (`sw`), Dutch (`nl`). Total **28 active experimental dictionaries; 221 planned entries**.
+- [x] Add RTL direction metadata for Hebrew and Persian alongside Arabic and Urdu; source remains in logical order.
+- [x] Add a [Python-hosted interpreter that executes Nobody AST nodes](../nobody/ast_vm.py) without generating Python source; restricted functions, lists, loops, branches and primitive typed declarations supported.
+- [x] Add [GitHub CLI frontend](../nobody/__main__.py) and [regression tests](../tests/test_013_catalog_vm.py).
+- [ ] Review each new syntax dictionary with native speakers, test Unicode normalization, identifier collisions and language-specific tokenization.
+- [ ] Implement the remaining 221 listed variants **one at a time**, each with native script, a complete keyword set and regression tests; reject unavailable profiles explicitly.
+- [ ] Complete AST grammar and independent execution semantics. Python still hosts the compiler frontend and AST evaluator.
+- [ ] Import full bootstrap interpreter and Nobody-written compiler into GitHub, with verified CI and release tags.
+- [ ] Build a native code backend; independently verify self-hosting. No milestone date is guaranteed.
