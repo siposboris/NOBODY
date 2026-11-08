@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Bytecode VM control flow (experimental)
+
+The separate Python-free bytecode runtime now handles `if/elif/else`, `while`, `break`, `continue`, comparisons, boolean literals and `not`. Branch bodies have lexically scoped variable slots; shadowing a name inside an `if` does not overwrite the outer declaration. A control-flow verifier checks every reachable edge, rejecting stack-height disagreement, uninitialized slots, invalid jumps and nonempty terminal stacks. Runtime software step budgets also stop empty infinite loops. The compiled VM and the pre-existing Rust AST evaluator are compared on `ai`, Slovak and English programs in CI.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/bytecode_control_ai.nbd
+```
+
+These capabilities remain **experimental**. The bytecode is in memory, not yet a stable portable format; `for range`, functions, short-circuit `and/or`, floats, strings, native output and complete self-hosting remain unimplemented. Resource counters do not form a security sandbox.
+
 ## Phase 4: first independent bytecode compiler + VM (experimental)
 
 The Rust binary now exposes a **separate bytecode execution path** from the older tree-walking evaluator. This is the first concrete Phase 4 foundation, not an assertion that Nobody has a finished compiler or native backend.
@@ -15,7 +25,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode 
 
 The compiler lowers the canonical Nobody IR into an **in-memory** versioned instruction vector, validates stack depth, slot initialization and termination, and executes with checked signed 128-bit arithmetic and bounded steps/output. Current support: **integer literals, `let`, assignment, `+`, `-`, `*`, unary sign, unshadowed `print`, and arithmetic expression statements**. The Python-free native CLI returns numbered errors for unsupported constructs. The AST evaluator remains independent to compare identical supported program results in unit and CLI tests across English, Slovak and `ai` profiles.
 
-**Still missing:** portable bytecode file format, bytecode control flow, lexical scopes, function calls, floats, text values, generalized types, runtime sandboxing, a linker and machine-code generation. Do not feed untrusted programs to the VM.
+**Still missing:** portable bytecode file format, complete control flow including for-range, function calls, floats, text values, generalized types, runtime sandboxing, a linker and machine-code generation. Do not feed untrusted programs to the VM.
 
 ## Current source coverage
 
