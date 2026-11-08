@@ -83,3 +83,7 @@ The translator is a **Nobody → Nobody** source transformer. A complete native 
 ## Review checklist
 
 For each of the 22 profiles, native speakers should inspect the spelling and naturalness of all reserved words, identify ambiguous multiword forms, confirm script/case conventions and check round-trip transformations and context-sensitive identifier collisions before any stable language specification is declared.
+
+## RTL display and source ordering
+
+Arabic (`ar`) and Urdu (`ur`) now carry explicit RTL direction metadata in [bidi.py](../nobody/bidi.py). Their original script is retained; source is never byte-reversed or character-reversed. Hidden bidi override/isolation controls are rejected in lexer input. **Editor rendering is not automated yet.** See [RTL guide](RTL.md).
