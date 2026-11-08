@@ -29,6 +29,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_016_ast_format.py' -v
           python -m unittest discover -s tests -p 'test_017_scopes.py' -v
           python -m unittest discover -s tests -p 'test_018_static_types.py' -v
+          python -m unittest discover -s tests -p 'test_019_flow_types.py' -v
           python -m nobody type-check examples/hello_sk.nbd --lang sk
           python -m nobody ast-json examples/hello_sk.nbd --lang sk > /dev/null
           python -m nobody translate examples/hello_sk.nbd --from-lang sk --to ai > /dev/null
