@@ -1,0 +1,4 @@
+nech x = 4
+ak (x > 2) {
+    vypis((x + 1))
+}
