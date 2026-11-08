@@ -93,3 +93,13 @@ Do not confuse these historical notes with published and verified tags.
 - Added bounded-depth and malformed-input regression tests; 116 tests passed in the complete local 0.16 tree.
 - Added `ast-validate` and `ast-emit` commands to the GitHub frontend and expanded frontend CI.
 - Restrictions: Python bootstrap still required, no native executable backend, no formal proof of equivalence, incomplete grammar; GitHub CI success not yet confirmed.
+
+
+## Nobody 0.17 experimental development (2026-11-08)
+
+- Implemented nested lexical scope frames for variables; shadowing and assignment to outer variables are distinguished.
+- User-defined functions now capture their lexical environment, enabling returned closures and recursive calls in the supported AST subset.
+- Runtime annotations on captured variables remain enforced when they are reassigned in closures.
+- Added bounded function call depth and eight regression tests.
+- Local complete source tree: **124 tests passed**; GitHub CI not yet confirmed.
+- Limitations: Python bootstrap and object memory semantics, incomplete grammar, no native machine code, no hard resource isolation or compiler self-hosting.
