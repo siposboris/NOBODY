@@ -19,6 +19,7 @@
 | **N2004** | `LEX_CHARACTER` | Nepovolený znak |
 | **N2005** | `LEX_BIDI` | Skrytý riadiaci znak smeru |
 | **N2006** | `LEX_NUMBER` | Neplatný desiatkový číselný literál |
+| **N2007** | `LEX_MIXED_SCRIPT` | Podozrivé miešanie latinky, gréčtiny a cyriliky v názve |
 | **N3001** | `PARSE_EXPECT` | Chýbajúci prvok |
 | **N3002** | `PARSE_BLOCK` | Nesprávne zátvorky bloku |
 | **N3003** | `PARSE_IDENTIFIER` | Neplatný názov |
@@ -470,3 +471,11 @@ add(1, 2)
 **Príčina:** Číselný token obsahuje neplatné znaky alebo nesprávne umiestnené oddeľovače, napríklad `12abc`, `1__2`, `1e+` alebo `0xFF`. Súčasný Rust lexer podporuje iba desiatkové celé a desatinné čísla, s voliteľným exponentom a podčiarkovníkmi medzi číslicami.
 
 **Oprava:** Použi `12`, `12.5`, `1_000` alebo `1e-3`. Ak má nasledovať identifikátor, oddeľ ho podľa gramatiky; hexadecimálne literály zatiaľ nie sú podporované. Chyba hlási riadok a stĺpec začiatku číselného tokenu. **Úspešná kompilácia a Rust CI ešte nie sú overené.**
+
+### N2007 — Miešanie zameniteľných písiem v identifikátore (Rust lexer)
+
+**Presná príčina:** Jeden názov premennej, funkcie alebo kľúčového slova obsahuje súčasne písmená najmenej dvoch písiem z množiny **latinka, gréčtina a cyrilika**. Vizuálne podobné písmená z rôznych písiem môžu zakryť preklep alebo podvrhnutie názvu. Napríklad v `let pаypal = 3` je druhý znak názvu cyrilské `а` (U+0430).
+
+**Oprava:** Použi v danom názve písmená jedného z týchto troch písiem. Skontroluj problematické písmeno na uvedenom riadku a stĺpci. Textové literály a komentáre sa týmto pravidlom neobmedzujú.
+
+**Rozsah:** Ide o **úzku ochranu**, nie o všeobecnú detekciu Unicode confusables či implementáciu UTS #39. Iné písma a bežné kombinácie, napríklad japonské kandži a hiragana, sa automaticky nezakazujú. Unicode NFC/NFKC normalizácia zostáva otvorenou úlohou.
