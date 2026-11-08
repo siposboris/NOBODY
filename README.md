@@ -161,11 +161,11 @@ V úplnom lokálnom balíku 0.20 prešlo **156 testov**, z toho 12 nových testo
 
 ## Rust-first migration decision (2026-11-08)
 
-**New compiler development now targets Rust, not Python.** The initial dependency-free Rust crate is in [rust/](rust/): a native UTF-8 lexer prototype, token positions, source checks and N2001–N2005 errors. It provides `nobody-rs lex FILE` and `nobody-rs check FILE`, where **check currently means lexical checking only**. [Rust build/test workflow](.github/workflows/rust.yml).
+**New compiler development now targets Rust, not Python.** The Rust crate is in [rust/](rust/): a UTF-8 lexer, source checks and numbered diagnostics (including N2007 mixed-script and N2008 NFC checks). The original dependency-free prototype now uses a pinned `unicode-normalization` crate for standards-based NFC identifier validation. It provides `nobody-rs lex FILE` and `nobody-rs check FILE`, where **check currently means lexical checking only**. [Rust build/test workflow](.github/workflows/rust.yml).
 
 The existing Python implementation is **temporarily frozen as a reference**. It has not been deleted because the Rust frontend does **not yet** replace the full parser, translator, analyzer or runtime. Python files will be removed one at a time only after Rust equivalents pass behavior-parity tests. The eventual goal is to rewrite the compiler itself in Nobody and verify self-hosting. [Migration plan and exact deletion gates](docs/RUST_MIGRATION.md).
 
-The Rust toolchain was unavailable in the code-generation environment, so a successful local Rust compilation **has not been verified**. No claim of full Rust migration, native compilation or Python independence is made yet.
+The local authoring environment lacks a Rust toolchain, but **real GitHub Actions verified compilation, tests, formatting and strict Clippy** ([Rust CI #42503823825](https://github.com/siposboris/NOBODY/actions/runs/42503823825)). This does not imply a complete compiler, native executable or Python/Rust behavioral parity.
 
 
 ## Rust milestone 0.23: small AST parser and English roadmap
