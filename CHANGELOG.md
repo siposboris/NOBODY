@@ -37,3 +37,12 @@ Do not confuse these historical notes with published and verified tags.
 - Added standalone GitHub frontend CI workflow (results not yet confirmed).
 - Full local working tree passed 65 tests; GitHub does not yet have the entire interpreter/compiler source.
 - Not a native compiler; typed declaration parsing and indentation grammar are not yet included.
+
+## Experimental Nobody 0.11 — native script profiles (2026-11-08)
+- Expanded syntax translation tables to **22 human languages** with native writing systems; no romanization for non-Latin scripts.
+- Added Unicode-aware lexical scanning for letter/combining-mark sequences and native script keywords.
+- Added Nobody-to-Nobody translation module, preserving string literals and comments.
+- Added multilingual round-trip regression tests and GitHub Actions test configuration.
+- Updated README, roadmap, parser and lexer docs and full [language catalog](docs/LANGUAGES.md).
+- **79 local prototype tests passed** after adding five tests. The complete Python bootstrap remains an experimental prototype; GitHub CI outcome has not been verified.
+- Native translations need native-speaker review; neither Unicode security nor full compiler integration is complete.
