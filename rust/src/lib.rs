@@ -60,6 +60,7 @@ fn failure(code: u16, line: usize, column: usize, detail: impl Into<String>) -> 
         2003 => "Vlož diakritiku až za príslušné základné písmeno.",
         2004 => "Odstráň nepovolený znak alebo ho uzavri do textového literálu.",
         2005 => "Odstráň skrytý znak Unicode; RTL nastav v editore.",
+        2006 => "Použi platný desiatkový literál, napríklad 12, 12.5 alebo 1e-3; oddeľ identifikátor medzerou.",
         _ => "Oprav uvedený zdrojový úsek.",
     };
     Diagnostic { code, line, column, detail: detail.into(), repair }
@@ -95,6 +96,47 @@ fn is_name_continue(c: char) -> bool {
 fn is_lowercase(c: char) -> bool {
     let lowered: String = c.to_lowercase().collect();
     lowered == c.to_string()
+}
+
+/// Numeric literals are intentionally decimal-only in the current lexer.
+/// Reject malformed forms early instead of silently treating them as integers.
+fn valid_decimal_literal(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    let mut at = 0;
+    let mut digits = 0;
+    // Underscores may separate digits but cannot begin/end a group.
+    let consume_digits = |at: &mut usize, count: &mut usize| {
+        let start = *at;
+        while *at < bytes.len() {
+            if bytes[*at].is_ascii_digit() {
+                *count += 1;
+                *at += 1;
+            } else if bytes[*at] == b'_' && *at > start
+                && *at + 1 < bytes.len()
+                && bytes[*at-1].is_ascii_digit()
+                && bytes[*at+1].is_ascii_digit() {
+                *at += 1;
+            } else {
+                break;
+            }
+        }
+    };
+    consume_digits(&mut at, &mut digits);
+    if digits == 0 { return false; }
+    if at < bytes.len() && bytes[at] == b'.' {
+        at += 1;
+        let mut fractional = 0;
+        consume_digits(&mut at, &mut fractional);
+        if fractional == 0 { return false; }
+    }
+    if at < bytes.len() && matches!(bytes[at], b'e' | b'E') {
+        at += 1;
+        if at < bytes.len() && matches!(bytes[at], b'+' | b'-') { at += 1; }
+        let mut exponent = 0;
+        consume_digits(&mut at, &mut exponent);
+        if exponent == 0 { return false; }
+    }
+    at == bytes.len()
 }
 
 fn advance_position(text: &str, line: &mut usize, col: &mut usize) {
@@ -168,8 +210,15 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
         } else if c.is_ascii_digit() {
             let mut end = pos + 1;
             while let Some(t) = next_char(source, end) {
-                if !(t.is_ascii_alphanumeric() || t == '.' || t == '_') { break; }
-                end += t.len_utf8();
+                if t.is_ascii_alphanumeric() || t == '.' || t == '_' ||
+                   ((t == '+' || t == '-') && end > pos &&
+                    matches!(source.as_bytes()[end-1], b'e' | b'E')) {
+                    end += t.len_utf8();
+                } else { break; }
+            }
+            if !valid_decimal_literal(&source[pos..end]) {
+                return Err(failure(2006, tok_line, tok_col,
+                    format!("Neplatny ciselny literal {:?}", &source[pos..end])));
             }
             (TokenKind::Number, end)
         } else if is_combining_mark(c) {
@@ -220,6 +269,29 @@ mod tests {
     #[test]
     fn uppercase_has_number() {
         assert_eq!(scan("Nech x = 1").unwrap_err().code, 2002);
+    }
+    #[test]
+    fn numeric_literals_accept_decimal_and_exponent() {
+        for input in ["0", "123", "1_000", "12.50", "1e3", "1e-3", "1.2E+10"] {
+            let tokens=scan(input).unwrap();
+            assert_eq!(tokens.len(),1,input);
+            assert_eq!(tokens[0].kind,TokenKind::Number,input);
+            assert_eq!(tokens[0].value,input);
+        }
+    }
+    #[test]
+    fn malformed_numeric_literals_report_n2006() {
+        for input in ["12abc", "1__2", "12_", "1.2.3", "1e", "1e+", "1._2", "0xFF"] {
+            let error=scan(input).unwrap_err();
+            assert_eq!(error.code,2006,"{input}");
+            assert_eq!((error.line,error.column),(1,1));
+        }
+    }
+    #[test]
+    fn binary_minus_is_not_absorbed_by_number() {
+        let tokens=scan("1-2").unwrap();
+        assert_eq!(tokens.iter().map(|t|t.value.as_str()).collect::<Vec<_>>(),
+            vec!["1","-","2"]);
     }
     #[test]
     fn string_preserved() {
