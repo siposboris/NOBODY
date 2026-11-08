@@ -65,9 +65,13 @@ fn loop_control_outside_loop_still_invalid_at_parse_time() {
 }
 
 #[test]
-fn unsupported_for_loops_remain_explicit() {
+fn range_for_loops_are_supported_but_other_iterables_are_deferred() {
     assert_eq!(
-        evaluate_source("for x in range(2) { print(x) }", "ai")
+        evaluate_source("for x in range(2) { print(x) }", "ai").unwrap(),
+        "0\n1\n"
+    );
+    assert_eq!(
+        evaluate_source("for x in unknown { print(x) }", "ai")
             .unwrap_err()
             .code,
         4004
