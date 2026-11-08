@@ -75,7 +75,7 @@ def scan(source: str) -> list[Token]:
                 end += 1
             word = source[start:end]
             if word != word.lower():
-                raise LexError(f'Identifier/keyword {word!r} at {tok_line}:{tok_col} must be lowercase ascii')
+                raise LexError(f'Identifier/keyword {word!r} at {tok_line}:{tok_col} must be lowercase in the selected writing system')
             result.append(Token('name', word, tok_line, tok_col, start, end))
             advance(end)
             continue
