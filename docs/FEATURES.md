@@ -215,3 +215,20 @@ The complete [English development roadmap](ROADMAP.md) is the source of truth fo
 | Rust runtime execution and complete type checking | Not implemented |
 
 This is not a Python replacement yet. [Rust migration rules](RUST_MIGRATION.md) still govern deletion of legacy Python components.
+
+
+## Rust 0.26 — language-profile and AI syntax migration
+
+| Capability | Current status |
+|---|---|
+| 39 human syntax tables + new `ai` in Rust | Rust source data committed; tests authored but build unverified |
+| Original native-script keyword spellings | Preserved in Rust profile data, requiring native-speaker and Unicode review |
+| Revised recognizable AI syntax (`let`, `fn`, `if`, `return`) | Rust parser source implementation |
+| Legacy `ai_` keyword migration | Token-aware Rust converter; preserves strings and comments |
+| Numbered N3010 migration diagnostic | Implemented and documented |
+| Source-to-source syntax translation for 40 profile tables | Preliminary Rust implementation, not full grammar-aware semantics |
+| Runtime for all 40 languages | Not implemented in Rust |
+| Python deletion | Blocked pending parity and successful builds |
+| Verified Rust compile, tests and CI | **Not yet confirmed** |
+
+[Canonical AI syntax](AI_SYNTAX.md) · [Rust migration criteria](RUST_MIGRATION.md).
