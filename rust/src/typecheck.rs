@@ -46,7 +46,33 @@ fn infer(expr:&IrExpr,env:&BTreeMap<String,Type>)->Type {
         }
     }
 }
-fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Diagnostic>{
+/// Verify calls to statically known user-defined functions only.
+/// Unknown and dynamic callees remain deferred.
+fn check_calls(expr:&IrExpr,functions:&BTreeMap<String,usize>)->Result<(),Diagnostic>{
+    match expr {
+        IrExpr::Call{callee,args}=>{
+            if let IrExpr::Name(Name::User(name))=callee.as_ref(){
+                if let Some(expected)=functions.get(name){
+                    if *expected!=args.len(){
+                        return Err(diagnostic(1005,
+                            format!("Function {name:?} expects {expected} argument(s), but call supplies {}",args.len()),
+                            "Supply exactly the number of arguments in the function declaration, or correct that declaration."));
+                    }
+                }
+            }
+            check_calls(callee,functions)?;
+            for arg in args{check_calls(arg,functions)?;}
+        }
+        IrExpr::Unary{value,..}=>check_calls(value,functions)?,
+        IrExpr::Binary{lhs,rhs,..}=>{
+            check_calls(lhs,functions)?;
+            check_calls(rhs,functions)?;
+        }
+        _=>{}
+    }
+    Ok(())
+}
+fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut BTreeMap<String,usize>)->Result<(),Diagnostic>{
     let mut declared_here=BTreeSet::new();
     for stmt in statements {
         match stmt {
@@ -56,6 +82,7 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                         format!("Duplicate declaration of {name:?} in the same lexical block"),
                         "Rename the second declaration, or use assignment without 'let' to update the existing variable."));
                 }
+                check_calls(expr,functions)?;
                 let found=infer(expr,env);
                 let declared=type_name.as_deref().map(Type::from_annotation).unwrap_or(found);
                 if !compatible(declared,found){
@@ -64,8 +91,10 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                         "Change the initializer to the declared type or correct the type annotation after ':'."));
                 }
                 env.insert(name.clone(),declared);
+                functions.remove(name);
             }
             IrStatement::Assign{name,expr}=>{
+                check_calls(expr,functions)?;
                 if let Some(expected)=env.get(name).copied(){
                     let actual=infer(expr,env);
                     if !compatible(expected,actual){
@@ -81,19 +110,26 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                 }
             }
             IrStatement::If{branches,otherwise}=>{
-                for (_,body) in branches{
-                    let mut local=env.clone();block(body,&mut local)?;
+                for (condition,body) in branches{
+                    check_calls(condition,functions)?;
+                    let mut local=env.clone();let mut local_functions=functions.clone();
+                    block(body,&mut local,&mut local_functions)?;
                 }
                 if let Some(body)=otherwise{
-                    let mut local=env.clone();block(body,&mut local)?;
+                    let mut local=env.clone();let mut local_functions=functions.clone();
+                    block(body,&mut local,&mut local_functions)?;
                 }
             }
-            IrStatement::While{body,..}=>{
-                let mut local=env.clone();block(body,&mut local)?;
+            IrStatement::While{condition,body}=>{
+                check_calls(condition,functions)?;
+                let mut local=env.clone();let mut local_functions=functions.clone();
+                block(body,&mut local,&mut local_functions)?;
             }
-            IrStatement::For{variable,body,..}=>{
+            IrStatement::For{variable,iterable,body}=>{
+                check_calls(iterable,functions)?;
                 let mut local=env.clone();local.insert(variable.clone(),Type::Unknown);
-                block(body,&mut local)?;
+                let mut local_functions=functions.clone();local_functions.remove(variable);
+                block(body,&mut local,&mut local_functions)?;
             }
             IrStatement::Function{name,parameters,body}=>{
                 if !declared_here.insert(name.clone()){
@@ -102,7 +138,9 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                         "Rename the function or remove the earlier declaration in this block."));
                 }
                 env.insert(name.clone(),Type::Unknown);
+                functions.insert(name.clone(),parameters.len());
                 let mut local=env.clone();
+                let mut local_functions=functions.clone();
                 let mut unique_parameters=BTreeSet::new();
                 for param in parameters {
                     if !unique_parameters.insert(param.clone()){
@@ -111,17 +149,20 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>)->Result<(),Di
                             "Give every parameter in the function signature a unique name."));
                     }
                     local.insert(param.clone(),Type::Unknown);
+                    local_functions.remove(param);
                 }
-                block(body,&mut local)?;
+                block(body,&mut local,&mut local_functions)?;
             }
-            IrStatement::Return(_)|IrStatement::Break|IrStatement::Continue|
-            IrStatement::Expression(_)=>{}
+            IrStatement::Return(expr)|IrStatement::Expression(expr)=>{
+                check_calls(expr,functions)?;
+            }
+            IrStatement::Break|IrStatement::Continue=>{}
         }
     }
     Ok(())
 }
 pub fn check_ir(module:&Module)->Result<(),Diagnostic>{
-    block(&module.statements,&mut BTreeMap::new())
+    block(&module.statements,&mut BTreeMap::new(),&mut BTreeMap::new())
 }
 pub fn check_source(source:&str,language:&str)->Result<(),Diagnostic>{
     check_ir(&lower_source(source,language)?)
@@ -174,6 +215,26 @@ mod tests{
     }
     #[test]fn accepts_assignment_to_visible_outer_variable(){
         check_source("let x: int = 1\nif true { x = 2 }","ai").unwrap();
+    }
+    #[test]fn known_function_arity_mismatch_is_n1005(){
+        let err=check_source("fn add(a,b) { return a+b }\nadd(1)","ai").unwrap_err();
+        assert_eq!(err.code,1005);assert!(err.detail.contains("add"));
+        assert!(err.detail.contains("2 argument"));
+    }
+    #[test]fn correct_function_arity_passes(){
+        check_source("fn add(a,b) { return a+b }\nadd(1,2)","ai").unwrap();
+    }
+    #[test]fn recursive_wrong_arity_is_detected(){
+        assert_eq!(check_source("fn f(x) { return f(x,x) }","ai").unwrap_err().code,1005);
+    }
+    #[test]fn unknown_dynamic_calls_are_deferred(){
+        check_source("mystery(1,2,3)","ai").unwrap();
+    }
+    #[test]fn parameter_shadowing_disables_outer_arity_check(){
+        check_source("fn f(x) { return x }\nfn g(f) { return f(1,2) }","ai").unwrap();
+    }
+    #[test]fn local_function_arity_does_not_leak_outside_block(){
+        check_source("if true { fn local(x) { return x } }\nlocal(1,2)","ai").unwrap();
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
