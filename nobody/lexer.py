@@ -4,6 +4,7 @@ This is not yet a complete grammar parser.
 """
 from dataclasses import dataclass
 import unicodedata
+from .bidi import check_bidi_controls
 
 
 class LexError(ValueError):
@@ -21,6 +22,7 @@ class Token:
 
 
 def scan(source: str) -> list[Token]:
+    check_bidi_controls(source)
     result = []
     pos, line, col, length = 0, 1, 1, len(source)
 
