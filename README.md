@@ -18,7 +18,7 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 
 - **40 experimental syntax profiles** — 39 human languages plus canonical `ai`. One syntax language per source file.
 - **Rust frontend** — lexer, parser subset, source translation, canonical IR and conservative type checks.
-- **Experimental Rust `run`** — simple variables, integer arithmetic, `print`, conditions, `while` and range-based `for` loops. **Functions, complete semantics, native compilation and self-hosting are not ready.**
+- **Experimental Rust `run`** — variables, integer arithmetic, `print`, conditions, bounded loops and **basic named functions with parameters and `return`**. Closures, recursion, complete semantics, native compilation and self-hosting are not ready.
 - **Python reference** stays available until behavioral parity is proven.
 
 ## Try Nobody
