@@ -119,3 +119,17 @@ The source-code profiles are provisional and still require native-speaker review
 | `ka` | Gruzínčina | gruzínske písmo | `თუ` |
 
 **Current total: 34 experimental syntax profiles and 215 remaining catalogue variants.** All six use original writing systems where appropriate; no compulsory romanization for Bulgarian, Armenian or Georgian. Each syntax profile still needs expert linguistic review. The previous 22-row table above documents the original first batch; the six 0.13 profiles are listed in the preceding section. [All 249 catalogue variants](../nobody/data/google_translate_249.txt).
+
+
+## New in 0.15 — five human languages and the AI profile
+
+| Code | Language/profile | Original writing system | `if` keyword |
+|---|---|---|---|
+| `ne` | Nepali | Devanagari | `यदि` |
+| `mr` | Marathi | Devanagari | `जर` |
+| `gu` | Gujarati | Gujarati | `જો` |
+| `kn` | Kannada | Kannada | `ಯದಿ` |
+| `te` | Telugu | Telugu | `ఒకవేళ` |
+| `ai` | Machine-friendly canonical Nobody syntax | Lowercase ASCII | `ai_if` |
+
+**Counts:** 39 experimental human syntaxes + 1 machine-friendly `ai` syntax profile = 40. The catalogue remains 249 human language/script variants, of which 210 are pending. `ai` is not a human language or a Google Translate catalogue entry. These human translations are provisional, not native-speaker certified. [AI profile guide](AI_SYNTAX.md).
