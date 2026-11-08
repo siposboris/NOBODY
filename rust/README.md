@@ -129,3 +129,7 @@ IR lowering maps localized primitive annotations to canonical `int`, `float`, `s
 ## 0.37 — unary numeric operands
 
 Rust `typecheck` now rejects known nonnumeric values with unary `+` and `-` as N1006. Unknown operands remain deferred. Five unit tests were authored; GitHub Actions triggers on verifier script edits. **Compilation and CI remain unverified.**
+
+## 0.38 — control-flow arity tracking
+
+Rust type checking now conservatively drops known function arities after potential reassignment in `if` and loop bodies. Local declarations and loop iterator shadowing do not replace outer signatures. Four regression tests were authored. **This is source-level work; successful Rust compilation and CI are not yet verified.**
