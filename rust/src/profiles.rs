@@ -78,8 +78,8 @@ mod tests {
     #[test]fn ai_syntax_is_conventional(){
         assert_eq!(word("ai","def"),Some("fn"));
         assert_eq!(word("ai","let"),Some("let"));
-        assert_eq!(word("ai","True"),Some("true"));
-        assert_eq!(word("ai","None"),Some("null"));
+        assert_eq!(word("ai","true"),Some("true"));
+        assert_eq!(word("ai","none"),Some("null"));
         assert!(semantic("ai","ai_if").is_none());
     }
     #[test]fn native_script_words_are_preserved(){
