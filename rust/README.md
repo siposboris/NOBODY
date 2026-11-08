@@ -121,3 +121,7 @@ Run `bash scripts/verify-rust.sh` from the repository root. The script checks to
 ## 0.35 — arithmetic type checks
 
 The Rust `typecheck` command now also reports **N1002** for definitely incompatible primitive arithmetic, such as `let x = "text" - 1`. Six unit tests were authored. Unknown operand types remain deferred; source spans and complete runtime type semantics remain future work. **Compilation/CI unverified.**
+
+## 0.36 — localized primitive types
+
+IR lowering maps localized primitive annotations to canonical `int`, `float`, `str`, `bool` so equivalent typed declarations in different syntax profiles produce comparable IR. Regression tests cover Slovak annotations and translated typed declarations across 40 profiles. This is source-level progress; **Rust compilation and CI success remain unverified**.
