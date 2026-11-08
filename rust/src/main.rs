@@ -1,15 +1,16 @@
 use std::{env,fs,process};
-use nobody::{migrate_legacy_ai,parse,parse_validated,scan,translate_source,TokenKind};
+use nobody::{lower_source,migrate_legacy_ai,parse,parse_validated,same_ir,scan,translate_source,TokenKind};
 use nobody::profiles::PROFILES;
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
         Some("lex"|"check") if arguments.len()==3 => true,
-        Some("parse"|"validate") if arguments.len()==4 => true,
+        Some("parse"|"validate"|"ir") if arguments.len()==4 => true,
+        Some("compare-ir") if arguments.len()==6 => true,
         Some("list-languages") if arguments.len()==2 => true,
         Some("migrate-ai") if arguments.len()==3 => true,
         Some("translate") if arguments.len()==5 => true,
@@ -19,6 +20,23 @@ fn main() {
     let command=arguments[1].as_str();
     if command=="list-languages" {
         for profile in PROFILES {println!("{}",profile.code);}
+        return;
+    }
+    if command=="compare-ir" {
+        let read=|path:&str|fs::read_to_string(path).unwrap_or_else(|error|{
+            eprintln!("N9001: Cannot read {:?}: {}. Repair: verify path, permissions and UTF-8.",path,error);
+            process::exit(1);
+        });
+        let left=read(&arguments[3]);
+        let right=read(&arguments[5]);
+        match same_ir(&left,&arguments[2],&right,&arguments[4]) {
+            Ok(true)=>println!("MATCH: identical experimental nobody.ir.v1 structure (not a runtime proof)"),
+            Ok(false)=>{
+                println!("DIFFERENT: canonical IR trees do not match");
+                process::exit(1);
+            }
+            Err(error)=>{eprintln!("{error}");process::exit(1);}
+        }
         return;
     }
     let filename=arguments.last().expect("validated CLI args");
@@ -39,6 +57,13 @@ fn main() {
     if command=="migrate-ai" {
         match migrate_legacy_ai(&source) {
             Ok(migrated)=>print!("{migrated}"),
+            Err(error)=>{eprintln!("{error}");process::exit(1);}
+        }
+        return;
+    }
+    if command=="ir" {
+        match lower_source(&source,&arguments[2]) {
+            Ok(module)=>println!("{module:#?}"),
             Err(error)=>{eprintln!("{error}");process::exit(1);}
         }
         return;
