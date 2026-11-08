@@ -241,7 +241,7 @@ Roadmap checklist progress is **44/112 (39%)** as of this update. It counts mark
 5. **Gate:** `cargo fmt --check`, `cargo test --locked --all-targets`, strict Clippy, CLI smoke and Python-vs-Rust fixture comparison must pass in GitHub Actions.
    - **Verified gate subset:** [Rust GitHub Actions #42510492963](https://github.com/siposboris/NOBODY/actions/runs/42510492963) passed formatting, locked build/tests, Clippy, CLI evaluator smoke; Python frontend and lexer workflows also passed. **Full gate remains open** until differential parity and agreed safety boundaries are verified. Mark the evaluator partial until every claimed behavior has tests. Do **not** delete Python.
 
-**Conditional execution slice (2026-11-08, in verification):** Rust `run` now implements selected `if` / `else if` / `else` blocks with boolean comparisons, short-circuit logic and lexical block shadowing. This is a **partial runtime milestone**, not a completed Phase 4 checklist item. Loops, functions, full reference parity, and strong resource isolation remain open. CI confirmation must be recorded after testing.
+**Conditional execution slice (2026-11-08, verified):** Rust `run` implements `if` / `else if` / `else` blocks, integer comparisons, boolean short-circuit logic and lexical block shadowing. Eight additional integration tests and [Rust CI #42511789940](https://github.com/siposboris/NOBODY/actions/runs/42511789940) passed, and the change merged via [PR #8](https://github.com/siposboris/NOBODY/pull/8). This is a **partial runtime milestone**, not a completed Phase 4 checklist item. Loops, functions, full reference parity, and strong resource isolation remain open.
 
 ### Following slices — only after the 0.39 gate
 
