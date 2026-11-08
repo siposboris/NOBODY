@@ -74,9 +74,9 @@ fn japanese_mixed_han_and_hiragana_remains_legal() {
 #[test]
 fn bidi_controls_rejected_even_inside_quotes_and_comments() {
     for source in [
-        "print(\"safe\u005cu{202E}\")",
-        "# hidden\u005cu{2066}",
-        "let x = 1\u005cu{200F}",
+        "print(\"safe\u{202E}\")",
+        "# hidden\u{2066}",
+        "let x = 1\u{200F}",
     ] {
         let e = scan(source).unwrap_err();
         assert_eq!(e.code, 2005, "{source:?}");
