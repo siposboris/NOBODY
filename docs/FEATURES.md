@@ -129,3 +129,16 @@ See [AI syntax](AI_SYNTAX.md), [language list](LANGUAGES.md), [roadmap](ROADMAP.
 | Native compiler, formal proofs or secure sandbox | Not implemented |
 
 Full local source archive: 134 unit tests passed. GitHub CI status unconfirmed.
+
+
+## Nobody 0.19 — static analysis enhancements
+
+| Feature | Status |
+|---|---|
+| Independent alternative path type joining for `if/elif/else` | Experimental implementation |
+| Loop type joins including zero iterations | Experimental implementation |
+| Known named-function argument count checking | Experimental implementation; `E_ARITY` |
+| Inference for dynamic function objects and return values | Planned |
+| Complete source import, independent IR and native self-hosting | Not implemented |
+
+144 tests passed in local complete 0.19 tree; GitHub Actions result not yet verified.
