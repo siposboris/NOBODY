@@ -12,8 +12,8 @@ SOURCE = 'nech pocet = 3\nak pocet > 2 { vypis("Život 世界") }\n'
 
 class Milestone014(unittest.TestCase):
     def test_profile_counts(self):
-        self.assertEqual(len(ALIASES),34)
-        self.assertEqual(status()['planned_reference_variants'],215)
+        self.assertEqual(len(ALIASES),40)
+        self.assertEqual(status()['planned_reference_variants'],210)
 
     def test_roundtrips(self):
         for code in NEW:
