@@ -126,3 +126,12 @@ python3 -m nobody type-check program.nbd --lang sk
 ```
 
 V úplnom lokálnom balíku 0.20 prešlo **156 testov**, z toho 12 nových testov chýb a CLI. Úspech GitHub Actions zatiaľ nie je nezávisle potvrdený.
+
+
+## Rust-first migration decision (2026-11-08)
+
+**New compiler development now targets Rust, not Python.** The initial dependency-free Rust crate is in [rust/](rust/): a native UTF-8 lexer prototype, token positions, source checks and N2001–N2005 errors. It provides `nobody-rs lex FILE` and `nobody-rs check FILE`, where **check currently means lexical checking only**. [Rust build/test workflow](.github/workflows/rust.yml).
+
+The existing Python implementation is **temporarily frozen as a reference**. It has not been deleted because the Rust frontend does **not yet** replace the full parser, translator, analyzer or runtime. Python files will be removed one at a time only after Rust equivalents pass behavior-parity tests. The eventual goal is to rewrite the compiler itself in Nobody and verify self-hosting. [Migration plan and exact deletion gates](docs/RUST_MIGRATION.md).
+
+The Rust toolchain was unavailable in the code-generation environment, so a successful local Rust compilation **has not been verified**. No claim of full Rust migration, native compilation or Python independence is made yet.
