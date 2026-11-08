@@ -234,3 +234,10 @@ Do not confuse these historical notes with published and verified tags.
 - Added N1002 known-incompatible arithmetic operand detection in the Rust IR checker, including nested expressions, function-call arguments and return expressions.
 - Added six unit tests and documented exact causes and fixes.
 - Unknown types are deliberately deferred. **Cargo build, Clippy and CI results are not yet verified.**
+
+## Rust 0.36 — localized primitive annotation normalization (source snapshot, 2026-11-08)
+
+- Canonical IR lowering now normalizes localized primitive type names into `int`, `float`, `str`, `bool`, without rewriting original source text.
+- Added structural IR parity checks for typed declarations across all 40 profiles and additional Slovak checker regression cases.
+- Unknown annotation names are left untouched for future validation; complete semantic/type checking is not claimed.
+- **Cargo build, test and CI execution remain unverified.**
