@@ -1,5 +1,10 @@
 """Stable numbered error diagnostics; existing symbolic IDs remain available."""
 import unittest
+import io
+import tempfile
+from pathlib import Path
+from contextlib import redirect_stdout,redirect_stderr
+from nobody.__main__ import main
 from nobody.errors import CATALOG,BY_NUMBER,definition,format_diagnostic,render_exception
 from nobody.static_types import analyze
 from nobody.parser import parse_source,ParseError
@@ -40,6 +45,20 @@ class NumberedErrors(unittest.TestCase):
     def test_lookup_coverage(self):
         self.assertIn('N1003',format_diagnostic('E_UNDECLARED','Cannot assign x',3))
         self.assertIn('riadok 3',format_diagnostic('E_UNDECLARED','Cannot assign x',3))
+    def test_cli_invalid_flag_has_N9001(self):
+        err=io.StringIO()
+        with redirect_stderr(err),self.assertRaises(SystemExit):
+            main(['--nonexistent'])
+        self.assertIn('N9001',err.getvalue())
+    def test_cli_type_check_prints_specific_N1001(self):
+        with tempfile.TemporaryDirectory() as folder:
+            file=Path(folder)/'broken.nbd'
+            file.write_text('nech vek: cele = "tridsat"',encoding='utf-8')
+            out=io.StringIO()
+            with redirect_stdout(out),self.assertRaises(SystemExit):
+                main(['type-check',str(file),'--lang','sk'])
+            self.assertIn('N1001',out.getvalue())
+            self.assertIn('vek',out.getvalue())
     def test_unknown_error_retains_specific_text(self):
         rendered=render_exception(ValueError('Custom precise problem with identifier foo'))
         self.assertIn('N9999',rendered)
