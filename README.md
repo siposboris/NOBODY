@@ -193,3 +193,7 @@ The Rust unit tests and GitHub CI smoke checks have been updated, but **Rust com
 A separate [Rust AST validator](rust/src/validate.rs) now rejects `return` outside a function and `break`/`continue` outside a loop within the same function. Invalid contexts receive stable [N3008/N3009 error codes](docs/ERROR_CODES.md) with direct repair instructions, including correct handling of a nested function declared inside a loop.
 
 The `nobody-rs validate sk|en|ai FILE` command combines parsing and these specific checks. It **does not execute programs or guarantee type safety**. Authored Rust unit and CLI integration tests are committed, but Rust compilation/CI is still **not independently verified**.
+
+## Rust 0.27 — safer source translation
+
+An additional Rust translation pass detects destination-keyword collisions (**N3011**), instead of producing incorrect Nobody source. For example, Slovak identifier `fn` conflicts with redesigned AI `fn`. The Rust translator reports the exact problem and recommends renaming in source; strings and comments remain untouched. [Precise examples and limitations](docs/TRANSLATION_SAFETY.md). Five new Rust integration tests are committed; a successful Rust build remains **unverified**.
