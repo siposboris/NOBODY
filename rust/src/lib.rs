@@ -128,10 +128,16 @@ fn is_lowercase(c: char) -> bool {
 fn confusable_script(c: char) -> Option<&'static str> {
     match c as u32 {
         0x0041..=0x005A | 0x0061..=0x007A | 0x00C0..=0x024F | 0x1E00..=0x1EFF
-            if c.is_alphabetic() => Some("Latin"),
+            if c.is_alphabetic() =>
+        {
+            Some("Latin")
+        }
         0x0370..=0x03FF | 0x1F00..=0x1FFF if c.is_alphabetic() => Some("Greek"),
         0x0400..=0x052F | 0x1C80..=0x1C8F | 0x2DE0..=0x2DFF | 0xA640..=0xA69F
-            if c.is_alphabetic() => Some("Cyrillic"),
+            if c.is_alphabetic() =>
+        {
+            Some("Cyrillic")
+        }
         _ => None,
     }
 }
@@ -309,7 +315,10 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                     2007,
                     tok_line,
                     tok_col + offset - 1,
-                    format!("Identifikator {:?} miesa pismo {} a {}", value, first, second),
+                    format!(
+                        "Identifikator {:?} miesa pismo {} a {}",
+                        value, first, second
+                    ),
                 ));
             }
             (TokenKind::Name, end)
