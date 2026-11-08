@@ -88,6 +88,9 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Phase 4 foundation (2026-11-08; pending CI):** The first independently compiled **in-memory integer bytecode prototype** now exists in `rust/src/bytecode.rs`: Nobody source → canonical IR → instruction sequence → static stack/slot verifier → deterministic stack VM. Native CLI commands `nobody bytecode PROFILE FILE` and `nobody run-bytecode PROFILE FILE` execute separately from the AST evaluator, never invoking Python. It supports untyped declarations/assignments, integer literals/arithmetic and `print` and rejects unsupported constructs, including loops/functions, with N4004. Resource limits, overflow diagnostics and malformed-bytecode rejection have tests; three profiles are compared against the existing Rust AST evaluator. **This is not a portable serialized bytecode format, complete VM, full compiler, native x86-64 executable, or self-hosting.** The nine original broad Phase 4 checklist items remain open until their full acceptance criteria pass. The path forward is typed and structured bytecode, branch/loop control-flow verification, serialization, then real native output.
+
+
 - [ ] Implement a complete Rust parser and typed intermediate representation with reusable passes.
 - [ ] Build a portable Nobody bytecode format, verifier and deterministic VM in Rust.
 - [ ] Build compiler optimizations, debug information and a platform-neutral backend interface.

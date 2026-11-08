@@ -4,6 +4,19 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Phase 4: first independent bytecode compiler + VM (experimental)
+
+The Rust binary now exposes a **separate bytecode execution path** from the older tree-walking evaluator. This is the first concrete Phase 4 foundation, not an assertion that Nobody has a finished compiler or native backend.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- bytecode ai rust/examples/eval_basic_ai.nbd
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode sk rust/examples/eval_basic_sk.nbd
+```
+
+The compiler lowers the canonical Nobody IR into an **in-memory** versioned instruction vector, validates stack depth, slot initialization and termination, and executes with checked signed 128-bit arithmetic and bounded steps/output. Current support: **integer literals, `let`, assignment, `+`, `-`, `*`, unary sign, unshadowed `print`, and arithmetic expression statements**. The Python-free native CLI returns numbered errors for unsupported constructs. The AST evaluator remains independent to compare identical supported program results in unit and CLI tests across English, Slovak and `ai` profiles.
+
+**Still missing:** portable bytecode file format, bytecode control flow, lexical scopes, function calls, floats, text values, generalized types, runtime sandboxing, a linker and machine-code generation. Do not feed untrusted programs to the VM.
+
 ## Current source coverage
 
 - **39 experimental human-language keyword profiles** plus a redesigned
