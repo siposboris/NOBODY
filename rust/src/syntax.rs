@@ -51,6 +51,7 @@ pub enum Expr {
     Number(String),
     String(String),
     Boolean(bool),
+    Null,
     Name(String),
     Call { callee: Box<Expr>, args: Vec<Expr> },
     Unary { op: String, value: Box<Expr> },
@@ -80,7 +81,7 @@ fn error(code: u16, line: usize, column: usize, detail: impl Into<String>) -> Di
         3005 => "Complete the expression with a valid literal, identifier or parenthesized expression.",
         3006 => "Use only declarations, assignments and expressions in the current Rust parser subset.",
         3007 => "Choose a supported code from the 39 human profiles or ai.",
-        3010 => "Migrate old ai_ keywords with `nobody-rs migrate-ai INPUT OUTPUT`; the new ai profile uses let/fn/if/return/true.",
+        3010 => "Use `nobody-rs migrate-ai legacy.nbd > updated.nbd`; new ai syntax uses let/fn/if/return/true.",
         _ => "Correct the reported Nobody syntax.",
     };
     Diagnostic { code, line, column, detail: detail.into(), repair }
@@ -143,6 +144,10 @@ impl Parser {
                 }
                 if let Some(b)=self.language.boolean(&tok.value) {
                     Expr::Boolean(b)
+                } else if self.language.kw("none",&tok.value) {
+                    Expr::Null
+                } else if self.language.kw("not",&tok.value) {
+                    Expr::Unary {op:"not".into(),value:Box::new(self.expression(3)?)}
                 } else if tok.value == self.language.let_word() {
                     return Err(error(3005,line,col,"Declaration cannot appear in an expression"));
                 } else {
@@ -195,6 +200,8 @@ impl Parser {
                 }));
             }
         }
+        if self.language.kw("or",first){return Some(("or",1,1));}
+        if self.language.kw("and",first){return Some(("and",1,2));}
         match first {
             "<"|">" => Some((if first=="<" {"<"} else {">"},1,3)),
             "+" => Some(("+",1,4)), "-" => Some(("-",1,4)),
@@ -234,8 +241,11 @@ impl Parser {
             let condition=self.expression(0)?;
             let body=self.block()?;
             let mut branches=vec![(condition,body)];
-            while self.keyword("elif") {
-                self.at+=1;
+            while self.keyword("elif") || (
+                self.keyword("else") &&
+                self.tokens.get(self.at+1).is_some_and(|next|self.language.kw("if",&next.value))
+            ) {
+                if self.keyword("elif"){self.at+=1;}else{self.at+=2;}
                 let condition=self.expression(0)?;
                 branches.push((condition,self.block()?));
             }
@@ -360,7 +370,7 @@ mod tests {
     fn exact_unknown_language_error() {
         let err=parse("nech vek = 1","zz").unwrap_err();
         assert_eq!(err.code,3007);
-        assert!(err.to_string().contains("39 human profiles"));
+        assert!(err.to_string().contains("Unknown Nobody syntax profile"));
     }
     #[test]
     fn control_flow_is_parsed() {
@@ -435,6 +445,19 @@ mod tests {
     fn function_arity_is_not_yet_typechecked() {
         let program=parse("funkcia f(x) { vrat x }\nvypis(f(1,2))","sk").unwrap();
         assert_eq!(program.statements.len(),2);
+    }
+
+    #[test]
+    fn ai_familiar_else_if_not_and_or_null(){
+        let program=parse("let active = not false and true or false\nif active { print(null) } else if false { print(2) } else { print(3) }","ai").unwrap();
+        assert_eq!(program.statements.len(),2);
+        assert!(matches!(&program.statements[1],Statement::If{branches,otherwise} if branches.len()==2 && otherwise.is_some()));
+    }
+    #[test]
+    fn ai_legacy_prefix_has_numbered_migration_error(){
+        let err=parse("ai_let x = 1","ai").unwrap_err();
+        assert_eq!(err.code,3010);
+        assert!(err.repair.contains("migrate-ai"));
     }
 
 }
