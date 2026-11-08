@@ -91,14 +91,22 @@ fn floor_div_rem(a: i128, b: i128) -> Option<(i128, i128)> {
         Some((quotient, remainder))
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Flow {
     Next,
     Break,
     Continue,
+    Return(RuntimeValue),
+}
+#[derive(Clone, Debug)]
+struct Function {
+    parameters: Vec<String>,
+    body: Vec<IrStatement>,
 }
 struct Evaluator {
     scopes: Vec<BTreeMap<String, RuntimeValue>>,
+    functions: BTreeMap<String, Function>,
+    active_calls: Vec<String>,
     steps: usize,
     output: String,
 }
@@ -289,9 +297,63 @@ impl Evaluator {
                 self.output.push_str(&line);
                 Ok(RuntimeValue::Null)
             }
-            IrExpr::Call { .. } => Err(unsupported(
-                "Only the unshadowed print built-in can be called",
-            )),
+            IrExpr::Call { callee, args } => {
+                let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
+                    return Err(unsupported("Only named declared functions can be called"));
+                };
+                // A variable may shadow a function, but callable values and
+                // closures are deliberately not implemented in this slice.
+                if self.lookup(name).is_some() {
+                    return Err(unsupported("Variable values are not callable"));
+                }
+                let function = self.functions.get(name).cloned().ok_or_else(|| {
+                    error(
+                        4001,
+                        format!("Unknown function {name:?}"),
+                        "Declare the function before calling it.",
+                    )
+                })?;
+                if args.len() != function.parameters.len() {
+                    return Err(error(
+                        4007,
+                        format!(
+                            "Function {name:?} expects {} argument(s), received {}",
+                            function.parameters.len(),
+                            args.len()
+                        ),
+                        "Pass exactly the declared number of arguments.",
+                    ));
+                }
+                if self.active_calls.len() >= 32 || self.active_calls.contains(name) {
+                    return Err(error(
+                        4005,
+                        format!("Recursive or excessive nested function call to {name:?}"),
+                        "Recursive function calls are not supported in this evaluator slice.",
+                    ));
+                }
+                let mut parameters = BTreeMap::new();
+                for (parameter, arg) in function.parameters.iter().zip(args) {
+                    let value = self.eval(arg, depth + 1)?;
+                    parameters.insert(parameter.clone(), value);
+                }
+                // Explicit lexical boundary: caller-local variables cannot
+                // leak into a function. The captured global values are
+                // read-only snapshots until closures are specified.
+                let globals = self.scopes.first().cloned().unwrap_or_default();
+                let saved_scopes =
+                    std::mem::replace(&mut self.scopes, vec![globals, parameters]);
+                self.active_calls.push(name.clone());
+                let result = self.statements(&function.body);
+                self.active_calls.pop();
+                self.scopes = saved_scopes;
+                match result? {
+                    Flow::Next => Ok(RuntimeValue::Null),
+                    Flow::Return(value) => Ok(value),
+                    Flow::Break | Flow::Continue => {
+                        Err(unsupported("Loop control escaped a function body"))
+                    }
+                }
+            },
         }
     }
     fn statement(&mut self, stmt: &IrStatement) -> Result<Flow, Diagnostic> {
@@ -368,6 +430,7 @@ impl Evaluator {
                     match self.block(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
+                        Flow::Return(value) => return Ok(Flow::Return(value)),
                     }
                 }
                 Ok(Flow::Next)
@@ -430,6 +493,7 @@ impl Evaluator {
                     match result? {
                         Flow::Break => break,
                         Flow::Next | Flow::Continue => {}
+                        Flow::Return(value) => return Ok(Flow::Return(value)),
                     }
                     // Last-value overflow can occur near i128 bounds; when
                     // that happens, the next value is beyond the supported
@@ -441,6 +505,27 @@ impl Evaluator {
                 }
                 Ok(Flow::Next)
             }
+            IrStatement::Function {
+                name,
+                parameters,
+                body,
+            } => {
+                if self.scopes.len() != 1 {
+                    return Err(unsupported("Nested function definitions and closures are not yet supported"));
+                }
+                if self.functions.contains_key(name) || self.lookup(name).is_some() {
+                    return Err(unsupported(format!("Duplicate function declaration {name:?}")));
+                }
+                self.functions.insert(
+                    name.clone(),
+                    Function {
+                        parameters: parameters.clone(),
+                        body: body.clone(),
+                    },
+                );
+                Ok(Flow::Next)
+            }
+            IrStatement::Return(expr) => Ok(Flow::Return(self.eval(expr, 1)?)),
             IrStatement::Break => Ok(Flow::Break),
             IrStatement::Continue => Ok(Flow::Continue),
             _ => Err(unsupported(
@@ -453,12 +538,16 @@ impl Evaluator {
 pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
     let mut evaluator = Evaluator {
         scopes: vec![BTreeMap::new()],
+        functions: BTreeMap::new(),
+        active_calls: Vec::new(),
         steps: 0,
         output: String::new(),
     };
     match evaluator.statements(&module.statements)? {
         Flow::Next => Ok(evaluator.output),
-        Flow::Break | Flow::Continue => Err(unsupported("Loop control outside a loop")),
+        Flow::Break | Flow::Continue | Flow::Return(_) => {
+            Err(unsupported("Flow control outside a valid lexical context"))
+        },
     }
 }
 pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic> {
@@ -490,12 +579,10 @@ mod tests {
         );
     }
     #[test]
-    fn unsupported_function_is_not_executed() {
+    fn named_function_returns_a_value() {
         assert_eq!(
-            evaluate_source("fn f() { return 1 }", "ai")
-                .unwrap_err()
-                .code,
-            4004
+            evaluate_source("fn f() { return 1 }\nprint(f())", "ai").unwrap(),
+            "1\n"
         );
     }
     #[test]
