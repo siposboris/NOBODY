@@ -77,3 +77,7 @@ Rust compilation and CI must be demonstrated before marking the component tested
 - A preliminary Rust token-aware Nobody-to-Nobody source translator now exists for all profiles. It is **not yet a complete syntax/semantic equivalence guarantee** when identifiers collide with keywords.
 - Tests were authored for all 40 tables, native-script lexer/parser paths, AI syntax and round trips, but **successful compilation and full compatibility validation have not yet occurred**. Do not remove `nobody/languages.py` or any Python reference file until full feature parity and repeatable tests are verified.
 - After a green Rust build, priorities remain: cross-profile Unicode and identifier conflict audit, full semantic AST interchange, source-span diagnostics, static types, scopes/closures and Rust runtime.
+
+## 0.29 — temporal IR symbol visibility
+
+The Rust IR lowerer now resolves built-in names using sequential declaration visibility: later declarations do not retroactively shadow earlier uses, and a declaration's initializer uses prior bindings. Recursive function references see the function's own name. Three new unit tests document these choices. Runtime scoping and closure behavior remain unspecified/unverified. No Python module is removed and Cargo/CI success is not claimed.
