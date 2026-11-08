@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from .parser import parse_source
 from .languages import ALIASES
 from .errors import definition, format_diagnostic
+from .return_types import infer_function_return
 
 UNKNOWN="unknown"
 @dataclass(frozen=True)
@@ -30,12 +31,16 @@ class Environment:
         self.parent=parent
         self.vars={}
         self.signatures={}
+        self.return_types={}
     def find(self,name):
         if name in self.vars:return self
         return self.parent.find(name) if self.parent else None
     def signature(self,name):
         owner=self.find(name)
         return owner.signatures.get(name) if owner else None
+    def function_return(self,name):
+        owner=self.find(name)
+        return owner.return_types.get(name,UNKNOWN) if owner else UNKNOWN
     def visible_frames(self):
         frames=[]
         current=self
@@ -98,6 +103,9 @@ class Checker:
                 count=env.signature(callee.value)
                 if count is not None and len(n.children)-1!=count:
                     self.problem(n,"E_ARITY",f"Function {callee.value!r} expects {count} arguments, got {len(n.children)-1}")
+                    return UNKNOWN
+                if count is not None:
+                    return env.function_return(callee.value)
                 canonical=ALIASES[self.language].get(callee.value)
                 if canonical in ("int","float","str","bool"):return canonical
                 if canonical=="len":return "int"
@@ -130,6 +138,7 @@ class Checker:
                 if name in env.vars:self.problem(n,"E_DUPLICATE",f"Duplicate function {name!r}")
                 env.vars[name]=(None,"function")
                 env.signatures[name]=len(params)
+                env.return_types[name]=infer_function_return(n)
                 local=Environment(env)
                 for param in params:local.vars[param]=(None,UNKNOWN)
                 self.walk(n.children,local)
