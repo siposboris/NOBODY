@@ -6,10 +6,12 @@ on:
     paths:
       - 'rust/**'
       - '.github/workflows/rust.yml'
+      - 'scripts/verify-rust.sh'
   pull_request:
     paths:
       - 'rust/**'
       - '.github/workflows/rust.yml'
+      - 'scripts/verify-rust.sh'
 
 jobs:
   rust:
