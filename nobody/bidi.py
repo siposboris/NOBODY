@@ -6,7 +6,7 @@ reorder program text. The editor is responsible for visual rendering.
 from dataclasses import dataclass
 import unicodedata
 
-RTL_LANGUAGES = frozenset({'ar', 'ur'})
+RTL_LANGUAGES = frozenset({'ar', 'ur', 'he', 'fa'})
 BIDI_CONTROLS = frozenset({
     0x061C, 0x200E, 0x200F, 0x202A, 0x202B, 0x202C,
     0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069,
@@ -49,7 +49,7 @@ def editor_advice(language: str) -> str:
     info = direction_for_language(language)
     if info.direction == 'rtl':
         return ('Use a UTF-8 source editor with RTL paragraph direction for '
-                'Arabic/Urdu text; preserve logical character order and ASCII '
+                'Arabic/Urdu/Hebrew/Persian text; preserve logical character order and ASCII '
                 'operator order. Never insert invisible bidi control characters '
                 'into a .nbd source file.')
     return ('Use UTF-8 and normal left-to-right code layout; retain the '
