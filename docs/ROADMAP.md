@@ -173,6 +173,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 | 0.31 source snapshot | Rust lexical scope checks N1003/N1004, duplicate parameter detection, six unit tests and exact repair docs | **Rust build/tests unverified** |
 | 0.32 source snapshot | N1005 known function arity checking, recursive call tests, CLI regression fixtures and CI smoke | **Build and tests unverified** |
 | 0.33 source snapshot | Canonical profile test-key fix, arity invalidation on reassignment, two tests, non-mutating CI formatting gate | **Cargo build / CI still unverified** |
+| 0.34 source snapshot | Reproducible `scripts/verify-rust.sh`, toolchain preflight, GitHub Actions manual dispatch and unified gate | **Execution blocked locally: Cargo unavailable; GitHub CI pass unverified** |
 | Next | Verified Rust CI, cross-profile Unicode/identifier parity and independent runtime | Incomplete |
 
 - [x] Correct Rust IR symbol lowering so declarations shadow builtins only after their initializer, and function names remain visible for recursive references. Three regression tests authored; compilation remains unverified.
@@ -183,6 +184,7 @@ Syntax language, syntax complexity, abstraction level, strict/inferred/gradual t
 - [x] Implement conservative Rust lexical scope diagnostics for undeclared assignments (N1003), duplicate declarations and repeated function parameters (N1004); allow nested block shadowing and enclosing-scope assignment. Six additional unit tests authored, **not executed**.
 - [x] Add conservative Rust IR function-call arity checking (N1005) for known direct calls, recursive calls, lexical parameter shadowing and nested expressions; six unit and two CLI tests authored. **Build/test execution unverified.**
 - [x] Repair Rust regression tests that used non-canonical capitalized profile keys (`True`, `None` instead of `true`, `none`); prevent stale N1005 arity assumptions after a function variable is reassigned. Add two regression tests. **Build/test execution unverified.**
+- [x] Add a read-only, reproducible Rust verification script with toolchain preflight, formatting, all-target tests, strict Clippy and positive/negative CLI fixtures; expose manual GitHub Actions dispatch. **Actual Cargo/CI pass is not yet verified.**
 ## Immediate priorities (in dependency order)
 
 1. Compile the Rust crate and confirm GitHub CI; fix errors rather than weakening checks. **Canonical IR v1 unit and integration tests are now included in the unverified Rust suite.** **Current unverified Rust tests include the parser and contextual validator.**
