@@ -441,4 +441,21 @@ mod tests {
         assert_eq!(err.code,3003);
     }
 
+    #[test]
+    fn dangling_else_is_precise_n3006() {
+        let err=parse("inak { vypis(1) }","sk").unwrap_err();
+        assert_eq!(err.code,3006);
+        assert!(err.detail.contains("inak"));
+    }
+    #[test]
+    fn for_body_break_and_continue() {
+        let program=parse("pre n v rozsah(3) { ak n > 1 { prerus } pokracuj }","sk").unwrap();
+        assert!(matches!(&program.statements[0],Statement::For{body,..} if body.len()==2));
+    }
+    #[test]
+    fn function_arity_is_not_yet_typechecked() {
+        let program=parse("funkcia f(x) { vrat x }\nvypis(f(1,2))","sk").unwrap();
+        assert_eq!(program.statements.len(),2);
+    }
+
 }
