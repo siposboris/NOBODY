@@ -102,6 +102,10 @@ fn block(statements:&[IrStatement],env:&mut BTreeMap<String,Type>,functions:&mut
                             format!("Assignment to {name:?} expects {expected:?}, but expression has known type {actual:?}"),
                             "Assign a value compatible with the original declaration, or change that declaration."));
                     }
+                    // A reassignment may replace a function value with an
+                    // arbitrary value; its original static arity is no longer
+                    // reliable. Do not report false N1005 errors afterwards.
+                    functions.remove(name);
                 }
                 else {
                     return Err(diagnostic(1003,
@@ -235,6 +239,13 @@ mod tests{
     }
     #[test]fn local_function_arity_does_not_leak_outside_block(){
         check_source("if true { fn local(x) { return x } }\nlocal(1,2)","ai").unwrap();
+    }
+    #[test]fn reassigned_function_does_not_keep_stale_arity(){
+        check_source("fn f(x) { return x }\nf = mystery\nf(1,2)","ai").unwrap();
+    }
+    #[test]fn known_function_arity_checked_before_reassignment(){
+        let err=check_source("fn f(x) { return x }\nf(1,2)\nf = mystery","ai").unwrap_err();
+        assert_eq!(err.code,1005);
     }
     #[test]fn checks_slovak_annotations(){
         assert_eq!(check_source("nech vek: cele = \"text\"","sk").unwrap_err().code,1001);
