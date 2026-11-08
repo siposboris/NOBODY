@@ -109,3 +109,7 @@ The Rust `typecheck` command now also reports **N1003** (assignment to undeclare
 ## 0.32 — known function arity
 
 The Rust `typecheck` command also checks direct calls to lexically known functions for argument-count mismatch (**N1005**). Example: `fn add(a,b) { return a+b }` followed by `add(1)` is rejected with an actionable repair. Recursive calls are checked, but dynamic and unknown callees are deferred. Six unit and two CLI tests are authored; Cargo/CI success remains unverified.
+
+## 0.33 — regression hardening
+
+The Rust profile tests now use lowercase canonical semantic keys; the IR type checker invalidates previously known function arity when that variable is reassigned. Two regression tests were added. CI now runs `cargo fmt --all -- --check` without mutating files. **Formatting, compilation and tests have not been independently verified.**
