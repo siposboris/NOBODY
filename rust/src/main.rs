@@ -26,13 +26,13 @@ fn main() {
     let command = arguments[1].as_str();
     if command == "info" {
         println!("{{");
-        println!("  \\"name\\": \\"Nobody\\",");
-        println!("  \\"implementation\\": \\"Rust\\",");
-        println!("  \\"compiler_version\\": \\"{}\\", env!("CARGO_PKG_VERSION"));
-        println!("  \\"implemented_syntax_profiles\\": {},", PROFILES.len());
-        println!("  \\"native_machine_code_compiler\\": false,");
-        println!("  \\"self_hosted\\": false,");
-        println!("  \\"python_required_for_rust_cli\\": false");
+        println!(r#"  "name": "Nobody","#);
+        println!(r#"  "implementation": "Rust","#);
+        println!(r#"  "compiler_version": "{}","#, env!("CARGO_PKG_VERSION"));
+        println!(r#"  "implemented_syntax_profiles": {},"#, PROFILES.len());
+        println!(r#"  "native_machine_code_compiler": false,"#);
+        println!(r#"  "self_hosted": false,"#);
+        println!(r#"  "python_required_for_rust_cli": false"#);
         println!("}}");
         return;
     }
