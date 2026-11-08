@@ -27,3 +27,8 @@ The earlier Nobody 0.7 prototype was prepared outside this repository. Its code/
 
 ## Attribution
 Created as an independent project from its founder's requirements with software development and documentation assistance from **ChatGPT by OpenAI**. This is **not** an official OpenAI project, and OpenAI does not sponsor or certify it.
+
+
+## Development update (2026-11-08)
+
+[Experimental Nobody 0.8 notes](docs/PROTOTYPE_0_8.md), [example](examples/hello_sk.nbd), and [new regression tests](tests/test_language_barriers.py) are published. 49 tests passed in the full **local** tree, but the full source is not yet mirrored here. **No GitHub CI success or official GitHub v0.8 release is claimed.**
