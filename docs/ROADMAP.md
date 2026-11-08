@@ -247,3 +247,17 @@ Every release must include: source code, tests and reported results; supported v
 - [ ] Implement checked modules/namespaces, independent compiler IR, native backend and the pending complete bootstrap source import; verify GitHub CI before official releases.
 
 **Verification:** 144 unit tests passed in the complete local 0.19 tree (134 from 0.18 + 10 new). GitHub Actions run result is not yet verified. This remains a conservative partial analyzer, not proof of type soundness.
+
+
+## Nobody 0.20 — stabilné čísla a presné opravy chýb (2026-11-08)
+
+- [x] Zaviesť **priebežne prideľované, nikdy nerecyklované čísla Nxxxx** pre diagnostiky s garantovaným popisom a konkrétnym postupom opravy.
+- [x] Vytvoriť 24-položkový [katalóg príčin, opráv a ukážok](ERROR_CODES.md) s číselnými rozsahmi pre typy, lexer/Unicode, parser, vykonávanie, AST a CLI.
+- [x] Zachovať staré symbolické API kódy `E_TYPE`, `E_ARITY` a ďalšie; doplniť `.number` a `.detailed_message` do statických diagnostík.
+- [x] Doplniť `nobody errors [číslo]`, číslovanie chýb CLI argumentov a klasifikáciu bežných výnimiek na príkazovom riadku.
+- [x] Doplniť 12 testov čísiel, presného kontextu, vysvetlení a výpisu CLI; kompletný lokálny balík má **156 úspešných testov**.
+- [ ] Postupne odstrániť náhradné `N9999`: všetkým **ostávajúcim** starším výnimkám prideliť presnú samostatnú kategóriu a pokryť ju testami.
+- [ ] Lokalizovať celé diagnostiky do všetkých podporovaných profilov, zachovať jednotné číslo pri každom jazyku.
+- [ ] Pridať presné zdrojové rozsahy (riadok/stĺpec) a opravné úpravy (quick fixes) pre editory/LSP.
+
+**Dôležité:** 0.20 je experimentálna implementácia, nie sľub, že všetky staršie knižničné chyby už majú svoj špecifický kód. Python-free runtime a natívny kompilátor naďalej nie sú hotové.
