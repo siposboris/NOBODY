@@ -29,6 +29,9 @@ def main(argv=None):
     astp=sub.add_parser('parse',help='Display parsed AST')
     astp.add_argument('file')
     astp.add_argument('--lang',required=True)
+    astj=sub.add_parser('ast-json',help='Output deterministic versioned JSON AST')
+    astj.add_argument('file')
+    astj.add_argument('--lang',required=True)
     direction=sub.add_parser('direction')
     direction.add_argument('language')
     info=sub.add_parser('info')
@@ -46,7 +49,7 @@ def main(argv=None):
         for issue in audit_profiles():
             print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
-        print(json.dumps({'name':'Nobody','frontend_version':'0.14-experimental',
+        print(json.dumps({'name':'Nobody','frontend_version':'0.15-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
                           'native_compiler':False,'runtime':'Python bootstrap',
                           'all_249_syntax_implemented':False},indent=2))
@@ -58,6 +61,9 @@ def main(argv=None):
         source=Path(args.file).read_text(encoding='utf-8')
         if args.command=='translate':
             print(translate(source,args.from_lang,args.to),end='')
+        elif args.command=='ast-json':
+            from .ai_ir import to_json
+            print(to_json(source,args.lang))
         elif args.command=='parse':
             print(parse_source(source,args.lang))
         elif args.command=='ast-run':
