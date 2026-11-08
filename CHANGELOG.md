@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 — local experimental prototype (2026-11-08; not yet GitHub release)
+- Strengthened language separation for one configured syntax language per source file, including short foreign keywords.
+- Added source and target validation to the public translation API.
+- Added five regression tests; 49 tests passed **locally**, not in GitHub CI.
+- Complete prototype source import is pending. See [0.8 notes](docs/PROTOTYPE_0_8.md).
+
 ## Unreleased — GitHub documentation bootstrap (2026-11-08)
 - Added complete staged roadmap, feature status table and MIT license.
 - Added contributor/security guidance, release checklist and transparent AI disclosure.
