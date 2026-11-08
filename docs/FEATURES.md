@@ -232,3 +232,7 @@ This is not a Python replacement yet. [Rust migration rules](RUST_MIGRATION.md) 
 | Verified Rust compile, tests and CI | **Not yet confirmed** |
 
 [Canonical AI syntax](AI_SYNTAX.md) · [Rust migration criteria](RUST_MIGRATION.md).
+
+## 0.27 translator safety
+
+The Rust translator rejects non-keyword source identifiers that are reserved in the selected destination syntax with error **N3011**. It includes specific source location and a concrete fix. **Implemented in source, Cargo build not verified.** A future compiler IR must replace conservative token translation to safely handle scope/hygiene and guarantee semantics. [Details](TRANSLATION_SAFETY.md).
