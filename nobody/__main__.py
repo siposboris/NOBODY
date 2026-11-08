@@ -37,6 +37,9 @@ def main(argv=None):
     emitted=sub.add_parser('ast-emit',help='Reconstruct Nobody source from AST JSON')
     emitted.add_argument('file')
     emitted.add_argument('--lang',required=True)
+    typecheck=sub.add_parser('type-check',help='Static primitive type analysis without execution')
+    typecheck.add_argument('file')
+    typecheck.add_argument('--lang',required=True)
     direction=sub.add_parser('direction')
     direction.add_argument('language')
     info=sub.add_parser('info')
@@ -54,7 +57,7 @@ def main(argv=None):
         for issue in audit_profiles():
             print(issue.language+': '+issue.severity+': '+issue.detail)
     elif args.command=='info':
-        print(json.dumps({'name':'Nobody','frontend_version':'0.16-experimental',
+        print(json.dumps({'name':'Nobody','frontend_version':'0.18-experimental',
                           'reference_entries':249,'syntax_profiles':len(ALIASES),
                           'native_compiler':False,'runtime':'Python bootstrap',
                           'all_249_syntax_implemented':False},indent=2))
@@ -66,6 +69,13 @@ def main(argv=None):
         from .ast_format import from_json, emit_source
         tree=from_json(Path(args.file).read_text(encoding='utf-8'))
         print(emit_source(tree,args.lang),end='')
+    elif args.command=='type-check':
+        from .static_types import analyze
+        result=analyze(Path(args.file).read_text(encoding='utf-8'),args.lang)
+        for item in (*result.diagnostics,*result.warnings):
+            print(f'{item.line}: {item.code}: {item.message}')
+        if not result.ok: raise SystemExit(1)
+        print('OK: no proven primitive type errors; not a full type-safety proof')
     elif args.command=='direction':
         info=direction_for_language(args.language)
         print(info.direction)
