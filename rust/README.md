@@ -46,3 +46,21 @@ cargo run --manifest-path rust/Cargo.toml -- parse ai examples/hello_ai.nbd
 `check` remains **LEXER-ONLY**. Use `parse` for syntax validation.
 `parse` produces an AST; it does **not** run the program.
 
+
+
+## 0.25 — AST contextual validation (source milestone)
+
+The Rust crate now includes `src/validate.rs` and a distinct `validate` CLI command. This **checks legal nesting of control-flow instructions** after parsing; it does not run code or verify types.
+
+```bash
+cargo run --manifest-path rust/Cargo.toml -- validate sk examples/hello_sk.nbd
+cargo run --manifest-path rust/Cargo.toml -- validate ai examples/hello_ai.nbd
+cargo test --manifest-path rust/Cargo.toml --all-targets
+```
+
+- `N3008` means a `return` was written outside any function.
+- `N3009` means `break` or `continue` was written outside a loop in the **current** function. A function declared inside an outer loop cannot break that outer loop.
+- Tests cover nested functions, loops, branch bodies and CLI errors, including a check that unavailable AST source spans are not fabricated.
+- `parse` remains syntax-only; `validate` adds the control-flow context pass; `check` remains lexer-only. None of these commands execute Nobody code.
+
+**Verification:** Rust compiler availability and GitHub Actions test results are still unconfirmed; the source and tests are committed, not claimed green.
