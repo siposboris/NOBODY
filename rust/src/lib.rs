@@ -6,6 +6,8 @@
 use std::fmt;
 
 pub mod profiles;
+pub mod translator;
+pub use translator::translate_source;
 pub mod ai_migration;
 pub use ai_migration::migrate_legacy_ai;
 pub mod syntax;
