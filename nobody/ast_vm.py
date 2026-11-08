@@ -87,9 +87,13 @@ class Machine:
     def block(self,nodes,env,in_loop=False,in_function=False):
         for node in nodes:
             self.tick()
-            if node.kind=='let':
-                if node.value in env:raise ExecutionError('Duplicate declaration')
-                env[node.value]=self.expr(node.children[0],env)
+            if node.kind in ('let','typed_let'):
+                name, annotation = node.value if node.kind=='typed_let' else (node.value,None)
+                if name in env:raise ExecutionError('Duplicate declaration')
+                value=self.expr(node.children[0],env)
+                if annotation is not None and type(value) is not {'int':int,'float':float,'str':str,'bool':bool}[annotation]:
+                    raise ExecutionError('Type mismatch for '+name)
+                env[name]=value
             elif node.kind=='expression_statement':
                 self.expr(node.children[0],env)
             elif node.kind=='function':
