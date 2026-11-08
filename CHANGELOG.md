@@ -119,3 +119,12 @@ Do not confuse these historical notes with published and verified tags.
 - Added ten regression tests; **144 tests passed locally** across the complete development tree.
 - GitHub source and CI workflow updated. Full GitHub test result not yet confirmed.
 - Known limitations: Python dependency, incomplete static inference, cross-language keyword collisions, unimported historical bootstrap files and no native compiler.
+
+
+## Nobody 0.20 — číslované a akčne vysvetlené chybové hlášky (2026-11-08)
+
+- Pridali sme 24 stabilných N-kódov so samostatnou príčinou a postupom opravy a [dokumentáciu](docs/ERROR_CODES.md) s konkrétnymi príkladmi.
+- Statické diagnostiky majú `.number` a `.detailed_message`, zachovávajú symbolické kódy kvôli spätnej kompatibilite.
+- Nový CLI príkaz `errors [number]`; chyby argumentov majú `N9001`, bežné výnimky sú mapované na kategórie.
+- Doplnených 12 testov; celá lokálna sada Nobody 0.20: **156/156 úspešných testov**. GitHub CI nezávisle neoverený.
+- Obmedzenie: `N9999` stále funguje ako dočasná kategória pre neklasifikované staršie chyby, ktorým treba doplniť vlastné číslovanie.
