@@ -128,3 +128,13 @@ Do not confuse these historical notes with published and verified tags.
 - Nový CLI príkaz `errors [number]`; chyby argumentov majú `N9001`, bežné výnimky sú mapované na kategórie.
 - Doplnených 12 testov; celá lokálna sada Nobody 0.20: **156/156 úspešných testov**. GitHub CI nezávisle neoverený.
 - Obmedzenie: `N9999` stále funguje ako dočasná kategória pre neklasifikované staršie chyby, ktorým treba doplniť vlastné číslovanie.
+
+
+## Rust-first architecture transition (2026-11-08)
+
+- Began replacing Python as Nobody implementation language with a dependency-free Rust crate (initial source lexer, token positions and categorized N2001–N2005 error handling).
+- Added a small Rust CLI `nobody-rs lex`/`check`; `check` validates **lexical syntax only**.
+- Added separate [Rust GitHub CI](.github/workflows/rust.yml) and explicit [migration plan](docs/RUST_MIGRATION.md).
+- **No Python files removed yet**: Python parser, translator, checker and interpreter have not passed parity gates against their future Rust replacements.
+- Rust source authored and committed; local compilation unverified because `cargo`/`rustc` are not installed here. GitHub Rust workflow outcome unconfirmed.
+- Long-term architecture: Rust bootstrap → native Nobody compiler → reproducible Nobody-in-Nobody self-hosting.
