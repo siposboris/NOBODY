@@ -36,3 +36,8 @@ Invisible bidi-control characters such as U+202E (RIGHT-TO-LEFT OVERRIDE) and U+
 - Finish importing full interpreter/bootstrap code to GitHub, and validate all tests there.
 
 A direction setting is **metadata**, not proof that the program/editor has complete RTL display support.
+
+
+## Additional RTL profiles — 0.13
+
+Hebrew (`he`) and Persian (`fa`) have been added to the RTL metadata registry alongside Arabic (`ar`) and Urdu (`ur`). No source characters are reversed. The editor still controls visual direction, selection, punctuation layout and cursor movement; the language runtime does not enforce those visual behaviors. The lexical security policy rejects hidden Unicode bidi-formatting controls, including in comments.
