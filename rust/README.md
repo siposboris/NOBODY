@@ -91,3 +91,9 @@ legacy keyword without conversion produces **N3010**, documented in
 [Canonical English roadmap](../docs/ROADMAP.md) ·
 [AI syntax specification](../docs/AI_SYNTAX.md) ·
 [Migration gates](../docs/RUST_MIGRATION.md).
+
+## 0.27 — cross-language keyword collision protection
+
+The Rust `translate FROM TO FILE` command now reports **N3011** if a legal source identifier would become a target-profile reserved keyword. For example, Slovak `nech fn = 3` cannot translate to AI `let fn = 3`. Rename `fn` in the source to a name not reserved in the destination profile, then retry. See [translation-safety specification](../docs/TRANSLATION_SAFETY.md) and [error catalogue](../docs/ERROR_CODES.md).
+
+The check preserves strings/comments and reports source line/column, but full scope-aware renaming and semantic parity are still planned. The Rust build and test results are not yet independently verified.
