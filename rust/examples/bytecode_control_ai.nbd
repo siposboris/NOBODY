@@ -1,0 +1,10 @@
+let i = 0
+let total = 0
+while i < 5 {
+  i = i + 1
+  if i == 2 { continue }
+  if i == 5 { break }
+  total = total + i
+}
+print(total)
+if total >= 8 { print(true) } else { print(false) }

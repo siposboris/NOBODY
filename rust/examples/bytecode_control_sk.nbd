@@ -1,0 +1,10 @@
+nech i = 0
+nech total = 0
+pokial i < 5 {
+  i = i + 1
+  ak i == 2 { pokracuj }
+  ak i == 5 { prerus }
+  total = total + i
+}
+vypis(total)
+ak total >= 8 { vypis(pravda) } inak { vypis(nepravda) }
