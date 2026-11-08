@@ -228,3 +228,9 @@ Do not confuse these historical notes with published and verified tags.
 - Added Rust toolchain preflight with explicit failure if Cargo, rustfmt or Clippy is unavailable.
 - Enabled manual `workflow_dispatch` for the Rust GitHub Actions workflow and wired the unified verification script into CI.
 - Shell preflight syntax was checked locally; the local environment has no Cargo, so **Rust build/tests/Clippy and GitHub CI remain unverified**. The roadmap acceptance gate remains open.
+
+## Rust 0.35 — conservative arithmetic type validation (source snapshot, 2026-11-08)
+
+- Added N1002 known-incompatible arithmetic operand detection in the Rust IR checker, including nested expressions, function-call arguments and return expressions.
+- Added six unit tests and documented exact causes and fixes.
+- Unknown types are deliberately deferred. **Cargo build, Clippy and CI results are not yet verified.**
