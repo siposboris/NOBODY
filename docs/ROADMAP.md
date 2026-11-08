@@ -243,6 +243,8 @@ Roadmap checklist progress is **44/112 (39%)** as of this update. It counts mark
 
 **Conditional execution slice (2026-11-08, verified):** Rust `run` implements `if` / `else if` / `else` blocks, integer comparisons, boolean short-circuit logic and lexical block shadowing. Eight additional integration tests and [Rust CI #42511789940](https://github.com/siposboris/NOBODY/actions/runs/42511789940) passed, and the change merged via [PR #8](https://github.com/siposboris/NOBODY/pull/8). This is a **partial runtime milestone**, not a completed Phase 4 checklist item. Loops, functions, full reference parity, and strong resource isolation remain open.
 
+**While-loop execution slice (2026-11-08, awaiting CI):** The optional Rust `run` evaluator now implements bounded `while` loops with boolean conditions, iteration-local lexical scopes and nested `break`/`continue`. Nine regression tests cover AI/Slovak behavior, loop control and exhausted budgets. This remains partial runtime work; `for`, functions, native compilation, differential Python parity and secure resource isolation are not complete. CI outcome to be recorded after verification.
+
 ### Following slices — only after the 0.39 gate
 
 1. Port lexical scopes and closures with function calls and assignment; preserve typed writes, recursion safeguards and exact arity diagnostics across languages.
