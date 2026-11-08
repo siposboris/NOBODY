@@ -80,6 +80,50 @@ pub fn direction(code: &str) -> Option<&'static str> {
         "ltr"
     })
 }
+/// Validate the 40 *implemented* syntax dictionaries without Python.
+/// This is a structural audit, not a native-speaker terminology review.
+pub fn audit_profiles() -> Vec<String> {
+    use std::collections::BTreeSet;
+    use unicode_normalization::UnicodeNormalization;
+
+    let mut errors = Vec::new();
+    let mut seen_codes = BTreeSet::new();
+    for profile in PROFILES {
+        if !seen_codes.insert(profile.code) {
+            errors.push(format!("{}: duplicate profile code", profile.code));
+        }
+        let words: Vec<_> = profile.words.split_whitespace().collect();
+        if words.len() != CANONICAL.len() {
+            errors.push(format!(
+                "{}: expected {} keywords, got {}",
+                profile.code,
+                CANONICAL.len(),
+                words.len()
+            ));
+        }
+        let mut seen_words = BTreeSet::new();
+        for word in words {
+            if !seen_words.insert(word) {
+                errors.push(format!("{}: duplicate keyword {word:?}", profile.code));
+            }
+            if word.is_empty()
+                || word.chars().any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
+            {
+                errors.push(format!("{}: invalid keyword {word:?}", profile.code));
+            }
+            if word.nfc().collect::<String>() != word {
+                errors.push(format!("{}: non-NFC keyword {word:?}", profile.code));
+            }
+            if word.chars().any(|ch| matches!(
+                ch as u32,
+                0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069
+            )) {
+                errors.push(format!("{}: forbidden bidi control in keyword", profile.code));
+            }
+        }
+    }
+    errors
+}
 pub fn is_reserved(code: &str, spelling: &str) -> bool {
     semantic(code, spelling).is_some()
 }
@@ -97,6 +141,10 @@ mod tests {
             sorted.dedup();
             assert_eq!(sorted.len(), terms.len(), "{}", p.code);
         }
+    }
+    #[test]
+    fn profile_audit_reports_no_structural_errors() {
+        assert!(audit_profiles().is_empty(), "{:?}", audit_profiles());
     }
     #[test]
     fn ai_syntax_is_conventional() {
