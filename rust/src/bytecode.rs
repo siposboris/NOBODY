@@ -18,6 +18,7 @@ const MAX_EXPR_DEPTH: usize = 64;
 pub enum Instruction {
     Push(i128),
     PushBool(bool),
+    PushNull,
     Load(usize),
     Define(usize),
     Store(usize),
@@ -49,7 +50,17 @@ pub enum Instruction {
     },
     Drop,
     Print(usize),
+    Call { function: usize, argc: usize },
+    Return,
     Halt,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompiledFunction {
+    pub name: String,
+    pub arity: usize,
+    pub slots: usize,
+    pub code: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,6 +68,7 @@ pub struct Bytecode {
     pub version: &'static str,
     pub slots: usize,
     pub code: Vec<Instruction>,
+    pub functions: Vec<CompiledFunction>,
 }
 
 fn diagnostic(code: u16, detail: impl Into<String>) -> Diagnostic {
@@ -81,6 +93,10 @@ struct Compiler {
     scopes: Vec<BTreeMap<String, usize>>,
     slots: usize,
     loops: Vec<LoopContext>,
+    function_ids: BTreeMap<String, usize>,
+    functions: Vec<CompiledFunction>,
+    in_function: bool,
+    blocked_function: Option<String>,
 }
 
 struct LoopContext {
@@ -165,6 +181,29 @@ impl Compiler {
                 self.emit(Instruction::Push(value))
             }
             IrExpr::Boolean(value) => self.emit(Instruction::PushBool(*value)),
+            IrExpr::Call { callee, args } => {
+                let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
+                    return Err(unsupported("Bytecode only calls declared named functions"));
+                };
+                if self.blocked_function.as_deref() == Some(name.as_str()) {
+                    return Err(diagnostic(4005, "Recursive bytecode function calls are not yet supported"));
+                }
+                let function = *self.function_ids.get(name).ok_or_else(|| {
+                    diagnostic(4001, format!("Unknown function {name:?}"))
+                })?;
+                let expected = self.functions[function].arity;
+                if args.len() != expected {
+                    return Err(diagnostic(
+                        4007,
+                        format!("Function {name:?} expects {expected} argument(s), received {}", args.len()),
+                    ));
+                }
+                for arg in args {
+                    self.expression(arg, depth + 1)?;
+                }
+                self.emit(Instruction::Call { function, argc: args.len() })
+            }
+
             IrExpr::Name(Name::User(name)) => {
                 let slot = self
                     .variable(name)
@@ -377,6 +416,56 @@ impl Compiler {
                 }
                 Ok(())
             }
+            IrStatement::Function { name, parameters, body } => {
+                if self.in_function || self.scopes.len() != 1 {
+                    return Err(unsupported("Nested bytecode functions and closures are not supported"));
+                }
+                if self.function_ids.contains_key(name) || self.variable(name).is_some() {
+                    return Err(unsupported(format!("Duplicate function declaration {name:?}")));
+                }
+                if parameters.len() > MAX_STACK {
+                    return Err(diagnostic(4005, "Function has too many parameters"));
+                }
+                let mut locals = BTreeMap::new();
+                for (index, parameter) in parameters.iter().enumerate() {
+                    if locals.insert(parameter.clone(), index).is_some() {
+                        return Err(unsupported("Duplicate function parameter"));
+                    }
+                }
+                // A function sees its parameters and locals and only earlier
+                // declared callable functions; it never borrows caller locals.
+                let mut child = Compiler {
+                    code: Vec::new(),
+                    scopes: vec![locals],
+                    slots: parameters.len(),
+                    loops: Vec::new(),
+                    function_ids: self.function_ids.clone(),
+                    functions: self.functions.clone(),
+                    in_function: true,
+                    blocked_function: Some(name.clone()),
+                };
+                for stmt in body {
+                    child.statement(stmt)?;
+                }
+                child.emit(Instruction::PushNull)?;
+                child.emit(Instruction::Return)?;
+                let id = self.functions.len();
+                self.functions.push(CompiledFunction {
+                    name: name.clone(),
+                    arity: parameters.len(),
+                    slots: child.slots,
+                    code: child.code,
+                });
+                self.function_ids.insert(name.clone(), id);
+                Ok(())
+            }
+            IrStatement::Return(value) => {
+                if !self.in_function {
+                    return Err(unsupported("Return can only occur in a bytecode function"));
+                }
+                self.expression(value, 0)?;
+                self.emit(Instruction::Return)
+            }
             IrStatement::Break => {
                 if self.loops.is_empty() {
                     return Err(unsupported("Break is only valid inside a bytecode loop"));
@@ -410,6 +499,10 @@ pub fn compile_ir(module: &Module) -> Result<Bytecode, Diagnostic> {
         scopes: vec![BTreeMap::new()],
         slots: 0,
         loops: Vec::new(),
+        function_ids: BTreeMap::new(),
+        functions: Vec::new(),
+        in_function: false,
+        blocked_function: None,
     };
     for statement in &module.statements {
         compiler.statement(statement)?;
@@ -419,6 +512,7 @@ pub fn compile_ir(module: &Module) -> Result<Bytecode, Diagnostic> {
         version: BYTECODE_VERSION,
         slots: compiler.slots,
         code: compiler.code,
+        functions: compiler.functions,
     };
     verify(&bytecode)?;
     Ok(bytecode)
@@ -858,18 +952,21 @@ mod tests {
         let bad = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![Instruction::Add, Instruction::Halt],
         };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
         let bad = Bytecode {
             version: BYTECODE_VERSION,
             slots: 1,
+            functions: Vec::new(),
             code: vec![Instruction::Load(0), Instruction::Drop, Instruction::Halt],
         };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
         let bad = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![Instruction::Halt, Instruction::Push(3)],
         };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
@@ -912,6 +1009,7 @@ mod tests {
         let bad = Bytecode {
             version: BYTECODE_VERSION,
             slots: 3,
+            functions: Vec::new(),
             code: vec![
                 Instruction::RangeCheck {
                     current: 0,
@@ -926,6 +1024,7 @@ mod tests {
         let bad = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![
                 Instruction::RangeAdvance {
                     current: 0,
@@ -943,6 +1042,7 @@ mod tests {
         let program = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![
                 Instruction::Push(i128::MAX),
                 Instruction::Push(1),
@@ -1003,12 +1103,14 @@ while x < 7 {
         let outside = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![Instruction::Jump(9), Instruction::Halt],
         };
         assert_eq!(verify(&outside).unwrap_err().code, 4004);
         let uninitialized = Bytecode {
             version: BYTECODE_VERSION,
             slots: 1,
+            functions: Vec::new(),
             code: vec![
                 Instruction::PushBool(false),
                 Instruction::JumpIfFalse(4),
@@ -1023,6 +1125,7 @@ while x < 7 {
         let mismatched = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![
                 Instruction::PushBool(true),
                 Instruction::JumpIfFalse(3),
@@ -1050,6 +1153,7 @@ while x < 7 {
         let program = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
+            functions: Vec::new(),
             code: vec![Instruction::Print(1), Instruction::Halt],
         };
         assert!(verify(&program).is_err());
