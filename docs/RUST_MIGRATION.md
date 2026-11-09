@@ -11,6 +11,10 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Native x86-64 boolean parameter inference (2026-11-09; pending CI)
+
+The standalone Linux x86-64 machine-code backend now infers fixed i64/bool parameter signatures from direct typed contexts in previously declared functions. It checks typed call sites, lexical shadowing and contradictory constraints, rejecting unsupported ambiguous boolean signatures rather than silently converting values. Real ELF-vs-Rust evaluator tests run `ai`, `sk` and `en` functions with boolean parameters. This is not a general flow-sensitive type system, polymorphic specialization, a replacement for the Python frontend or self-hosting.
+
 ## Native x86-64 lazy boolean execution (2026-11-09; verified)
 
 The independent Linux ELF backend now lowers typed boolean `and`/`or` into actual lazy jumps. It can print a single bool or integer and compile functions with signed-i64 arguments and **consistent explicit i64 or boolean return types**. Actual ELF-vs-Rust evaluator differential fixtures cover `ai`, `sk`, `en`, overflow skipped by short-circuit control flow, and side-effecting functions skipped on the RHS. Boolean parameters, full static typing, recursion and global captures remain unsupported. This is a partial native backend improvement, not proof of complete Python replacement or self-hosting. All four CI workflows passed, including [Rust CI #42652961905](https://github.com/siposboris/NOBODY/actions/runs/42652961905); merged in [PR #31](https://github.com/siposboris/NOBODY/pull/31).
