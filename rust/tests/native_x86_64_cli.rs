@@ -179,7 +179,11 @@ fn zero_step_in_even_an_empty_native_range_is_a_bounded_exit() {
     let tmp = temporary();
     let binary = tmp.join("range-zero");
     let compiled = compile("ai", Path::new(&source), &binary);
-    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
     let native = Command::new(&binary).output().unwrap();
     assert_eq!(native.status.code(), Some(6));
     assert!(native.stdout.is_empty());
@@ -199,7 +203,11 @@ fn native_range_signed_boundary_terminates_without_overflow_error() {
     let tmp = temporary();
     let binary = tmp.join("range-overflow");
     let compiled = compile("ai", Path::new(&input), &binary);
-    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
     let native = Command::new(&binary).output().unwrap();
     assert!(native.status.success(), "{:?}", native.status);
     assert_eq!(
