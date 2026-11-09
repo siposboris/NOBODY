@@ -22,7 +22,9 @@ fn run(command: &str, profile: &str, path: &str) -> std::process::Output {
 fn v2_cli_preserves_typed_signatures_across_three_profiles() {
     let mut json = Vec::new();
     for profile in ["ai", "sk", "en"] {
-        let path = fixture(&format!("rust/examples/native_typed_signatures_{profile}.nbd"));
+        let path = fixture(&format!(
+            "rust/examples/native_typed_signatures_{profile}.nbd"
+        ));
         let output = run("ast-json-v2", profile, &path);
         assert!(
             output.status.success(),
