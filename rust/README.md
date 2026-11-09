@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Named functions in Rust bytecode (experimental)
+
+The native bytecode compiler now emits separate, verifier-checked function instruction streams and `Call`/`Return` operations. Supported: top-level functions declared before use, positional parameters, explicit return expressions and implicit `null`, local variables, conditionals/loops in function bodies, and calls to earlier named functions. Each invocation has isolated local slots and an operand stack, with shared finite CPU-step/output counters. The verifier rejects invalid function IDs, argument counts, return stack shape and recursive/forward bytecode calls.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode sk rust/examples/bytecode_functions_sk.nbd
+```
+
+**Still missing:** global-variable access inside functions, closures, nested definitions, recursive/forward function references, first-class values, portable serialized bytecode and native machine-code output. Neither the bytecode VM nor its software limits is a security sandbox.
+
 ## Signed `for range` bytecode VM (experimental)
 
 The independent native VM now supports `for variable in range(stop)`, `range(start, stop)`, and `range(start, stop, step)` for integer arguments with nonzero signed step. Arguments are evaluated once. Nested `for` and `while` loops maintain separate `break` and `continue` targets, loop variables use a lexical scope, zero step gives N4006, and checked i128 overflow terminates iteration without wrapping. Static verification validates slot initialization on range-control edges and jump target bounds. Unsupported iterables still fail explicitly; Python is not part of Rust execution.
