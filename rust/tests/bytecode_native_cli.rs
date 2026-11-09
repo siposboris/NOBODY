@@ -341,15 +341,29 @@ fn saved_typed_bytecode_still_rejects_runtime_type_mismatches() {
     for (index, fixture) in [
         "native_typed_bad_argument_ai.nbd",
         "native_typed_bad_return_ai.nbd",
-    ].iter().enumerate() {
+    ]
+    .iter()
+    .enumerate()
+    {
         let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let binary = temp.join(format!("invalid-at-runtime-{index}.nbc"));
         let compiled = launch(&["compile-bytecode", "ai", &source, binary.to_str().unwrap()]);
-        assert!(compiled.status.success(), "{fixture}: {}", String::from_utf8_lossy(&compiled.stderr));
+        assert!(
+            compiled.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
         let checked = launch(&["verify-bytecode", binary.to_str().unwrap()]);
-        assert!(checked.status.success(), "{fixture}: {}", String::from_utf8_lossy(&checked.stderr));
+        assert!(
+            checked.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&checked.stderr)
+        );
         let executed = launch(&["run-compiled", binary.to_str().unwrap()]);
-        assert!(!executed.status.success(), "{fixture} bypassed runtime type guards");
+        assert!(
+            !executed.status.success(),
+            "{fixture} bypassed runtime type guards"
+        );
         assert!(String::from_utf8_lossy(&executed.stderr).contains("N4004"));
     }
     std::fs::remove_dir_all(temp).unwrap();
