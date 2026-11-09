@@ -188,10 +188,33 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
     printf 'Native signed overflow did not exit with code 3.\n' >&2
     exit 1
   fi
-  if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
-    compile-native ai rust/examples/bytecode_functions_ai.nbd "$native_temp/unsupported"; then
-    printf 'Native backend unexpectedly accepted unsupported function syntax.\n' >&2
-    exit 1
-  fi
+  printf '%s\n' '== Nobody Phase 4: native named-function ELF differential parity =='
+  for language in ai sk en; do
+    source="rust/examples/bytecode_functions_"$language".nbd"
+    executable="$native_temp/functions-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    interpreted=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    native_output=$("$executable")
+    if [[ "$interpreted" != "$native_output" || "$native_output" != "$(printf '13\n6')" ]]; then
+      printf 'Native named function ELF differs from reference: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  for source in \
+    rust/examples/native_function_bad_implicit_ai.nbd \
+    rust/examples/native_function_bad_forward_ai.nbd \
+    rust/examples/native_function_bad_global_ai.nbd; do
+    if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native ai "$source" "$native_temp/unsupported"; then
+      printf 'Native backend unexpectedly accepted unsupported function: %s\n' "$source" >&2
+      exit 1
+    fi
+    if [[ -e "$native_temp/unsupported" ]]; then
+      printf 'Native backend wrote an output for unsupported function: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
 fi
 printf '%s\n' 'Nobody Rust verification passed.'

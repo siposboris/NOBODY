@@ -1,0 +1,2 @@
+fn silent(x) { print(x) }
+silent(5)

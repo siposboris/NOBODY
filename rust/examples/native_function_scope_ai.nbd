@@ -1,0 +1,7 @@
+let x = 99
+fn twice(x) {
+  let y = x * 2
+  return y
+}
+print(twice(4))
+print(x)

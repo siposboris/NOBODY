@@ -7,7 +7,8 @@
 //!
 //! Supported: signed i64 numbers, boolean conditions, checked + - *,
 //! comparisons, lexical variables, if/elif/else, while, signed for-range,
-//! break/continue, and print(one integer). Unsupported features fail before output.
+//! break/continue, named earlier-declared i64 functions with parameters and
+//! explicit i64 returns, and print(one integer). Unsupported features fail before output.
 use crate::ir::{IrExpr, IrStatement, Module, Name};
 use crate::{lower_source, Diagnostic};
 use std::collections::BTreeMap;
@@ -48,12 +49,20 @@ struct LoopTargets {
     end: usize,
 }
 
+#[derive(Clone, Copy)]
+struct FunctionInfo {
+    label: usize,
+    arity: usize,
+}
+
 struct NativeCompiler {
     asm: String,
     scopes: Vec<BTreeMap<String, Binding>>,
     slots: usize,
     labels: usize,
     loops: Vec<LoopTargets>,
+    functions: BTreeMap<String, FunctionInfo>,
+    in_function: bool,
 }
 
 impl NativeCompiler {
@@ -111,6 +120,31 @@ impl NativeCompiler {
                     unsupported("Native backend integer literal is outside the signed i64 range")
                 })?;
                 self.emit(&format!("    mov rax, {value}"))?;
+                Ok(Type::Int)
+            }
+            IrExpr::Call { callee, args } => {
+                let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
+                    return Err(unsupported("Native calls require a previously declared named function"));
+                };
+                if self.lookup(name).is_some() {
+                    return Err(unsupported("Variable values are not native callable functions"));
+                }
+                let function = self.functions.get(name).copied().ok_or_else(|| {
+                    issue(4001, format!("Unknown or forward native function {name:?}"))
+                })?;
+                if args.len() != function.arity {
+                    return Err(issue(4007, format!("Function {name:?} expects {} argument(s), received {}", function.arity, args.len())));
+                }
+                for argument in args {
+                    if self.expression(argument, depth + 1)? != Type::Int {
+                        return Err(unsupported("Native function arguments must be signed i64 integers"));
+                    }
+                    self.emit("    push rax")?;
+                }
+                self.emit(&format!("    call .L{}", function.label))?;
+                if !args.is_empty() {
+                    self.emit(&format!("    add rsp, {}", args.len() * 8))?;
+                }
                 Ok(Type::Int)
             }
             IrExpr::Boolean(value) => {
@@ -180,8 +214,32 @@ impl NativeCompiler {
                     _ => Err(unsupported("Native expression operator or operand types are unsupported")),
                 }
             }
-            _ => Err(unsupported("Native backend does not yet compile calls, strings, null, ranges or other complex values")),
+            _ => Err(unsupported("Native backend does not yet compile strings, null, first-class values or other complex expressions")),
         }
+    }
+
+    // Deliberately conservative: this initial native backend only accepts
+    // functions whose every possible fallthrough path returns an i64 value.
+    // An implicit null return remains available in the bytecode VM instead.
+    fn definitely_returns(body: &[IrStatement]) -> bool {
+        for statement in body {
+            match statement {
+                IrStatement::Return(_) => return true,
+                IrStatement::If {
+                    branches,
+                    otherwise: Some(otherwise),
+                } if !branches.is_empty()
+                    && branches
+                        .iter()
+                        .all(|(_, body)| Self::definitely_returns(body))
+                    && Self::definitely_returns(otherwise) =>
+                {
+                    return true
+                }
+                _ => {}
+            }
+        }
+        false
     }
 
     fn block(&mut self, statements: &[IrStatement]) -> Result<(), Diagnostic> {
@@ -367,6 +425,81 @@ impl NativeCompiler {
                 self.emit(&format!("    jmp .L{check}"))?;
                 self.label(end)
             }
+            IrStatement::Function { name, parameters, body } => {
+                if self.in_function || self.scopes.len() != 1 {
+                    return Err(unsupported("Native nested function definitions and closures are unsupported"));
+                }
+                if self.functions.contains_key(name) || self.lookup(name).is_some() {
+                    return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
+                }
+                if self.functions.len() >= 32 {
+                    return Err(issue(4005, "The native backend supports at most 32 functions"));
+                }
+                if parameters.len() > 32 {
+                    return Err(issue(4005, "Native functions support at most 32 integer parameters"));
+                }
+                if !Self::definitely_returns(body) {
+                    return Err(unsupported("Native functions must return an integer on every possible path; implicit null is unsupported"));
+                }
+                let mut local_scope = BTreeMap::new();
+                for (index, parameter) in parameters.iter().enumerate() {
+                    if local_scope.insert(parameter.clone(), Binding { slot: index, kind: Type::Int }).is_some() {
+                        return Err(unsupported("Duplicate native function parameter"));
+                    }
+                }
+                let label = self.new_label();
+                let skip = self.new_label();
+                self.emit(&format!("    jmp .L{skip}"))?;
+                self.label(label)?;
+                self.emit("    push rbp")?;
+                self.emit("    mov rbp, rsp")?;
+                let prologue = self.asm.len();
+
+                // Independent call frames: no caller local state or global
+                // bindings are visible inside a function. Arguments live
+                // above the saved rbp/return address on the caller stack.
+                let saved_scopes = std::mem::replace(&mut self.scopes, vec![local_scope]);
+                let saved_slots = std::mem::replace(&mut self.slots, parameters.len());
+                let saved_loops = std::mem::take(&mut self.loops);
+                let saved_function = std::mem::replace(&mut self.in_function, true);
+
+                for index in 0..parameters.len() {
+                    let offset = 16 + (parameters.len() - 1 - index) * 8;
+                    self.emit(&format!("    mov rax, QWORD PTR [rbp+{offset}]"))?;
+                    self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (index + 1) * 8))?;
+                }
+                for statement in body {
+                    self.statement(statement)?;
+                }
+                // Defensive fallback if a future codegen change violates the
+                // conservative all-paths-return static check.
+                self.emit("    mov edi, 7")?;
+                self.emit("    mov eax, 60")?;
+                self.emit("    syscall")?;
+
+                let used = self.slots * 8;
+                let reserve = used.div_ceil(16) * 16;
+                self.asm.insert_str(prologue, &format!("    sub rsp, {reserve}\n"));
+                self.scopes = saved_scopes;
+                self.slots = saved_slots;
+                self.loops = saved_loops;
+                self.in_function = saved_function;
+                self.label(skip)?;
+                // Adding only after compilation disallows direct/indirect
+                // recursion and forward references in this first subset.
+                self.functions.insert(name.clone(), FunctionInfo { label, arity: parameters.len() });
+                Ok(())
+            }
+            IrStatement::Return(expr) => {
+                if !self.in_function {
+                    return Err(unsupported("Native return requires a function body"));
+                }
+                if self.expression(expr, 0)? != Type::Int {
+                    return Err(unsupported("Native function return values must be signed i64 integers"));
+                }
+                self.emit("    leave")?;
+                self.emit("    ret")
+            }
             IrStatement::Break => {
                 let target = self.loops.last().ok_or_else(|| unsupported("break outside native loop"))?.end;
                 self.emit(&format!("    jmp .L{target}"))
@@ -375,7 +508,7 @@ impl NativeCompiler {
                 let target = self.loops.last().ok_or_else(|| unsupported("continue outside native loop"))?.start;
                 self.emit(&format!("    jmp .L{target}"))
             }
-            _ => Err(unsupported("Native x86-64 subset does not yet support functions, return, typed declarations or other statement forms")),
+            _ => Err(unsupported("Native x86-64 subset does not yet support typed declarations or other complex statements")),
         }
     }
 }
@@ -390,6 +523,8 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
         slots: 0,
         labels: 0,
         loops: Vec::new(),
+        functions: BTreeMap::new(),
+        in_function: false,
     };
     compiler.emit(".intel_syntax noprefix")?;
     compiler.emit(".global _start")?;
@@ -619,7 +754,7 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("fn f(x) { return x }", "ai")
+            compile_to_assembly("fn f(x) { print(x) }", "ai")
                 .unwrap_err()
                 .code,
             4004
@@ -663,6 +798,62 @@ mod tests {
                 .code,
             4004
         );
+    }
+
+    #[test]
+    fn native_function_assembly_uses_independent_frames() {
+        let source = "fn twice(x) { return x * 2 }
+fn combine(a, b) { return twice(a) + b }
+print(combine(4, 3))";
+        let assembly = compile_to_assembly(source, "ai").unwrap();
+        assert!(assembly.contains("    push rbp"));
+        assert!(assembly.contains("    mov rbp, rsp"));
+        assert!(assembly.contains("    leave"));
+        assert!(assembly.contains("    ret"));
+        assert!(assembly.contains("    call .L"));
+        assert!(assembly.contains("QWORD PTR [rbp+"));
+        assert!(!assembly.contains("combine("));
+        assert!(!assembly.contains("twice("));
+    }
+
+    #[test]
+    fn native_function_rejects_forward_calls_and_incomplete_returns() {
+        let forward = "fn a(x) { return b(x) }\nfn b(x) { return x }\nprint(a(4))";
+        assert_eq!(compile_to_assembly(forward, "ai").unwrap_err().code, 4001);
+        let recursion = "fn recurse(x) { return recurse(x) }\nprint(recurse(2))";
+        assert_eq!(compile_to_assembly(recursion, "ai").unwrap_err().code, 4001);
+        let implicit_null = "fn only_print(x) { print(x) }\nonly_print(2)";
+        assert_eq!(
+            compile_to_assembly(implicit_null, "ai").unwrap_err().code,
+            4004
+        );
+        let missing_path = "fn missing(x) { if x > 0 { return x } }\nprint(missing(2))";
+        assert_eq!(
+            compile_to_assembly(missing_path, "ai").unwrap_err().code,
+            4004
+        );
+    }
+
+    #[test]
+    fn native_function_checks_argument_types_and_local_boundaries() {
+        let wrong_arity = "fn twice(x) { return x * 2 }\nprint(twice(1, 2))";
+        assert_eq!(
+            compile_to_assembly(wrong_arity, "ai").unwrap_err().code,
+            4007
+        );
+        let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
+        assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
+        let bool_return = "fn bigger(a, b) { return a > b }\nprint(bigger(4, 2))";
+        assert_eq!(
+            compile_to_assembly(bool_return, "ai").unwrap_err().code,
+            4004
+        );
+        let global = "let global_value = 10\nfn f() { return global_value }\nprint(f())";
+        assert_eq!(compile_to_assembly(global, "ai").unwrap_err().code, 4001);
+        let nested = "fn outer(x) { fn inner(y) { return y } return x }";
+        assert_eq!(compile_to_assembly(nested, "ai").unwrap_err().code, 4004);
+        let shadow = "fn f(x) { return x }\nlet f = 2\nprint(f(2))";
+        assert_eq!(compile_to_assembly(shadow, "ai").unwrap_err().code, 4004);
     }
 
     #[test]

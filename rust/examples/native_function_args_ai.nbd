@@ -1,0 +1,4 @@
+fn digits(a, b, c) { return a * 100 + b * 10 + c }
+fn mirror(x, y) { return digits(x, y, x) }
+print(digits(1, 2, 3))
+print(mirror(4, 7))

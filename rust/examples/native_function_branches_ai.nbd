@@ -1,0 +1,10 @@
+fn absolute(x) {
+  if x < 0 { return -x } else { return x }
+}
+fn largest(a, b) {
+  let bigger = a > b
+  if bigger { return a } else { return b }
+}
+print(absolute(-7))
+print(absolute(5))
+print(largest(8, 3))
