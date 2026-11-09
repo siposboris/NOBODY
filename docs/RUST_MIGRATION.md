@@ -11,6 +11,10 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Native x86-64 lazy boolean execution (2026-11-09; pending CI)
+
+The independent Linux ELF backend now lowers typed boolean `and`/`or` into actual lazy jumps. It can print a single bool or integer and compile functions with signed-i64 arguments and **consistent explicit i64 or boolean return types**. Actual ELF-vs-Rust evaluator differential fixtures cover `ai`, `sk`, `en`, overflow skipped by short-circuit control flow, and side-effecting functions skipped on the RHS. Boolean parameters, full static typing, recursion and global captures remain unsupported. This is a partial native backend improvement, not proof of complete Python replacement or self-hosting.
+
 ## Native Linux x86-64 named-function subset (2026-11-09; verified)
 
 The independent Rust AOT backend can compile restricted top-level named functions to standalone Linux ELF machine code using private stack-based parameter passing and isolated callee frames. It supports signed i64 parameters and explicit signed i64 returns, calls only to earlier declarations, lexical locals and existing if/while/for-range statements inside functions. Rust interpreter output is compared against actual ELF execution for ai/sk/en fixtures. The backend deliberately rejects recursion, forward references, global captures, implicit null returns and unsupported value types. The outputs do not depend on Python or the Nobody VM; this is not full language parity or self-hosting. The function-call ELF subset and its failure cases passed all four CI workflows, including [Rust CI #42650743553](https://github.com/siposboris/NOBODY/actions/runs/42650743553); merged in [PR #30](https://github.com/siposboris/NOBODY/pull/30).
