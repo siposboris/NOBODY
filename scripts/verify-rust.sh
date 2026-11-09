@@ -90,4 +90,18 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- ru
   printf 'Zero-step range was accepted by bytecode VM.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: standalone bytecode function parity =='
+for lang in ai sk en; do
+  source="rust/examples/bytecode_functions_"$lang".nbd"
+  tree_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run "$lang" "$source")
+  vm_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode "$lang" "$source")
+  if [[ "$tree_output" != "$vm_output" || "$vm_output" != "$(printf '13\n6')" ]]; then
+    printf 'Function VM output mismatch: %s\n' "$source" >&2
+    exit 1
+  fi
+done
+if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/bytecode_function_bad_arity_ai.nbd; then
+  printf 'Bytecode VM unexpectedly accepted wrong function arity.\n' >&2
+  exit 1
+fi
 printf '%s\n' 'Nobody Rust verification passed.'
