@@ -1117,7 +1117,16 @@ mod tests {
         let error = compile_source(source, "ai").unwrap_err();
         assert_eq!(error.code, 4004);
         assert!(error.detail.contains("typed bytecode runtime guards"));
-        assert_eq!(compile_source("fn identity(flag) { return flag }\nprint(identity(true))", "ai").unwrap().functions.len(), 1);
+        assert_eq!(
+            compile_source(
+                "fn identity(flag) { return flag }\nprint(identity(true))",
+                "ai"
+            )
+            .unwrap()
+            .functions
+            .len(),
+            1
+        );
     }
 
     #[test]
