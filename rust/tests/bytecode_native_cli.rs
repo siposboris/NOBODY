@@ -24,6 +24,11 @@ fn bytecode_matches_the_existing_ast_runtime_for_three_profiles() {
         ("ai", "bytecode_for_nested_ai.nbd"),
         ("ai", "bytecode_for_shadow_ai.nbd"),
         ("ai", "bytecode_for_overflow_ai.nbd"),
+        ("ai", "bytecode_functions_ai.nbd"),
+        ("sk", "bytecode_functions_sk.nbd"),
+        ("en", "bytecode_functions_en.nbd"),
+        ("ai", "bytecode_function_control_ai.nbd"),
+        ("ai", "bytecode_function_null_ai.nbd"),
     ] {
         let file = format!("{}/examples/{}", env!("CARGO_MANIFEST_DIR"), file);
         let regular = launch(&["run", language, &file]);
@@ -121,4 +126,33 @@ fn zero_range_step_fails_with_n4006_not_a_hang() {
     let output = launch(&["run-bytecode", "ai", &file]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("N4006"));
+}
+
+#[test]
+fn functions_compile_to_separate_bytecode_units() {
+    let file = format!(
+        "{}/examples/bytecode_functions_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let output = launch(&["bytecode", "ai", &file]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let instructions = String::from_utf8(output.stdout).unwrap();
+    assert!(instructions.contains("CompiledFunction"));
+    assert!(instructions.contains("Call {"));
+    assert!(instructions.contains("Return"));
+}
+
+#[test]
+fn function_arity_errors_are_not_silently_accepted() {
+    let file = format!(
+        "{}/examples/bytecode_function_bad_arity_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let output = launch(&["run-bytecode", "ai", &file]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("N4007"));
 }

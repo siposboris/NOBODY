@@ -1,0 +1,4 @@
+fn triple(x) { return x * 3 }
+fn combine(a, b) { let result = triple(a) + b return result }
+print(combine(3, 4))
+print(triple(2))

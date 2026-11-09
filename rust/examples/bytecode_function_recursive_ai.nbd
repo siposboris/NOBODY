@@ -1,0 +1,2 @@
+fn loop(n) { return loop(n) }
+print(loop(2))

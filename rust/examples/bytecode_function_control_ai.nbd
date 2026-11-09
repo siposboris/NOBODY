@@ -1,0 +1,14 @@
+fn total_to(n) {
+  let total = 0
+  while n > 0 {
+    total = total + n
+    n = n - 1
+  }
+  return total
+}
+fn pos(x) {
+  if x < 0 { return -x }
+  return x
+}
+print(total_to(4))
+print(pos(-7))
