@@ -283,6 +283,7 @@ impl Cursor<'_> {
                 name,
                 parameters,
                 body,
+                ..
             } => {
                 let start = self.keyword("def")?;
                 self.exact(name)?;

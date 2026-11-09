@@ -61,6 +61,20 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 
 Expected output is `true`, `false`, `false`, `true`, `77` on separate lines.
 
+## Explicit function signature annotations
+
+Native Nobody now supports optional **source-level primitive function signatures** for the existing `int` and `bool` machine types:
+
+```text
+fn choose(flag: bool, a: int, b: int): int {
+    if flag { return a } else { return b }
+}
+```
+
+One source file still uses exactly one selected syntax profile. Slovak spelling is `funkcia choose(flag: logicke, a: cele, b: cele): cele`; the parser converts types to canonical names in Rust IR. Both parameter and return annotations are optional. The native backend verifies calls and return types against declared annotations, and verifies that any inferred constraints agree. Untyped functions still use conservative parameter inference.
+
+Only `int` (signed 64-bit in native ELF) and `bool` signatures compile to machine code. `float`/`str` are recognized as source-level annotations but deliberately rejected by this native subset. The separate Rust evaluator can validate supported runtime value types; typed function declarations are not yet supported by experimental bytecode or AST JSON v1 output because those paths would otherwise drop type metadata.
+
 ## Conservative boolean parameter inference
 
 Nobody's existing function declaration syntax has no explicit parameter-type annotations. The native compiler can now infer parameters as `bool` from direct boolean contexts (`if`, `while`, `not`, `and`/`or`), boolean-literal equality or passing the parameter to an earlier compiled boolean-parameter function. Integer contexts constrain the parameter to signed i64. Lexically shadowing a parameter with a local variable does not reclassify the original parameter.

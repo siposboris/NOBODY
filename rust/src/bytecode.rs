@@ -429,7 +429,14 @@ impl Compiler {
                 }
                 Ok(())
             }
-            IrStatement::Function { name, parameters, body } => {
+            IrStatement::Function {
+                name, parameters, parameter_types, return_type, body,
+            } => {
+                // Typed signatures cannot be serialized or enforced by the
+                // experimental VM yet. Reject rather than silently dropping them.
+                if parameter_types.iter().any(Option::is_some) || return_type.is_some() {
+                    return Err(unsupported("Explicit function signatures require typed bytecode runtime guards; use the Rust evaluator or native x86-64 subset for now"));
+                }
                 if self.in_function || self.scopes.len() != 1 {
                     return Err(unsupported("Nested bytecode functions and closures are not supported"));
                 }
@@ -1102,6 +1109,24 @@ mod tests {
             code: vec![Instruction::Halt, Instruction::Push(3)],
         };
         assert_eq!(verify(&bad).unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn typed_function_signatures_fail_closed_until_vm_has_runtime_type_guards() {
+        let source = "fn identity(flag: bool): bool { return flag }\nprint(identity(true))";
+        let error = compile_source(source, "ai").unwrap_err();
+        assert_eq!(error.code, 4004);
+        assert!(error.detail.contains("typed bytecode runtime guards"));
+        assert_eq!(
+            compile_source(
+                "fn identity(flag) { return flag }\nprint(identity(true))",
+                "ai"
+            )
+            .unwrap()
+            .functions
+            .len(),
+            1
+        );
     }
 
     #[test]

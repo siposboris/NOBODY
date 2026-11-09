@@ -1,0 +1,9 @@
+fn choose(flag: bool, a: int, b: int): int {
+  if flag { return a } else { return b }
+}
+fn identity(flag: bool): bool { return flag }
+fn next(n: int): int { return n + 1 }
+print(choose(true, 3, 8))
+print(choose(false, 3, 8))
+print(identity(false))
+print(next(4))

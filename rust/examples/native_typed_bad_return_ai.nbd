@@ -1,0 +1,2 @@
+fn identity(flag: bool): int { return flag }
+print(identity(true))

@@ -256,6 +256,41 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
       exit 1
     fi
   done
+  printf '%s\n' '== Nobody Phase 4: explicit typed function signatures =='
+  for language in ai sk en; do
+    source="rust/examples/native_typed_signatures_"$language".nbd"
+    executable="$native_temp/annotated-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    tree_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    native_output=$("$executable")
+    if [[ "$tree_output" != "$native_output" || "$native_output" != "$(printf '3\n8\nfalse\n5')" ]]; then
+      printf 'Typed signature native ELF parity failed for: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  for source in \
+    rust/examples/native_typed_bad_argument_ai.nbd \
+    rust/examples/native_typed_bad_return_ai.nbd \
+    rust/examples/native_typed_bad_constraint_ai.nbd; do
+    if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native ai "$source" "$native_temp/invalid-signature"; then
+      printf 'Native compiler accepted an invalid annotated signature: %s\n' "$source" >&2
+      exit 1
+    fi
+    if [[ -e "$native_temp/invalid-signature" ]]; then
+      printf 'Invalid signature unexpectedly emitted a native executable.\n' >&2
+      exit 1
+    fi
+  done
+  for command in run-bytecode ast-json; do
+    if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      "$command" ai rust/examples/native_typed_signatures_ai.nbd; then
+      printf 'Experimental format %s silently lost typed signature metadata.\n' "$command" >&2
+      exit 1
+    fi
+  done
   for source in \
     rust/examples/native_function_bad_implicit_ai.nbd \
     rust/examples/native_function_bad_forward_ai.nbd \

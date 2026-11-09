@@ -1,0 +1,9 @@
+funkcia choose(flag: logicke, a: cele, b: cele): cele {
+  ak flag { vrat a } inak { vrat b }
+}
+funkcia identity(flag: logicke): logicke { vrat flag }
+funkcia next(n: cele): cele { vrat n + 1 }
+vypis(choose(pravda, 3, 8))
+vypis(choose(nepravda, 3, 8))
+vypis(identity(nepravda))
+vypis(next(4))

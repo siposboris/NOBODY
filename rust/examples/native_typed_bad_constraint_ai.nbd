@@ -1,0 +1,2 @@
+fn add(flag: bool): int { return flag + 1 }
+print(add(true))

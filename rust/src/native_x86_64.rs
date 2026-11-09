@@ -259,8 +259,19 @@ impl ParameterConstraints<'_> {
     }
 }
 
+fn explicit_native_type(name: &str) -> Result<Type, Diagnostic> {
+    match name {
+        "int" => Ok(Type::Int),
+        "bool" => Ok(Type::Bool),
+        _ => Err(unsupported(format!(
+            "The native x86-64 function signature currently supports int and bool, not {name:?}"
+        ))),
+    }
+}
+
 fn infer_native_parameters(
     parameters: &[String],
+    annotations: &[Option<String>],
     body: &[IrStatement],
     functions: &BTreeMap<String, FunctionInfo>,
 ) -> Result<[Type; 32], Diagnostic> {
@@ -270,9 +281,20 @@ fn infer_native_parameters(
             "Too many native function parameters for inference",
         ));
     }
+    if parameters.len() != annotations.len() {
+        return Err(unsupported(
+            "Parameter annotation count does not match function parameters",
+        ));
+    }
+    let mut annotated = [None; 32];
+    for (index, ty) in annotations.iter().enumerate() {
+        if let Some(ty) = ty {
+            annotated[index] = Some(explicit_native_type(ty)?);
+        }
+    }
     let mut constraints = ParameterConstraints {
         parameters,
-        inferred: [None; 32],
+        inferred: annotated,
         scopes: vec![BTreeSet::new()],
         functions,
     };
@@ -662,7 +684,13 @@ impl NativeCompiler {
                 self.emit(&format!("    jmp .L{check}"))?;
                 self.label(end)
             }
-            IrStatement::Function { name, parameters, body } => {
+            IrStatement::Function {
+                name,
+                parameters,
+                parameter_types: annotations,
+                return_type,
+                body,
+            } => {
                 if self.in_function || self.scopes.len() != 1 {
                     return Err(unsupported("Native nested function definitions and closures are unsupported"));
                 }
@@ -678,7 +706,8 @@ impl NativeCompiler {
                 if !Self::definitely_returns(body) {
                     return Err(unsupported("Native functions must return an integer on every possible path; implicit null is unsupported"));
                 }
-                let parameter_types = infer_native_parameters(parameters, body, &self.functions)?;
+                let parameter_types = infer_native_parameters(parameters, annotations, body, &self.functions)?;
+                let declared_result = return_type.as_deref().map(explicit_native_type).transpose()?;
                 let mut local_scope = BTreeMap::new();
                 for (index, parameter) in parameters.iter().enumerate() {
                     if local_scope.insert(
@@ -717,6 +746,11 @@ impl NativeCompiler {
                 let result_kind = self.return_kind.ok_or_else(|| unsupported(
                     "Native functions require an explicit integer or boolean return value"
                 ))?;
+                if declared_result.is_some_and(|kind| kind != result_kind) {
+                    return Err(unsupported(format!(
+                        "Native function {name:?} returns a value incompatible with its explicit return type"
+                    )));
+                }
                 // Defensive fallback if a future codegen change violates the
                 // conservative all-paths-return static check.
                 self.emit("    mov edi, 7")?;
@@ -1071,6 +1105,38 @@ mod tests {
                 .code,
             4004
         );
+    }
+
+    #[test]
+    fn explicit_native_function_signatures_override_ambiguous_inference() {
+        let source = "fn identity(flag: bool): bool { return flag }
+fn choose(flag: bool, a: int, b: int): int {
+  if flag { return a } else { return b }
+}
+print(identity(true))
+print(choose(false, 3, 9))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("call nobody_print_i64"));
+        assert!(asm.contains("    call .L"));
+    }
+
+    #[test]
+    fn typed_native_functions_reject_wrong_parameter_and_return_types() {
+        for source in [
+            "fn identity(flag: bool): bool { return flag }\nprint(identity(4))",
+            "fn identity(flag: bool): int { return flag }\nprint(identity(true))",
+            "fn f(n: int): bool { return n > 0 }\nprint(f(true))",
+            "fn f(n: str): int { return 4 }\nprint(f(\"text\"))",
+            "fn f(n: float): int { return 4 }\nprint(f(3))",
+            "fn f(n: bool): bool { return n + 1 }\nprint(f(true))",
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
+        }
     }
 
     #[test]
