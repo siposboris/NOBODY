@@ -11,11 +11,11 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
-## Explicit localized function signatures in Rust source and IR (2026-11-09; pending CI)
+## Explicit localized function signatures in Rust source and IR (2026-11-09; verified)
 
 The Rust parser now accepts optional primitive annotations in function signatures (`fn f(flag: bool, n: int): bool`) and normalizes localized primitive keywords (e.g. Slovak `logicke`, `cele`) into canonical fields on every Rust IR function node. The Rust evaluator enforces declared parameter/return types at runtime. The standalone native x86-64 compiler honors `int` and `bool` annotations and rejects conflicting inferred constraints or mismatched call/return types. The existing untyped function syntax remains valid.
 
-**Deliberately partial:** no stable new AST JSON schema or typed bytecode runtime yet. These output modes reject annotated functions rather than lose their metadata, and native compilation currently rejects `float` or `str` function signatures. The partial Rust static checker does not guarantee global type soundness; Python legacy comparison and future self-hosting remain separate work.
+**Deliberately partial:** no stable new AST JSON schema or typed bytecode runtime yet. These output modes reject annotated functions rather than lose their metadata, and native compilation currently rejects `float` or `str` function signatures. The partial Rust static checker does not guarantee global type soundness; Python legacy comparison and future self-hosting remain separate work. All four workflows passed, including [Rust CI #42660895804](https://github.com/siposboris/NOBODY/actions/runs/42660895804) with actual native ELF differential tests; merged in [PR #33](https://github.com/siposboris/NOBODY/pull/33). This is a partial implementation, not a completed typed-IR or self-hosting roadmap criterion.
 
 ## Native x86-64 boolean parameter inference (2026-11-09; verified)
 
