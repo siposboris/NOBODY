@@ -2,7 +2,8 @@
 //! Rust parser nodes do not yet carry source spans. For multiline input a
 //! token-aligned visitor recovers real line numbers or rejects unsupported
 //! constructs, rather than fabricating them. No code is executed; JSON
-//! imports are NOT implemented. Version 2 preserves typed function signatures.
+//! V2 preserves typed function signatures; a separate bounded importer validates
+//! V2 structure without executing or re-emitting source.
 use crate::syntax::{Expr, Statement};
 use crate::{parse_validated, Diagnostic};
 
