@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — first genuine native Linux x86-64 ELF compiler (2026-11-09)
+
+- **Verified GitHub CI and merged [PR #28](https://github.com/siposboris/NOBODY/pull/28).** Rust now generates GNU Intel-syntax x86-64 assembly directly from a restricted Nobody IR subset; GNU `as` and `ld` link genuine standalone ELF64 machine code. **The resulting executable does not embed Python, Rust runtime, libc or the Nobody bytecode VM.**
+- Added native CLI commands `compile-native PROFILE source.nbd output` and `native-asm PROFILE source.nbd`. The compiler refuses to overwrite existing outputs and uses a temporary private linking directory.
+- Initial accepted subset: signed i64 integers, variables with fixed inferred types, checked `+`, `-`, `*`, boolean comparisons and `not`, `if/elif/else`, `while`, `break`, `continue`, and one-integer `print`.
+- Added live Linux x86-64 ELF integration tests checking actual binary headers, direct process execution, exact stdout parity with the Rust evaluator across `ai`, `sk`, `en`, source-file independence, integer-overflow failure, finite empty-loop budgets, unsupported-feature rejection and no-overwrite semantics.
+- All four workflows passed including [Rust CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Marked the **first-working-native-Linux-x86-64** roadmap criterion complete (**45/112, 40%**) without claiming a complete native backend.
+- **Still missing:** native functions, `for range`, text, full i128 numbers, other architectures/operating systems, stable release binaries, an OS security sandbox and self-hosting. GNU binutils is required at compile time, not runtime. See [native backend guide](docs/NATIVE_X86_64.md).
+
+
 ## 0.8.0 — local experimental prototype (2026-11-08; not yet GitHub release)
 - Strengthened language separation for one configured syntax language per source file, including short foreign keywords.
 - Added source and target validation to the public translation API.
