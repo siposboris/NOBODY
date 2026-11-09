@@ -393,6 +393,7 @@ fn block(
                 name,
                 parameters,
                 body,
+                ..
             } => {
                 if !declared_here.insert(name.clone()) {
                     return Err(diagnostic(1004,
