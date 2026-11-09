@@ -1,8 +1,8 @@
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, compile_bytecode_source, evaluate_source, execute_bytecode_source,
-    export_ast_json, export_ast_json_v2, lower_source, migrate_legacy_ai, parse, parse_validated, same_ir, scan,
-    translate_source, TokenKind,
+    export_ast_json, export_ast_json_v2, lower_source, migrate_legacy_ai, parse, parse_validated,
+    same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
@@ -20,8 +20,8 @@ fn main() {
         }
         Some("compile-bytecode" | "compile-native") if arguments.len() == 5 => true,
         Some(
-            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2" | "bytecode"
-            | "native-asm" | "run-bytecode",
+            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2"
+            | "bytecode" | "native-asm" | "run-bytecode",
         ) if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info" | "audit-languages")
@@ -256,7 +256,11 @@ fn main() {
         return;
     }
     if command == "ast-json" || command == "ast-json-v2" {
-        let export = if command == "ast-json-v2" { export_ast_json_v2 } else { export_ast_json };
+        let export = if command == "ast-json-v2" {
+            export_ast_json_v2
+        } else {
+            export_ast_json
+        };
         match export(&source, &arguments[2]) {
             Ok(json) => println!("{json}"),
             Err(error) => {
