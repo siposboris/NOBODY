@@ -779,6 +779,7 @@ fn verify_unit(
 enum Value {
     Int(i128),
     Bool(bool),
+    Null,
 }
 
 impl Value {
@@ -786,8 +787,16 @@ impl Value {
         match self {
             Value::Int(value) => value.to_string(),
             Value::Bool(value) => value.to_string(),
+            Value::Null => "null".to_owned(),
         }
     }
+}
+
+struct CallFrame {
+    pc: usize,
+    function_id: Option<usize>,
+    variables: Vec<Option<Value>>,
+    stack: Vec<Value>,
 }
 
 /// Execute verified instructions with an explicit PC and step budget.
@@ -800,15 +809,22 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
     let mut output = String::new();
     let mut pc = 0usize;
     let mut steps = 0usize;
+    let mut current_function: Option<usize> = None;
+    let mut frames: Vec<CallFrame> = Vec::new();
     loop {
         steps += 1;
         if steps > MAX_INSTRUCTIONS {
             return Err(diagnostic(4005, "Bytecode VM instruction budget exhausted"));
         }
-        let instruction = &program.code[pc];
+        let code = match current_function {
+            Some(id) => &program.functions[id].code,
+            None => &program.code,
+        };
+        let instruction = &code[pc];
         match instruction {
             Instruction::Push(value) => stack.push(Value::Int(*value)),
             Instruction::PushBool(value) => stack.push(Value::Bool(*value)),
+            Instruction::PushNull => stack.push(Value::Null),
             Instruction::Load(slot) => {
                 let value = variables[*slot]
                     .clone()
@@ -954,6 +970,38 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 }
                 output.push_str(&rendered);
                 stack.truncate(start);
+            }
+            Instruction::Call { function, argc } => {
+                if frames.len() >= 32 {
+                    return Err(diagnostic(4005, "Bytecode function call depth exceeded"));
+                }
+                let target = &program.functions[*function];
+                let start = stack.len() - *argc;
+                let arguments = stack.split_off(start);
+                frames.push(CallFrame {
+                    pc: pc + 1,
+                    function_id: current_function,
+                    variables,
+                    stack,
+                });
+                variables = vec![None; target.slots];
+                for (slot, value) in arguments.into_iter().enumerate() {
+                    variables[slot] = Some(value);
+                }
+                stack = Vec::new();
+                current_function = Some(*function);
+                pc = 0;
+                continue;
+            }
+            Instruction::Return => {
+                let value = stack.pop().ok_or_else(|| unsupported("Empty function return stack"))?;
+                let saved = frames.pop().ok_or_else(|| unsupported("Return without caller"))?;
+                variables = saved.variables;
+                stack = saved.stack;
+                stack.push(value);
+                current_function = saved.function_id;
+                pc = saved.pc;
+                continue;
             }
             Instruction::Halt => return Ok(output),
         }
