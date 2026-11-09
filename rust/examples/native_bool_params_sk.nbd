@@ -1,0 +1,15 @@
+funkcia select(flag, first, second) {
+  ak flag { vrat first } inak { vrat second }
+}
+funkcia invert(flag) { vrat nie flag }
+funkcia conjunction(first, second) { vrat first a_zaroven second }
+funkcia condition_or(flag, number) {
+  nech valid = number > 2
+  ak flag alebo valid { vrat pravda } inak { vrat nepravda }
+}
+vypis(select(pravda, 3, 8))
+vypis(select(nepravda, 3, 8))
+vypis(invert(pravda))
+vypis(conjunction(pravda, nepravda))
+vypis(condition_or(nepravda, 7))
+vypis(condition_or(nepravda, 1))

@@ -7,12 +7,12 @@
 //!
 //! Supported: signed i64 numbers, boolean conditions, checked + - *,
 //! comparisons, lexical variables, if/elif/else, while, signed for-range,
-//! break/continue, lazy boolean and/or, earlier-declared integer-argument
-//! functions with i64/bool returns, and print(one integer or boolean).
+//! break/continue, lazy boolean and/or, earlier-declared integer/bool
+//! parameter functions with i64/bool returns, and print(one integer or boolean).
 //! Unsupported features fail before output.
 use crate::ir::{IrExpr, IrStatement, Module, Name};
 use crate::{lower_source, Diagnostic};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 const MAX_SLOTS: usize = 1024;
@@ -54,6 +54,7 @@ struct LoopTargets {
 struct FunctionInfo {
     label: usize,
     arity: usize,
+    parameters: [Type; 32],
     result: Type,
 }
 
@@ -66,6 +67,225 @@ struct NativeCompiler {
     functions: BTreeMap<String, FunctionInfo>,
     in_function: bool,
     return_kind: Option<Type>,
+}
+
+/// Infer only conservative parameter constraints from their direct typed
+/// uses. Nobody function syntax does not yet declare parameter types.
+/// Unconstrained parameters remain i64, preserving the initial native ABI.
+/// There is no speculative conversion, implicit truthiness or Python fallback.
+struct ParameterConstraints<'a> {
+    parameters: &'a [String],
+    inferred: [Option<Type>; 32],
+    scopes: Vec<BTreeSet<String>>,
+    functions: &'a BTreeMap<String, FunctionInfo>,
+}
+
+impl ParameterConstraints<'_> {
+    fn constrain_name(&mut self, name: &str, required: Type) -> Result<(), Diagnostic> {
+        if self.scopes.iter().rev().any(|scope| scope.contains(name)) {
+            return Ok(());
+        }
+        let Some(index) = self.parameters.iter().position(|param| param == name) else {
+            return Ok(());
+        };
+        match self.inferred[index] {
+            Some(previous) if previous != required => Err(unsupported(format!(
+                "Conflicting native i64/bool constraints on function parameter {name:?}"
+            ))),
+            _ => {
+                self.inferred[index] = Some(required);
+                Ok(())
+            }
+        }
+    }
+
+    fn expression(
+        &mut self,
+        expr: &IrExpr,
+        required: Option<Type>,
+        depth: usize,
+    ) -> Result<(), Diagnostic> {
+        if depth > MAX_DEPTH {
+            return Err(issue(
+                4005,
+                "Native parameter inference expression depth exceeded",
+            ));
+        }
+        match expr {
+            IrExpr::Name(Name::User(name)) => {
+                if let Some(required) = required {
+                    self.constrain_name(name, required)?;
+                }
+            }
+            IrExpr::Unary { op, value } => {
+                let expected = match op.as_str() {
+                    "not" => Some(Type::Bool),
+                    "+" | "-" => Some(Type::Int),
+                    _ => None,
+                };
+                self.expression(value, expected, depth + 1)?;
+            }
+            IrExpr::Binary { op, lhs, rhs } => {
+                let expected = match op.as_str() {
+                    "and" | "or" => Some(Type::Bool),
+                    "+" | "-" | "*" | "/" | "//" | "%" | "<" | "<=" | ">" | ">=" => Some(Type::Int),
+                    _ => None,
+                };
+                if matches!(op.as_str(), "==" | "!=") {
+                    // A boolean literal provides a reliable type constraint
+                    // on the other operand without requiring whole-program
+                    // flow-sensitive type inference.
+                    let left = if matches!(rhs.as_ref(), IrExpr::Boolean(_)) {
+                        Some(Type::Bool)
+                    } else if matches!(rhs.as_ref(), IrExpr::Number(_)) {
+                        Some(Type::Int)
+                    } else {
+                        None
+                    };
+                    let right = if matches!(lhs.as_ref(), IrExpr::Boolean(_)) {
+                        Some(Type::Bool)
+                    } else if matches!(lhs.as_ref(), IrExpr::Number(_)) {
+                        Some(Type::Int)
+                    } else {
+                        None
+                    };
+                    self.expression(lhs, left, depth + 1)?;
+                    self.expression(rhs, right, depth + 1)?;
+                } else {
+                    self.expression(lhs, expected, depth + 1)?;
+                    self.expression(rhs, expected, depth + 1)?;
+                }
+            }
+            IrExpr::Call { callee, args } => {
+                let known = match callee.as_ref() {
+                    IrExpr::Name(Name::User(name)) => self.functions.get(name).copied(),
+                    _ => None,
+                };
+                if let Some(function) = known {
+                    for (index, argument) in args.iter().enumerate() {
+                        self.expression(
+                            argument,
+                            function.parameters.get(index).copied(),
+                            depth + 1,
+                        )?;
+                    }
+                } else {
+                    let is_range = matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range")));
+                    for argument in args {
+                        self.expression(
+                            argument,
+                            if is_range { Some(Type::Int) } else { None },
+                            depth + 1,
+                        )?;
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn block(&mut self, body: &[IrStatement], depth: usize) -> Result<(), Diagnostic> {
+        if depth > MAX_DEPTH {
+            return Err(issue(
+                4005,
+                "Native parameter inference block depth exceeded",
+            ));
+        }
+        self.scopes.push(BTreeSet::new());
+        let result = body
+            .iter()
+            .try_for_each(|stmt| self.statement(stmt, depth + 1));
+        self.scopes.pop();
+        result
+    }
+
+    fn statement(&mut self, stmt: &IrStatement, depth: usize) -> Result<(), Diagnostic> {
+        if depth > MAX_DEPTH {
+            return Err(issue(
+                4005,
+                "Native parameter inference statement depth exceeded",
+            ));
+        }
+        match stmt {
+            IrStatement::Let { name, expr, .. } => {
+                self.expression(expr, None, depth + 1)?;
+                self.scopes
+                    .last_mut()
+                    .expect("inference lexical scope")
+                    .insert(name.clone());
+            }
+            IrStatement::Assign { name, expr } => {
+                self.expression(expr, None, depth + 1)?;
+                if matches!(expr, IrExpr::Boolean(_)) {
+                    self.constrain_name(name, Type::Bool)?;
+                } else if matches!(expr, IrExpr::Number(_)) {
+                    self.constrain_name(name, Type::Int)?;
+                }
+            }
+            IrStatement::If {
+                branches,
+                otherwise,
+            } => {
+                for (condition, body) in branches {
+                    self.expression(condition, Some(Type::Bool), depth + 1)?;
+                    self.block(body, depth + 1)?;
+                }
+                if let Some(body) = otherwise {
+                    self.block(body, depth + 1)?;
+                }
+            }
+            IrStatement::While { condition, body } => {
+                self.expression(condition, Some(Type::Bool), depth + 1)?;
+                self.block(body, depth + 1)?;
+            }
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
+                self.expression(iterable, None, depth + 1)?;
+                self.scopes.push(BTreeSet::from([variable.clone()]));
+                let result = self.block(body, depth + 1);
+                self.scopes.pop();
+                result?;
+            }
+            IrStatement::Return(value) | IrStatement::Expression(value) => {
+                self.expression(value, None, depth + 1)?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
+fn infer_native_parameters(
+    parameters: &[String],
+    body: &[IrStatement],
+    functions: &BTreeMap<String, FunctionInfo>,
+) -> Result<[Type; 32], Diagnostic> {
+    if parameters.len() > 32 {
+        return Err(issue(
+            4005,
+            "Too many native function parameters for inference",
+        ));
+    }
+    let mut constraints = ParameterConstraints {
+        parameters,
+        inferred: [None; 32],
+        scopes: vec![BTreeSet::new()],
+        functions,
+    };
+    for statement in body {
+        constraints.statement(statement, 0)?;
+    }
+    let mut kinds = [Type::Int; 32];
+    for (index, inferred) in constraints.inferred.iter().enumerate() {
+        if let Some(value) = inferred {
+            kinds[index] = *value;
+        }
+    }
+    Ok(kinds)
 }
 
 impl NativeCompiler {
@@ -138,9 +358,9 @@ impl NativeCompiler {
                 if args.len() != function.arity {
                     return Err(issue(4007, format!("Function {name:?} expects {} argument(s), received {}", function.arity, args.len())));
                 }
-                for argument in args {
-                    if self.expression(argument, depth + 1)? != Type::Int {
-                        return Err(unsupported("Native function arguments must be signed i64 integers"));
+                for (argument, expected) in args.iter().zip(function.parameters.iter()) {
+                    if self.expression(argument, depth + 1)? != *expected {
+                        return Err(unsupported("Native function argument type does not match its inferred i64/bool parameter type"));
                     }
                     self.emit("    push rax")?;
                 }
@@ -453,14 +673,18 @@ impl NativeCompiler {
                     return Err(issue(4005, "The native backend supports at most 32 functions"));
                 }
                 if parameters.len() > 32 {
-                    return Err(issue(4005, "Native functions support at most 32 integer parameters"));
+                    return Err(issue(4005, "Native functions support at most 32 i64/bool parameters"));
                 }
                 if !Self::definitely_returns(body) {
                     return Err(unsupported("Native functions must return an integer on every possible path; implicit null is unsupported"));
                 }
+                let parameter_types = infer_native_parameters(parameters, body, &self.functions)?;
                 let mut local_scope = BTreeMap::new();
                 for (index, parameter) in parameters.iter().enumerate() {
-                    if local_scope.insert(parameter.clone(), Binding { slot: index, kind: Type::Int }).is_some() {
+                    if local_scope.insert(
+                        parameter.clone(),
+                        Binding { slot: index, kind: parameter_types[index] },
+                    ).is_some() {
                         return Err(unsupported("Duplicate native function parameter"));
                     }
                 }
@@ -510,7 +734,9 @@ impl NativeCompiler {
                 self.label(skip)?;
                 // Adding only after compilation disallows direct/indirect
                 // recursion and forward references in this first subset.
-                self.functions.insert(name.clone(), FunctionInfo { label, arity: parameters.len(), result: result_kind });
+                self.functions.insert(name.clone(), FunctionInfo {
+                    label, arity: parameters.len(), parameters: parameter_types, result: result_kind
+                });
                 Ok(())
             }
             IrStatement::Return(expr) => {
@@ -950,6 +1176,45 @@ if positive(2) and greater(9, 2) { print(1) } else { print(0) }";
                 "{source}"
             );
         }
+    }
+
+    #[test]
+    fn native_function_parameters_infer_direct_boolean_constraints() {
+        let source = "fn choose(flag, a, b) { if flag { return a } else { return b } }
+fn invert(flag) { return not flag }
+fn conjunction(a, b) { return a and b }
+print(choose(true, 3, 9))
+print(invert(false))
+print(conjunction(true, false))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("call nobody_print_i64"));
+        assert!(asm.contains("    jz .L"));
+    }
+
+    #[test]
+    fn boolean_param_inference_rejects_wrong_types_and_conflicts() {
+        for source in [
+            include_str!("../examples/native_bool_params_wrong_ai.nbd"),
+            include_str!("../examples/native_bool_params_conflict_ai.nbd"),
+            include_str!("../examples/native_bool_params_unconstrained_ai.nbd"),
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn boolean_param_inference_respects_nested_scope_shadowing() {
+        let source = include_str!("../examples/native_bool_params_shadow_ai.nbd");
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("call nobody_print_i64"));
     }
 
     #[test]

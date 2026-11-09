@@ -1,0 +1,9 @@
+fn choose(flag, n) {
+  let total = 0
+  for item in range(n) {
+    if flag and item > 1 { total = total + item }
+  }
+  return total
+}
+print(choose(true, 5))
+print(choose(false, 5))

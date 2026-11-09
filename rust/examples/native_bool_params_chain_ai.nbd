@@ -1,0 +1,9 @@
+fn negate(flag) { return not flag }
+fn pass_through(input) {
+  if input { return negate(false) } else { return negate(true) }
+}
+fn compare_flag(flag) { return flag == true }
+print(pass_through(true))
+print(pass_through(false))
+print(compare_flag(false))
+print(compare_flag(true))

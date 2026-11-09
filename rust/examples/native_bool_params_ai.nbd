@@ -1,0 +1,15 @@
+fn select(flag, first, second) {
+  if flag { return first } else { return second }
+}
+fn invert(flag) { return not flag }
+fn conjunction(first, second) { return first and second }
+fn condition_or(flag, number) {
+  let valid = number > 2
+  if flag or valid { return true } else { return false }
+}
+print(select(true, 3, 8))
+print(select(false, 3, 8))
+print(invert(true))
+print(conjunction(true, false))
+print(condition_or(false, 7))
+print(condition_or(false, 1))

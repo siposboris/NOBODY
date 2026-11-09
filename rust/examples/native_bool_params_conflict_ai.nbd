@@ -1,0 +1,2 @@
+fn test(flag) { if flag { return flag + 1 } else { return 0 } }
+print(test(true))

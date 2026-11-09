@@ -228,6 +228,34 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
     printf 'Native backend unexpectedly compiled mismatched boolean/int returns.\n' >&2
     exit 1
   fi
+  printf '%s\n' '== Nobody Phase 4: boolean native function parameters =='
+  for language in ai sk en; do
+    source="rust/examples/native_bool_params_"$language".nbd"
+    executable="$native_temp/typed-params-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    native_output=$("$executable")
+    evaluator_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    if [[ "$native_output" != "$evaluator_output" || "$native_output" != "$(printf '3\n8\nfalse\nfalse\ntrue\nfalse')" ]]; then
+      printf 'Typed boolean parameter native ELF parity failed: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  for source in \
+    rust/examples/native_bool_params_wrong_ai.nbd \
+    rust/examples/native_bool_params_conflict_ai.nbd \
+    rust/examples/native_bool_params_unconstrained_ai.nbd; do
+    if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native ai "$source" "$native_temp/invalid-typed-params"; then
+      printf 'Native compiler silently accepted invalid boolean parameter program: %s\n' "$source" >&2
+      exit 1
+    fi
+    if [[ -e "$native_temp/invalid-typed-params" ]]; then
+      printf 'Invalid boolean parameter program unexpectedly emitted an ELF.\n' >&2
+      exit 1
+    fi
+  done
   for source in \
     rust/examples/native_function_bad_implicit_ai.nbd \
     rust/examples/native_function_bad_forward_ai.nbd \
