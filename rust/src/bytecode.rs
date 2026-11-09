@@ -841,9 +841,63 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_range_loop_is_explicitly_rejected() {
-        let err = compile_source("for n in range(3) { print(n) }", "ai").unwrap_err();
+    fn unsupported_string_values_remain_explicitly_rejected() {
+        let err = compile_source("print(\"not yet supported\")", "ai").unwrap_err();
         assert_eq!(err.code, 4004);
+    }
+
+    #[test]
+    fn signed_range_loops_match_the_reference_evaluator() {
+        for (profile, source) in [
+            ("ai", include_str!("../examples/bytecode_for_ai.nbd")),
+            ("sk", include_str!("../examples/bytecode_for_sk.nbd")),
+            ("en", include_str!("../examples/bytecode_for_en.nbd")),
+            ("ai", include_str!("../examples/bytecode_for_nested_ai.nbd")),
+            ("ai", include_str!("../examples/bytecode_for_shadow_ai.nbd")),
+            ("ai", include_str!("../examples/bytecode_for_overflow_ai.nbd")),
+        ] {
+            let vm = execute_source(source, profile).unwrap();
+            let reference = crate::evaluate_source(source, profile).unwrap();
+            assert_eq!(vm, reference, "{profile}: {source}");
+        }
+    }
+
+    #[test]
+    fn range_step_zero_has_the_reference_error_number() {
+        let source = include_str!("../examples/bytecode_for_bad_step_ai.nbd");
+        assert_eq!(execute_source(source, "ai").unwrap_err().code, 4006);
+        assert_eq!(crate::evaluate_source(source, "ai").unwrap_err().code, 4006);
+    }
+
+    #[test]
+    fn malicious_range_slots_and_jump_targets_fail_verification() {
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 3,
+            code: vec![
+                Instruction::RangeCheck {
+                    current: 0,
+                    stop: 1,
+                    step: 2,
+                    exit: 1,
+                },
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&bad).unwrap_err().code, 4004);
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![
+                Instruction::RangeAdvance {
+                    current: 0,
+                    step: 0,
+                    exit: 4,
+                },
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&bad).unwrap_err().code, 4004);
     }
 
     #[test]
