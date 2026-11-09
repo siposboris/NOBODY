@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -18,10 +18,10 @@ fn main() {
         {
             true
         }
-        Some("compile-bytecode") if arguments.len() == 5 => true,
+        Some("compile-bytecode" | "compile-native") if arguments.len() == 5 => true,
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode"
-            | "run-bytecode",
+            | "native-asm" | "run-bytecode",
         ) if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info" | "audit-languages")
@@ -108,6 +108,32 @@ fn main() {
                 println!("DIFFERENT: canonical IR trees do not match");
                 process::exit(1);
             }
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "compile-native" {
+        let profile = &arguments[2];
+        let source_path = &arguments[3];
+        let output_path = &arguments[4];
+        let source = fs::read_to_string(source_path).unwrap_or_else(|error| {
+            eprintln!(
+                "N9001: Cannot read Nobody source {:?}: {error}",
+                source_path
+            );
+            process::exit(1);
+        });
+        match nobody::native_x86_64::compile_native(
+            &source,
+            profile,
+            std::path::Path::new(output_path),
+        ) {
+            Ok(()) => println!(
+                "Created standalone Linux x86-64 ELF executable: {output_path} (experimental i64 subset)"
+            ),
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
@@ -232,6 +258,16 @@ fn main() {
     if command == "ast-json" {
         match export_ast_json(&source, &arguments[2]) {
             Ok(json) => println!("{json}"),
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "native-asm" {
+        match nobody::native_x86_64::compile_to_assembly(&source, &arguments[2]) {
+            Ok(assembly) => print!("{assembly}"),
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
