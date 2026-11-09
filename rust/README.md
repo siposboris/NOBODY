@@ -4,6 +4,18 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Experimental portable `.nbc` files
+
+The native Rust CLI now supports an explicit compiled-artifact workflow:
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-bytecode ai rust/examples/bytecode_functions_ai.nbd program.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- verify-bytecode program.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-compiled program.nbc
+```
+
+`run-compiled` reads binary `.nbc` bytes directly and does **not** parse source or call Python. `compile-bytecode` does **not** overwrite existing output files. The experimental v1 little-endian format has deterministic encoding, a bounded validating decoder, checksum for accidental corruption and the VM's existing control-flow verifier. Equivalent supported `ai`, Slovak and English programs produce byte-identical binaries in tests. The schema, limitations and opcode table are in [Bytecode Format](../docs/BYTECODE_FORMAT.md). **No stable cross-version ABI, native executable, cryptographic verification or sandbox is implied.**
+
 ## Named functions in Rust bytecode (experimental)
 
 The native bytecode compiler now emits separate, verifier-checked function instruction streams and `Call`/`Return` operations. Supported: top-level functions declared before use, positional parameters, explicit return expressions and implicit `null`, local variables, conditionals/loops in function bodies, and calls to earlier named functions. Each invocation has isolated local slots and an operand stack, with shared finite CPU-step/output counters. The verifier rejects invalid function IDs, argument counts, return stack shape and recursive/forward bytecode calls.

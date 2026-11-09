@@ -104,4 +104,29 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- ru
   printf 'Bytecode VM unexpectedly accepted wrong function arity.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: compiled portable bytecode smoke =='
+bytecode_temp=$(mktemp -d)
+trap 'rm -rf "$bytecode_temp"' EXIT
+cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-bytecode ai rust/examples/bytecode_functions_ai.nbd "$bytecode_temp/program.nbc"
+cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+  verify-bytecode "$bytecode_temp/program.nbc"
+disk_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+  run-compiled "$bytecode_temp/program.nbc")
+if [[ "$disk_output" != "$(printf '13\n6')" ]]; then
+  printf 'Persisted bytecode VM output differed from original source.\n' >&2
+  exit 1
+fi
+if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-bytecode ai rust/examples/bytecode_functions_ai.nbd "$bytecode_temp/program.nbc"; then
+  printf 'Compiled bytecode unexpectedly overwrote an existing file.\n' >&2
+  exit 1
+fi
+cp "$bytecode_temp/program.nbc" "$bytecode_temp/damaged.nbc"
+printf 'extra' >> "$bytecode_temp/damaged.nbc"
+if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+  run-compiled "$bytecode_temp/damaged.nbc"; then
+  printf 'Persisted bytecode accepted trailing corruption.\n' >&2
+  exit 1
+fi
 printf '%s\n' 'Nobody Rust verification passed.'

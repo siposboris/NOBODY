@@ -4,15 +4,21 @@ use nobody::{
     export_ast_json, lower_source, migrate_legacy_ai, parse, parse_validated, same_ir, scan,
     translate_source, TokenKind,
 };
+use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
-        Some("lex" | "check" | "direction") if arguments.len() == 3 => true,
+        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled")
+            if arguments.len() == 3 =>
+        {
+            true
+        }
+        Some("compile-bytecode") if arguments.len() == 5 => true,
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode"
             | "run-bytecode",
@@ -107,6 +113,79 @@ fn main() {
                 process::exit(1);
             }
         }
+        return;
+    }
+    // .nbc never goes through source parsing or UTF-8 decoding.
+    if command == "run-compiled" || command == "verify-bytecode" {
+        let filename = &arguments[2];
+        let file = fs::File::open(filename).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot open {:?}: {error}", filename);
+            process::exit(1);
+        });
+        let mut data = Vec::new();
+        let mut capped = file.take((nobody::bytecode_format::MAX_FILE_BYTES + 1) as u64);
+        capped.read_to_end(&mut data).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read bytecode {:?}: {error}", filename);
+            process::exit(1);
+        });
+        let program = nobody::bytecode_format::decode(&data).unwrap_or_else(|error| {
+            eprintln!("{error}");
+            process::exit(1);
+        });
+        if command == "verify-bytecode" {
+            println!(
+                "Verified experimental bytecode: {} main instructions, {} functions (not a security sandbox).",
+                program.code.len(),
+                program.functions.len()
+            );
+        } else {
+            let output = nobody::bytecode::execute(&program).unwrap_or_else(|error| {
+                eprintln!("{error}");
+                process::exit(1);
+            });
+            print!("{output}");
+        }
+        return;
+    }
+    if command == "compile-bytecode" {
+        let profile = &arguments[2];
+        let source_path = &arguments[3];
+        let destination = &arguments[4];
+        let source = fs::read_to_string(source_path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read source {:?}: {error}", source_path);
+            process::exit(1);
+        });
+        let compiled = compile_bytecode_source(&source, profile).unwrap_or_else(|error| {
+            eprintln!("{error}");
+            process::exit(1);
+        });
+        let bytes = nobody::bytecode_format::encode(&compiled).unwrap_or_else(|error| {
+            eprintln!("{error}");
+            process::exit(1);
+        });
+        // Refuse to truncate an existing file, including a symbolic link.
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(destination)
+            .unwrap_or_else(|error| {
+                eprintln!("N9001: Cannot create new bytecode file {:?} (existing files are never overwritten): {error}", destination);
+                process::exit(1);
+            });
+        if let Err(error) = file.write_all(&bytes).and_then(|()| file.sync_all()) {
+            drop(file);
+            let _ = fs::remove_file(destination);
+            eprintln!(
+                "N9001: Cannot finish writing bytecode {:?}: {error}",
+                destination
+            );
+            process::exit(1);
+        }
+        println!(
+            "Wrote {} bytes of experimental bytecode to {}",
+            bytes.len(),
+            destination
+        );
         return;
     }
     let filename = arguments.last().expect("validated CLI args");

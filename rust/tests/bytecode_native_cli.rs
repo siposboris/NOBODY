@@ -156,3 +156,112 @@ fn function_arity_errors_are_not_silently_accepted() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("N4007"));
 }
+
+fn temporary_bytecode_directory() -> std::path::PathBuf {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!("nobody-bytecode-{}-{nanos}", std::process::id()));
+    std::fs::create_dir(&path).expect("create isolated bytecode test directory");
+    path
+}
+
+#[test]
+fn compiled_file_runs_after_source_is_removed_and_cannot_be_overwritten() {
+    let temp = temporary_bytecode_directory();
+    let source = temp.join("source.nbd");
+    let binary = temp.join("compiled.nbc");
+    std::fs::write(
+        &source,
+        include_str!("../examples/bytecode_functions_ai.nbd"),
+    )
+    .expect("create temporary source");
+    let src = source.to_str().unwrap();
+    let dst = binary.to_str().unwrap();
+    let compile = launch(&["compile-bytecode", "ai", src, dst]);
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let original = std::fs::read(&binary).unwrap();
+    assert!(original.starts_with(b"NOBBC001"));
+
+    std::fs::remove_file(&source).unwrap();
+    let verify = launch(&["verify-bytecode", dst]);
+    assert!(
+        verify.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verify.stderr)
+    );
+    let run = launch(&["run-compiled", dst]);
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(run.stdout, b"13\n6\n");
+
+    let duplicate = temp.join("second-source.nbd");
+    std::fs::write(&duplicate, "print(100)").unwrap();
+    let overwrite = launch(&["compile-bytecode", "ai", duplicate.to_str().unwrap(), dst]);
+    assert!(
+        !overwrite.status.success(),
+        "existing binaries must not be overwritten"
+    );
+    assert_eq!(std::fs::read(&binary).unwrap(), original);
+
+    std::fs::remove_dir_all(&temp).unwrap();
+}
+
+#[test]
+fn compiled_artifacts_are_identical_across_language_profiles() {
+    let temp = temporary_bytecode_directory();
+    let mut results = Vec::new();
+    for (lang, fixture) in [
+        ("ai", "bytecode_functions_ai.nbd"),
+        ("sk", "bytecode_functions_sk.nbd"),
+        ("en", "bytecode_functions_en.nbd"),
+    ] {
+        let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let output = temp.join(format!("{lang}.nbc"));
+        let result = launch(&["compile-bytecode", lang, &input, output.to_str().unwrap()]);
+        assert!(
+            result.status.success(),
+            "{lang}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        results.push(std::fs::read(output).unwrap());
+    }
+    assert_eq!(results[0], results[1]);
+    assert_eq!(results[0], results[2]);
+    std::fs::remove_dir_all(&temp).unwrap();
+}
+
+#[test]
+fn damaged_binary_is_rejected_by_both_verify_and_run_commands() {
+    let temp = temporary_bytecode_directory();
+    let input = format!(
+        "{}/examples/bytecode_for_en.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let destination = temp.join("valid.nbc");
+    let output = launch(&[
+        "compile-bytecode",
+        "en",
+        &input,
+        destination.to_str().unwrap(),
+    ]);
+    assert!(output.status.success());
+    let mut bytes = std::fs::read(&destination).unwrap();
+    bytes[24] ^= 0x40; // corrupt an opcode without updating checksum
+    std::fs::write(&destination, bytes).unwrap();
+    for command in ["verify-bytecode", "run-compiled"] {
+        let rejected = launch(&[command, destination.to_str().unwrap()]);
+        assert!(!rejected.status.success(), "{command} accepted corruption");
+        assert!(String::from_utf8_lossy(&rejected.stderr).contains("N4004"));
+    }
+    std::fs::remove_dir_all(&temp).unwrap();
+}
