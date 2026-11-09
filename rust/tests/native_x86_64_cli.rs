@@ -141,11 +141,15 @@ fn native_utf8_mixed_prints_are_standalone_and_match_evaluator() {
             String::from_utf8_lossy(&evaluator.stderr)
         );
         assert_eq!(direct.stdout, evaluator.stdout, "{profile}");
-        assert!(
-            direct.stdout.windows("Život ☸".len()).any(|bytes| bytes == "Život ☸".as_bytes())
-        );
+        assert!(direct
+            .stdout
+            .windows("Život ☸".len())
+            .any(|bytes| bytes == "Život ☸".as_bytes()));
         assert!(direct.stdout.windows(2).any(|bytes| bytes == b"\n\n"));
-        assert!(direct.stdout.windows(".global not_code".len()).any(|bytes| bytes == b".global not_code"));
+        assert!(direct
+            .stdout
+            .windows(".global not_code".len())
+            .any(|bytes| bytes == b".global not_code"));
         let assembly = nobody(&["native-asm", profile, &source]);
         let asm = String::from_utf8(assembly.stdout).unwrap();
         assert!(assembly.status.success());
