@@ -1,2 +1,10 @@
-fn divisible_by_two(n) { return n % 2 == 0 }
-print(false or true)
+fn less_than(a, b) { return a < b }
+let n = 0
+let alive = true
+while alive and less_than(n, 4) {
+  n = n + 1
+  if n == 2 { print(false or true) }
+  alive = less_than(n, 4)
+}
+print(n)
+print(alive)
