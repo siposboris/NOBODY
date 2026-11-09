@@ -42,7 +42,7 @@ fn check_name(name: &str, profile: &str) -> Result<String, Diagnostic> {
                 | "true" | "false" | "none" | "and" | "or" | "not" | "break"
                 | "continue" | "let"
         )
-    {
+    ) {
         return Err(invalid(format!(
             "Identifier {name:?} is a reserved keyword in profile {profile:?}"
         )));
