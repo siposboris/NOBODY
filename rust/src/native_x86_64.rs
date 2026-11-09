@@ -6,8 +6,8 @@
 //! into the output. This is not a full language backend or an OS sandbox.
 //!
 //! Supported: signed i64 numbers, boolean conditions, checked + - *,
-//! comparisons, lexical variables, if/elif/else, while, break/continue, and
-//! print(one integer). Everything else fails explicitly before writing output.
+//! comparisons, lexical variables, if/elif/else, while, signed for-range,
+//! break/continue, and print(one integer). Unsupported features fail before output.
 use crate::ir::{IrExpr, IrStatement, Module, Name};
 use crate::{lower_source, Diagnostic};
 use std::collections::BTreeMap;
@@ -81,6 +81,15 @@ impl NativeCompiler {
             .iter()
             .rev()
             .find_map(|scope| scope.get(name).copied())
+    }
+
+    fn allocate_slot(&mut self) -> Result<usize, Diagnostic> {
+        if self.slots >= MAX_SLOTS {
+            return Err(issue(4005, "Native variable slot count exceeds limit"));
+        }
+        let slot = self.slots;
+        self.slots += 1;
+        Ok(slot)
     }
 
     fn tick(&mut self) -> Result<(), Diagnostic> {
@@ -192,11 +201,7 @@ impl NativeCompiler {
                     return Err(unsupported(format!("Duplicate native variable declaration {name:?}")));
                 }
                 let kind = self.expression(expr, 0)?;
-                if self.slots >= MAX_SLOTS {
-                    return Err(issue(4005, "Native variable slot count exceeds limit"));
-                }
-                let slot = self.slots;
-                self.slots += 1;
+                let slot = self.allocate_slot()?;
                 self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (slot + 1) * 8))?;
                 self.scopes.last_mut().expect("root or nested lexical scope exists")
                     .insert(name.clone(), Binding { slot, kind });
@@ -261,15 +266,116 @@ impl NativeCompiler {
                 self.emit(&format!("    jmp .L{start}"))?;
                 self.label(end)
             }
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
+                // The native backend supports precisely the canonical range
+                // built-in, not arbitrary iterables or shadowed user calls.
+                let IrExpr::Call { callee, args } = iterable else {
+                    return Err(unsupported("Native for loops currently require range(...)"));
+                };
+                if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
+                    return Err(unsupported("Native for loops require unshadowed range(...)"));
+                }
+                if !(1..=3).contains(&args.len()) {
+                    return Err(unsupported("Native range requires one, two or three integer arguments"));
+                }
+
+                // Evaluate all range arguments once, left-to-right, before the
+                // loop variable is introduced into its own lexical scope.
+                let mut inputs = Vec::with_capacity(args.len());
+                for arg in args {
+                    if self.expression(arg, 0)? != Type::Int {
+                        return Err(unsupported("Native range arguments must be integers"));
+                    }
+                    let slot = self.allocate_slot()?;
+                    self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (slot + 1) * 8))?;
+                    inputs.push(slot);
+                }
+                let current = self.allocate_slot()?;
+                let stop = self.allocate_slot()?;
+                let step = self.allocate_slot()?;
+                match inputs.as_slice() {
+                    [limit] => {
+                        self.emit("    xor eax, eax")?;
+                        self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (current + 1) * 8))?;
+                        self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (limit + 1) * 8))?;
+                        self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (stop + 1) * 8))?;
+                    }
+                    [start, limit] | [start, limit, _] => {
+                        self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (start + 1) * 8))?;
+                        self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (current + 1) * 8))?;
+                        self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (limit + 1) * 8))?;
+                        self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (stop + 1) * 8))?;
+                    }
+                    _ => unreachable!("native range argument count checked"),
+                }
+                if let [_, _, stride] = inputs.as_slice() {
+                    self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (stride + 1) * 8))?;
+                } else {
+                    self.emit("    mov eax, 1")?;
+                }
+                self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (step + 1) * 8))?;
+
+                // Like the Rust evaluator, zero step is an error even when
+                // the requested range would otherwise be empty.
+                self.emit("    test rax, rax")?;
+                self.emit("    jz .Lnobody_range_zero_step")?;
+
+                let check = self.new_label();
+                let negative = self.new_label();
+                let execute_body = self.new_label();
+                let advance = self.new_label();
+                let end = self.new_label();
+
+                self.scopes.push(BTreeMap::new());
+                let iterator = self.allocate_slot()?;
+                self.scopes.last_mut().expect("native range scope exists")
+                    .insert(variable.clone(), Binding { slot: iterator, kind: Type::Int });
+
+                self.label(check)?;
+                self.tick()?; // empty and very long loops remain bounded
+                self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (step + 1) * 8))?;
+                self.emit("    test rax, rax")?;
+                self.emit(&format!("    js .L{negative}"))?;
+                self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (current + 1) * 8))?;
+                self.emit(&format!("    cmp rax, QWORD PTR [rbp-{}]", (stop + 1) * 8))?;
+                self.emit(&format!("    jge .L{end}"))?;
+                self.emit(&format!("    jmp .L{execute_body}"))?;
+                self.label(negative)?;
+                self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (current + 1) * 8))?;
+                self.emit(&format!("    cmp rax, QWORD PTR [rbp-{}]", (stop + 1) * 8))?;
+                self.emit(&format!("    jle .L{end}"))?;
+
+                self.label(execute_body)?;
+                self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (current + 1) * 8))?;
+                self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (iterator + 1) * 8))?;
+                self.loops.push(LoopTargets { start: advance, end });
+                let result = self.block(body);
+                self.loops.pop();
+                self.scopes.pop();
+                result?;
+                self.label(advance)?;
+                self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (current + 1) * 8))?;
+                self.emit(&format!("    add rax, QWORD PTR [rbp-{}]", (step + 1) * 8))?;
+                // A final range-iteration overflow TERMINATES, rather than
+                // wrapping or using the arithmetic-overflow process exit.
+                self.emit(&format!("    jo .L{end}"))?;
+                self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (current + 1) * 8))?;
+                self.emit(&format!("    jmp .L{check}"))?;
+                self.label(end)
+            }
             IrStatement::Break => {
-                let target = self.loops.last().ok_or_else(|| unsupported("break outside native while loop"))?.end;
+                let target = self.loops.last().ok_or_else(|| unsupported("break outside native loop"))?.end;
                 self.emit(&format!("    jmp .L{target}"))
             }
             IrStatement::Continue => {
-                let target = self.loops.last().ok_or_else(|| unsupported("continue outside native while loop"))?.start;
+                let target = self.loops.last().ok_or_else(|| unsupported("continue outside native loop"))?.start;
                 self.emit(&format!("    jmp .L{target}"))
             }
-            _ => Err(unsupported("Native x86-64 subset does not yet support for/range, functions, return, typed declarations or other statement forms")),
+            _ => Err(unsupported("Native x86-64 subset does not yet support functions, return, typed declarations or other statement forms")),
         }
     }
 }
@@ -300,6 +406,10 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("    syscall")?;
     compiler.emit(".Lnobody_overflow:")?;
     compiler.emit("    mov edi, 3")?;
+    compiler.emit("    mov eax, 60")?;
+    compiler.emit("    syscall")?;
+    compiler.emit(".Lnobody_range_zero_step:")?;
+    compiler.emit("    mov edi, 6")?;
     compiler.emit("    mov eax, 60")?;
     compiler.emit("    syscall")?;
     compiler.emit(".Lnobody_budget:")?;
