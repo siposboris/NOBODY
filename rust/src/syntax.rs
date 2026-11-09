@@ -495,12 +495,17 @@ impl Parser {
                 Some(
                     self.language
                         .ty(&token.value)
-                        .ok_or_else(|| error(
-                            1007,
-                            line,
-                            col,
-                            format!("Unknown function return type {:?} in selected profile", token.value),
-                        ))?
+                        .ok_or_else(|| {
+                            error(
+                                1007,
+                                line,
+                                col,
+                                format!(
+                                    "Unknown function return type {:?} in selected profile",
+                                    token.value
+                                ),
+                            )
+                        })?
                         .to_owned(),
                 )
             } else {
@@ -685,15 +690,24 @@ mod tests {
     }
     #[test]
     fn explicit_function_signatures_normalize_localized_primitive_types() {
-        let ai = parse("fn check(flag: bool, n: int): bool { return flag and n > 0 }", "ai").unwrap();
-        let sk = parse("funkcia check(flag: logicke, n: cele): logicke { vrat flag a_zaroven n > 0 }", "sk").unwrap();
+        let ai = parse(
+            "fn check(flag: bool, n: int): bool { return flag and n > 0 }",
+            "ai",
+        )
+        .unwrap();
+        let sk = parse(
+            "funkcia check(flag: logicke, n: cele): logicke { vrat flag a_zaroven n > 0 }",
+            "sk",
+        )
+        .unwrap();
         for program in [ai, sk] {
             let Statement::Function {
                 parameters,
                 parameter_types,
                 return_type,
                 ..
-            } = &program.statements[0] else {
+            } = &program.statements[0]
+            else {
                 panic!("expected function");
             };
             assert_eq!(parameters, &["flag", "n"]);
@@ -704,11 +718,28 @@ mod tests {
 
     #[test]
     fn explicit_function_signatures_reject_wrong_profile_types() {
-        assert_eq!(parse("fn check(flag: floatish) { return flag }", "ai").unwrap_err().code, 1007);
-        assert_eq!(parse("funkcia check(flag: bool): logicke { vrat flag }", "sk").unwrap_err().code, 1007);
-        assert_eq!(parse("fn check(flag): wrong { return flag }", "ai").unwrap_err().code, 1007);
+        assert_eq!(
+            parse("fn check(flag: floatish) { return flag }", "ai")
+                .unwrap_err()
+                .code,
+            1007
+        );
+        assert_eq!(
+            parse("funkcia check(flag: bool): logicke { vrat flag }", "sk")
+                .unwrap_err()
+                .code,
+            1007
+        );
+        assert_eq!(
+            parse("fn check(flag): wrong { return flag }", "ai")
+                .unwrap_err()
+                .code,
+            1007
+        );
         let legacy = parse("fn identity(x) { return x }", "ai").unwrap();
-        assert!(matches!(&legacy.statements[0], Statement::Function { parameter_types, return_type, .. } if parameter_types == &[None] && return_type.is_none()));
+        assert!(
+            matches!(&legacy.statements[0], Statement::Function { parameter_types, return_type, .. } if parameter_types == &[None] && return_type.is_none())
+        );
     }
 
     #[test]
