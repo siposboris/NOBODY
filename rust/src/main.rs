@@ -20,8 +20,8 @@ fn main() {
         }
         Some("compile-bytecode" | "compile-native") if arguments.len() == 5 => true,
         Some(
-            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode" | "native-asm"
-            | "run-bytecode",
+            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode"
+            | "native-asm" | "run-bytecode",
         ) if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info" | "audit-languages")
@@ -120,7 +120,10 @@ fn main() {
         let source_path = &arguments[3];
         let output_path = &arguments[4];
         let source = fs::read_to_string(source_path).unwrap_or_else(|error| {
-            eprintln!("N9001: Cannot read Nobody source {:?}: {error}", source_path);
+            eprintln!(
+                "N9001: Cannot read Nobody source {:?}: {error}",
+                source_path
+            );
             process::exit(1);
         });
         match nobody::native_x86_64::compile_native(
