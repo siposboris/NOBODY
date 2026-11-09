@@ -15,6 +15,18 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 
 The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
 
+## Typed functions in bytecode VM and portable `.nbc` v2
+
+The Rust bytecode VM now enforces annotated `int`/`bool` function parameters and returns at runtime. Both source execution and persisted binary execution support this subset, with a deterministic v2 file format and backward-compatible decoding of untyped v1 bytecode. Unsupported `float`/`str` function signatures fail explicitly. `nobody.ast.v1` JSON still rejects typed function signatures rather than losing them.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-bytecode sk rust/examples/native_typed_signatures_sk.nbd typed.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- verify-bytecode typed.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-compiled typed.nbc
+```
+
+See [the binary format specification](../docs/BYTECODE_FORMAT.md). The v2 wire format is experimental, not a stable ABI, native executable or OS sandbox.
+
 ## Explicit function signatures (experimental)
 
 Function parameters and returns may now be annotated with localized primitive types, for example `fn identity(flag: bool): bool` or Slovak `funkcia identity(flag: logicke): logicke`. The parser carries normalized `int`/`bool`/`float`/`str` annotations into canonical Rust IR. The native Linux compiler currently supports explicit `int` and `bool` signatures, including argument and return mismatch rejection; the separate Rust evaluator checks annotations at runtime. Legacy untyped functions remain supported.
@@ -25,7 +37,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-typed
 ```
 
-**Compatibility boundary:** the experimental bytecode VM and `nobody.ast.v1` JSON export reject annotated signatures until their respective formats and checks support them. Source-level `str`/`float` function signatures are not yet supported by native ELF; the Rust type checker is still partial.
+**Compatibility boundary:** the bytecode VM now supports `int`/`bool` annotated signatures through `.nbc` v2; `nobody.ast.v1` JSON export continues to reject them until its schema is upgraded. Source-level `str`/`float` function signatures are not yet supported by native ELF; the Rust type checker is still partial.
 
 ## Native boolean function parameters (conservative subset)
 
