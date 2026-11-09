@@ -11,6 +11,10 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Native Linux signed `for range` milestone (2026-11-09; pending CI)
+
+The native x86-64 AOT backend in Rust now emits direct machine-code ELF for bounded signed `for ... in range(...)` loops as well as the earlier arithmetic, branching and `while` slice. Argument expressions are evaluated once, loop variables are lexically isolated, and nested `break`/`continue` use loop-specific targets. A zero step terminates with status 6; checked iterator advance exits a range on signed i64 overflow. New actual-ELF parity tests compare `ai`, `sk` and `en` programs with the Rust evaluator. The output has no Python, libc or Nobody bytecode VM dependency, but compile-time GNU binutils are required. This is still a partial native backend, not Python module replacement or self-hosting.
+
 ## Current verified migration direction (2026-11-08)
 
 The compiled **`nobody` Rust executable** is the primary user-facing command for its documented subset, including `run`, `parse`, `translate`, `typecheck`, `info`, and `languages`. The new `direction PROFILE` command ports the old Python language-direction metadata for all 40 active profiles (four RTL, 36 LTR); its verification is tracked in GitHub Actions. Rust commands do **not** spawn Python. Python still runs in differential CI and provides older features (including AST JSON) not yet supported in Rust.
