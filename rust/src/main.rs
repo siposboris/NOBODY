@@ -1,9 +1,8 @@
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, compile_bytecode_source, evaluate_source, execute_bytecode_source,
-    export_ast_json, export_ast_json_v2, import_ast_json_v2, normalize_ast_json_v2,
-    lower_source, migrate_legacy_ai, parse, parse_validated,
-    same_ir, scan, translate_source, TokenKind,
+    export_ast_json, export_ast_json_v2, import_ast_json_v2, lower_source, migrate_legacy_ai,
+    normalize_ast_json_v2, parse, parse_validated, same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
@@ -14,11 +13,15 @@ fn usage() {
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
-        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled" | "verify-ast-json-v2" | "normalize-ast-json-v2")
-            if arguments.len() == 3 =>
-        {
-            true
-        }
+        Some(
+            "lex"
+            | "check"
+            | "direction"
+            | "verify-bytecode"
+            | "run-compiled"
+            | "verify-ast-json-v2"
+            | "normalize-ast-json-v2",
+        ) if arguments.len() == 3 => true,
         Some("compile-bytecode" | "compile-native") if arguments.len() == 5 => true,
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2"
@@ -149,10 +152,12 @@ fn main() {
             process::exit(1);
         });
         let mut input = String::new();
-        file.take(1_048_577).read_to_string(&mut input).unwrap_or_else(|error| {
-            eprintln!("N9001: Cannot read UTF-8 AST JSON {path:?}: {error}");
-            process::exit(1);
-        });
+        file.take(1_048_577)
+            .read_to_string(&mut input)
+            .unwrap_or_else(|error| {
+                eprintln!("N9001: Cannot read UTF-8 AST JSON {path:?}: {error}");
+                process::exit(1);
+            });
         if command == "verify-ast-json-v2" {
             match import_ast_json_v2(&input) {
                 Ok(doc) => println!(
