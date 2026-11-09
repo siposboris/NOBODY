@@ -1155,6 +1155,45 @@ if positive(2) and greater(9, 2) { print(1) } else { print(0) }";
     }
 
     #[test]
+    fn native_function_parameters_infer_direct_boolean_constraints() {
+        let source = "fn choose(flag, a, b) { if flag { return a } else { return b } }
+fn invert(flag) { return not flag }
+fn conjunction(a, b) { return a and b }
+print(choose(true, 3, 9))
+print(invert(false))
+print(conjunction(true, false))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("call nobody_print_i64"));
+        assert!(asm.contains("    jz .L"));
+    }
+
+    #[test]
+    fn boolean_param_inference_rejects_wrong_types_and_conflicts() {
+        for source in [
+            include_str!("../examples/native_bool_params_wrong_ai.nbd"),
+            include_str!("../examples/native_bool_params_conflict_ai.nbd"),
+            include_str!("../examples/native_bool_params_unconstrained_ai.nbd"),
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn boolean_param_inference_respects_nested_scope_shadowing() {
+        let source = include_str!("../examples/native_bool_params_shadow_ai.nbd");
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("call nobody_print_i64"));
+    }
+
+    #[test]
     fn native_backend_does_not_interpolate_user_variable_names_into_assembly() {
         let asm =
             compile_to_assembly("let slovensky_nazov = 5\nprint(slovensky_nazov)", "ai").unwrap();
