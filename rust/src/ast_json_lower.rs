@@ -28,28 +28,36 @@ fn check_name(name: &str, profile: &str) -> Result<String, Diagnostic> {
     // The source lexer applies lowercase ASCII for keywords, Unicode NFC,
     // mixed-script restrictions and valid identifier token boundaries.
     let tokens = scan(name)?;
-    if tokens.len() != 1
-        || tokens[0].kind != TokenKind::Name
-        || tokens[0].value != name
-    {
+    if tokens.len() != 1 || tokens[0].kind != TokenKind::Name || tokens[0].value != name {
         return Err(invalid(format!("Invalid Nobody identifier {name:?}")));
     }
     let semantic = profiles::semantic(profile, name);
     if matches!(
         semantic,
         Some(
-            "if" | "else" | "elif" | "while" | "for" | "in" | "def" | "return"
-                | "true" | "false" | "none" | "and" | "or" | "not" | "break"
-                | "continue" | "let"
+            "if" | "else"
+                | "elif"
+                | "while"
+                | "for"
+                | "in"
+                | "def"
+                | "return"
+                | "true"
+                | "false"
+                | "none"
+                | "and"
+                | "or"
+                | "not"
+                | "break"
+                | "continue"
+                | "let"
         )
     ) {
         return Err(invalid(format!(
             "Identifier {name:?} is a reserved keyword in profile {profile:?}"
         )));
     }
-    if profile == "ai" && name.starts_with("ai_")
-        && profiles::CANONICAL.contains(&&name[3..])
-    {
+    if profile == "ai" && name.starts_with("ai_") && profiles::CANONICAL.contains(&&name[3..]) {
         return Err(invalid("Legacy ai_ syntax is not accepted in imported AST"));
     }
     Ok(name.to_owned())
@@ -57,11 +65,10 @@ fn check_name(name: &str, profile: &str) -> Result<String, Diagnostic> {
 
 fn check_number(value: &str) -> Result<String, Diagnostic> {
     let tokens = scan(value)?;
-    if tokens.len() != 1
-        || tokens[0].kind != TokenKind::Number
-        || tokens[0].value != value
-    {
-        return Err(invalid(format!("Invalid decimal numeric literal {value:?}")));
+    if tokens.len() != 1 || tokens[0].kind != TokenKind::Number || tokens[0].value != value {
+        return Err(invalid(format!(
+            "Invalid decimal numeric literal {value:?}"
+        )));
     }
     Ok(value.to_owned())
 }
@@ -104,7 +111,10 @@ fn expression(node: &AstNode, profile: &str) -> Result<Expr, Diagnostic> {
                     .collect::<Result<Vec<_>, _>>()?,
             })
         }
-        _ => Err(invalid(format!("Unexpected expression node {:?}", node.kind))),
+        _ => Err(invalid(format!(
+            "Unexpected expression node {:?}",
+            node.kind
+        ))),
     }
 }
 
@@ -127,9 +137,7 @@ fn statement(node: &AstNode, profile: &str) -> Result<Statement, Diagnostic> {
         "let" | "typed_let" => {
             let (name, ty) = match &node.value {
                 AstValue::Text(name) => (name.clone(), None),
-                AstValue::TypedLet { name, type_name } => {
-                    (name.clone(), Some(type_name.clone()))
-                }
+                AstValue::TypedLet { name, type_name } => (name.clone(), Some(type_name.clone())),
                 _ => return Err(invalid("Missing declaration name/type")),
             };
             Ok(Statement::Let {
@@ -175,7 +183,8 @@ fn statement(node: &AstNode, profile: &str) -> Result<Statement, Diagnostic> {
                 parameters,
                 parameter_types,
                 return_type,
-            } = &node.value else {
+            } = &node.value
+            else {
                 return Err(invalid("Invalid function signature"));
             };
             Ok(Statement::Function {
@@ -192,11 +201,11 @@ fn statement(node: &AstNode, profile: &str) -> Result<Statement, Diagnostic> {
         "return" => Ok(Statement::Return(expression(child(node, 0)?, profile)?)),
         "break" => Ok(Statement::Break),
         "continue" => Ok(Statement::Continue),
-        "expression_statement" => Ok(Statement::Expression(expression(
-            child(node, 0)?,
-            profile,
-        )?)),
-        _ => Err(invalid(format!("Unexpected statement node {:?}", node.kind))),
+        "expression_statement" => Ok(Statement::Expression(expression(child(node, 0)?, profile)?)),
+        _ => Err(invalid(format!(
+            "Unexpected statement node {:?}",
+            node.kind
+        ))),
     }
 }
 
@@ -215,11 +224,7 @@ pub fn lower_ast_json_v2(json: &str, profile: &str) -> Result<Program, Diagnosti
 
 /// Prove that the imported JSON tree yields the same *unspanned* Rust AST as
 /// the source parser. Position differences are not compared here.
-pub fn same_ast_json_v2(
-    source: &str,
-    profile: &str,
-    json: &str,
-) -> Result<bool, Diagnostic> {
+pub fn same_ast_json_v2(source: &str, profile: &str, json: &str) -> Result<bool, Diagnostic> {
     let expected = parse_validated(source, profile)?;
     let actual = lower_ast_json_v2(json, profile)?;
     Ok(expected == actual)
@@ -266,10 +271,7 @@ mod tests {
     fn prevents_escaping_function_and_loop_context() {
         let source = "print(3)";
         let json = export_ast_json_v2(source, "ai").unwrap();
-        let forged = json.replace(
-            r#""kind":"expression_statement""#,
-            r#""kind":"return""#,
-        );
+        let forged = json.replace(r#""kind":"expression_statement""#, r#""kind":"return""#);
         assert_eq!(lower_ast_json_v2(&forged, "ai").unwrap_err().code, 3008);
     }
 
