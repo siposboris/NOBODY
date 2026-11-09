@@ -15,6 +15,16 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 
 The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
 
+## Typed AST JSON import and validation (experimental V2)
+
+A bounded Rust-only importer now reads exported `nobody.ast.v2` JSON into a typed structural AST tree; it checks schema, child kinds, function signatures, Unicode string escapes, duplicate fields and size/depth/node limits. It rejects malformed documents with N5001 and **never evaluates imported code**. `normalize-ast-json-v2` deterministically reserializes a validated JSON tree; this is **JSON structure round-trip**, not Nobody source/semantic round-trip. No Python is used for these commands. Full AST-to-executable-tree import, full source re-emission, stable format and full Python parity are still open.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- ast-json-v2 ai rust/examples/native_typed_signatures_ai.nbd > program.json
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- verify-ast-json-v2 program.json
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- normalize-ast-json-v2 program.json
+```
+
 ## Typed AST JSON export (experimental V2)
 
 `ast-json-v2 PROFILE FILE.nbd` exports deterministic `nobody.ast.v2` JSON using the Rust parser alone. A function node's `value` is `[name, [parameter_names], [parameter_types], return_type]`, using canonical `int`/`bool`/`float`/`str` type strings or JSON `null` for an absent annotation. The positional parameter-type array always matches the parameter-name array. Multiline nodes retain source line numbers when the conservative location visitor can map them; unsupported shapes fail closed. The existing `ast-json` V1 command and its untyped format are unchanged. **No V2 JSON import, validation, source re-emission, stable ABI, or complete Rust frontend parity yet.**
