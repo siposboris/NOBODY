@@ -97,9 +97,16 @@ fn infinite_loop_terminates_with_step_budget_not_hang() {
 
 #[test]
 fn range_compilation_emits_checked_loop_opcodes() {
-    let file = format!("{}/examples/bytecode_for_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let file = format!(
+        "{}/examples/bytecode_for_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let output = launch(&["bytecode", "ai", &file]);
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let instructions = String::from_utf8(output.stdout).unwrap();
     assert!(instructions.contains("RangeCheck"));
     assert!(instructions.contains("RangeAdvance"));
