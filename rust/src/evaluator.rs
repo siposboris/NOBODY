@@ -25,6 +25,15 @@ impl RuntimeValue {
         }
     }
 }
+fn matches_explicit_type(value: &RuntimeValue, annotation: &str) -> bool {
+    matches!(
+        (annotation, value),
+        ("int", RuntimeValue::Int(_))
+            | ("bool", RuntimeValue::Bool(_))
+            | ("str", RuntimeValue::Text(_))
+    )
+}
+
 fn error(code: u16, detail: impl Into<String>, repair: &'static str) -> Diagnostic {
     Diagnostic {
         code,
@@ -101,6 +110,8 @@ enum Flow {
 #[derive(Clone, Debug)]
 struct Function {
     parameters: Vec<String>,
+    parameter_types: Vec<Option<String>>,
+    return_type: Option<String>,
     body: Vec<IrStatement>,
 }
 struct Evaluator {
@@ -332,8 +343,18 @@ impl Evaluator {
                     ));
                 }
                 let mut parameters = BTreeMap::new();
-                for (parameter, arg) in function.parameters.iter().zip(args) {
+                for ((parameter, annotation), arg) in function
+                    .parameters
+                    .iter()
+                    .zip(&function.parameter_types)
+                    .zip(args)
+                {
                     let value = self.eval(arg, depth + 1)?;
+                    if annotation.as_deref().is_some_and(|annotation| !matches_explicit_type(&value, annotation)) {
+                        return Err(unsupported(format!(
+                            "Function {name:?} argument {parameter:?} violates its explicit type annotation"
+                        )));
+                    }
                     parameters.insert(parameter.clone(), value);
                 }
                 // Explicit lexical boundary: caller-local variables cannot
@@ -345,13 +366,19 @@ impl Evaluator {
                 let result = self.statements(&function.body);
                 self.active_calls.pop();
                 self.scopes = saved_scopes;
-                match result? {
-                    Flow::Next => Ok(RuntimeValue::Null),
-                    Flow::Return(value) => Ok(value),
+                let returned = match result? {
+                    Flow::Next => RuntimeValue::Null,
+                    Flow::Return(value) => value,
                     Flow::Break | Flow::Continue => {
-                        Err(unsupported("Loop control escaped a function body"))
+                        return Err(unsupported("Loop control escaped a function body"));
                     }
+                };
+                if function.return_type.as_deref().is_some_and(|annotation| !matches_explicit_type(&returned, annotation)) {
+                    return Err(unsupported(format!(
+                        "Function {name:?} returned a value incompatible with its explicit return type"
+                    )));
                 }
+                Ok(returned)
             }
         }
     }
@@ -507,6 +534,8 @@ impl Evaluator {
             IrStatement::Function {
                 name,
                 parameters,
+                parameter_types,
+                return_type,
                 body,
             } => {
                 if self.scopes.len() != 1 {
@@ -523,6 +552,8 @@ impl Evaluator {
                     name.clone(),
                     Function {
                         parameters: parameters.clone(),
+                        parameter_types: parameter_types.clone(),
+                        return_type: return_type.clone(),
                         body: body.clone(),
                     },
                 );
@@ -581,6 +612,36 @@ mod tests {
             4002
         );
     }
+    #[test]
+    fn explicit_function_signatures_enforce_runtime_types() {
+        let program = "fn choose(flag: bool, a: int, b: int): int { if flag { return a } else { return b } }
+print(choose(true, 7, 3))
+print(choose(false, 7, 3))";
+        assert_eq!(evaluate_source(program, "ai").unwrap(), "7\n3\n");
+        assert_eq!(
+            evaluate_source(
+                "funkcia choose(flag: logicke, a: cele, b: cele): cele { ak flag { vrat a } inak { vrat b } }\nvypis(choose(pravda, 7, 3))",
+                "sk",
+            ).unwrap(),
+            "7\n",
+        );
+        assert_eq!(
+            evaluate_source("fn f(flag: bool): bool { return flag }\nprint(f(4))", "ai")
+                .unwrap_err().code,
+            4004,
+        );
+        assert_eq!(
+            evaluate_source("fn f(x: int): bool { return x }\nprint(f(4))", "ai")
+                .unwrap_err().code,
+            4004,
+        );
+        assert_eq!(
+            evaluate_source("fn f(x: int): bool { print(x) }\nprint(f(4))", "ai")
+                .unwrap_err().code,
+            4004,
+        );
+    }
+
     #[test]
     fn named_function_returns_a_value() {
         assert_eq!(
