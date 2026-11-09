@@ -48,7 +48,10 @@ impl Reader<'_> {
             self.at += 1;
             Ok(())
         } else {
-            Err(invalid(format!("Expected JSON byte {ch:?} at offset {}", self.at)))
+            Err(invalid(format!(
+                "Expected JSON byte {ch:?} at offset {}",
+                self.at
+            )))
         }
     }
 
@@ -75,7 +78,9 @@ impl Reader<'_> {
                 }
                 Some(b'\\') => {
                     self.at += 1;
-                    let escaped = self.byte().ok_or_else(|| invalid("Truncated JSON escape"))?;
+                    let escaped = self
+                        .byte()
+                        .ok_or_else(|| invalid("Truncated JSON escape"))?;
                     self.at += 1;
                     let decoded = match escaped {
                         b'"' => '"',
@@ -239,10 +244,14 @@ fn no_other_fields(map: &BTreeMap<String, Json>) -> Result<(), Diagnostic> {
     }
 }
 fn identifier(s: &str) -> Result<(), Diagnostic> {
-    if s.is_empty() || s.len() > 256 || s.chars().any(char::is_whitespace) ||
-        s.chars().any(char::is_control)
+    if s.is_empty()
+        || s.len() > 256
+        || s.chars().any(char::is_whitespace)
+        || s.chars().any(char::is_control)
     {
-        Err(invalid("Invalid empty, overlong or control-containing AST identifier"))
+        Err(invalid(
+            "Invalid empty, overlong or control-containing AST identifier",
+        ))
     } else {
         Ok(())
     }
@@ -259,7 +268,10 @@ fn primitive(value: Json) -> Result<Option<String>, Diagnostic> {
 pub enum AstValue {
     Null,
     Text(String),
-    TypedLet { name: String, type_name: String },
+    TypedLet {
+        name: String,
+        type_name: String,
+    },
     Function {
         name: String,
         parameters: Vec<String>,
@@ -283,13 +295,26 @@ pub struct AstDocument {
 }
 
 fn expression(node: &AstNode) -> bool {
-    matches!(node.kind.as_str(), "number" | "string" | "literal" | "name" |
-        "call" | "unary" | "binary")
+    matches!(
+        node.kind.as_str(),
+        "number" | "string" | "literal" | "name" | "call" | "unary" | "binary"
+    )
 }
 fn statement(node: &AstNode) -> bool {
-    matches!(node.kind.as_str(), "let" | "typed_let" | "assign" | "if" |
-        "while" | "for" | "function" | "return" | "break" |
-        "continue" | "expression_statement")
+    matches!(
+        node.kind.as_str(),
+        "let"
+            | "typed_let"
+            | "assign"
+            | "if"
+            | "while"
+            | "for"
+            | "function"
+            | "return"
+            | "break"
+            | "continue"
+            | "expression_statement"
+    )
 }
 fn all_statements(children: &[AstNode]) -> bool {
     children.iter().all(statement)
@@ -333,7 +358,10 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
             if !matches!(ty.as_str(), "int" | "float" | "str" | "bool") {
                 return Err(invalid("Unknown typed_let primitive annotation"));
             }
-            AstValue::TypedLet { name, type_name: ty }
+            AstValue::TypedLet {
+                name,
+                type_name: ty,
+            }
         }
         "function" => {
             let parts = array(raw_value)?;
@@ -341,17 +369,26 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
                 return Err(invalid("V2 function value requires four fields"));
             }
             let mut parts = parts.into_iter();
-            let name = text(parts.next().ok_or_else(|| invalid("Missing function name"))?)?;
+            let name = text(
+                parts
+                    .next()
+                    .ok_or_else(|| invalid("Missing function name"))?,
+            )?;
             identifier(&name)?;
             let parameters = array(parts.next().ok_or_else(|| invalid("Missing parameters"))?)?
                 .into_iter()
                 .map(text)
                 .collect::<Result<Vec<_>, _>>()?;
-            let types = array(parts.next().ok_or_else(|| invalid("Missing parameter types"))?)?
-                .into_iter()
-                .map(primitive)
-                .collect::<Result<Vec<_>, _>>()?;
-            let return_type = primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
+            let types = array(
+                parts
+                    .next()
+                    .ok_or_else(|| invalid("Missing parameter types"))?,
+            )?
+            .into_iter()
+            .map(primitive)
+            .collect::<Result<Vec<_>, _>>()?;
+            let return_type =
+                primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
             if parameters.len() != types.len() || parameters.len() > 256 {
                 return Err(invalid("Function parameter names and type counts differ"));
             }
@@ -369,16 +406,25 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
                 return_type,
             }
         }
-        "let" | "assign" | "for" | "number" | "string" | "literal" | "name"
-        | "unary" | "binary" => {
+        "let" | "assign" | "for" | "number" | "string" | "literal" | "name" | "unary"
+        | "binary" => {
             let value = text(raw_value)?;
             if matches!(kind.as_str(), "let" | "assign" | "for" | "name") {
                 identifier(&value)?;
             }
             AstValue::Text(value)
         }
-        "module" | "block" | "branch" | "else" | "if" | "while" | "return"
-        | "break" | "continue" | "expression_statement" | "call" => {
+        "module"
+        | "block"
+        | "branch"
+        | "else"
+        | "if"
+        | "while"
+        | "return"
+        | "break"
+        | "continue"
+        | "expression_statement"
+        | "call" => {
             if raw_value != Json::Null {
                 return Err(invalid("AST node requires null value"));
             }
@@ -389,18 +435,20 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
 
     let good = match kind.as_str() {
         "module" | "block" | "else" | "function" => all_statements(&children),
-        "branch" | "while" => children.len() == 2 && expr_at(&children, 0) && block_at(&children, 1),
+        "branch" | "while" => {
+            children.len() == 2 && expr_at(&children, 0) && block_at(&children, 1)
+        }
         "for" => children.len() == 2 && expr_at(&children, 0) && block_at(&children, 1),
         "if" => {
             !children.is_empty()
                 && children.first().is_some_and(|x| x.kind == "branch")
                 && children.iter().enumerate().all(|(i, child)| {
-                    child.kind == "branch" ||
-                        (i == children.len() - 1 && child.kind == "else")
+                    child.kind == "branch" || (i == children.len() - 1 && child.kind == "else")
                 })
         }
-        "let" | "typed_let" | "assign" | "return" | "expression_statement" =>
-            children.len() == 1 && expr_at(&children, 0),
+        "let" | "typed_let" | "assign" | "return" | "expression_statement" => {
+            children.len() == 1 && expr_at(&children, 0)
+        }
         "break" | "continue" | "number" | "string" | "literal" | "name" => children.is_empty(),
         "unary" => children.len() == 1 && expr_at(&children, 0),
         "binary" => children.len() == 2 && expr_at(&children, 0) && expr_at(&children, 1),
@@ -408,27 +456,29 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
         _ => false,
     };
     if !good {
-        return Err(invalid(format!("Invalid child structure for AST node {kind:?}")));
+        return Err(invalid(format!(
+            "Invalid child structure for AST node {kind:?}"
+        )));
     }
-    if kind == "literal" &&
-        !matches!(&data, AstValue::Text(x) if matches!(x.as_str(), "True" | "False" | "None"))
+    if kind == "literal"
+        && !matches!(&data, AstValue::Text(x) if matches!(x.as_str(), "True" | "False" | "None"))
     {
         return Err(invalid("Unsupported literal value"));
     }
-    if kind == "unary" &&
-        !matches!(&data, AstValue::Text(x) if matches!(x.as_str(), "+" | "-" | "not"))
+    if kind == "unary"
+        && !matches!(&data, AstValue::Text(x) if matches!(x.as_str(), "+" | "-" | "not"))
     {
         return Err(invalid("Unknown unary operator"));
     }
-    if kind == "binary" &&
-        !matches!(&data, AstValue::Text(x) if matches!(x.as_str(),
+    if kind == "binary"
+        && !matches!(&data, AstValue::Text(x) if matches!(x.as_str(),
             "+" | "-" | "*" | "/" | "//" | "%" | "**" | "==" | "!=" |
             "<" | ">" | "<=" | ">=" | "and" | "or"))
     {
         return Err(invalid("Unknown binary operator"));
     }
-    if kind == "number" &&
-        !matches!(&data, AstValue::Text(x) if !x.is_empty() &&
+    if kind == "number"
+        && !matches!(&data, AstValue::Text(x) if !x.is_empty() &&
             x.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.')))
     {
         return Err(invalid("Malformed number token in AST"));
@@ -487,30 +537,57 @@ fn quote(value: &str) -> String {
 }
 
 fn serialize(node: &AstNode) -> String {
-    let children = node.children.iter().map(serialize).collect::<Vec<_>>().join(",");
+    let children = node
+        .children
+        .iter()
+        .map(serialize)
+        .collect::<Vec<_>>()
+        .join(",");
     let value = match &node.value {
         AstValue::Null => String::from("null"),
         AstValue::Text(s) => quote(s),
-        AstValue::TypedLet { name, type_name } =>
-            format!("[{},{}]", quote(name), quote(type_name)),
-        AstValue::Function { name, parameters, parameter_types, return_type } => {
-            let names = parameters.iter().map(|x| quote(x)).collect::<Vec<_>>().join(",");
-            let types = parameter_types.iter().map(|ty| {
-                ty.as_ref().map_or_else(|| String::from("null"), |x| quote(x))
-            }).collect::<Vec<_>>().join(",");
-            let ret = return_type.as_ref().map_or_else(|| String::from("null"), |x| quote(x));
+        AstValue::TypedLet { name, type_name } => format!("[{},{}]", quote(name), quote(type_name)),
+        AstValue::Function {
+            name,
+            parameters,
+            parameter_types,
+            return_type,
+        } => {
+            let names = parameters
+                .iter()
+                .map(|x| quote(x))
+                .collect::<Vec<_>>()
+                .join(",");
+            let types = parameter_types
+                .iter()
+                .map(|ty| {
+                    ty.as_ref()
+                        .map_or_else(|| String::from("null"), |x| quote(x))
+                })
+                .collect::<Vec<_>>()
+                .join(",");
+            let ret = return_type
+                .as_ref()
+                .map_or_else(|| String::from("null"), |x| quote(x));
             format!("[{},[{}],[{}],{}]", quote(name), names, types, ret)
         }
     };
-    format!(r#"{{"children":[{}],"kind":{},"line":{},"value":{}}}"#,
-        children, quote(&node.kind), node.line, value)
+    format!(
+        r#"{{"children":[{}],"kind":{},"line":{},"value":{}}}"#,
+        children,
+        quote(&node.kind),
+        node.line,
+        value
+    )
 }
 
 /// Structural JSON round-trip, not a source/semantic round-trip.
 pub fn normalize_ast_json_v2(source: &str) -> Result<String, Diagnostic> {
     let parsed = import_ast_json_v2(source)?;
-    Ok(format!(r#"{{"ast":{},"schema":"nobody.ast.v2"}}"#,
-        serialize(&parsed.root)))
+    Ok(format!(
+        r#"{{"ast":{},"schema":"nobody.ast.v2"}}"#,
+        serialize(&parsed.root)
+    ))
 }
 
 #[cfg(test)]
@@ -522,18 +599,26 @@ mod tests {
     fn preserves_typed_signatures_from_exporter() {
         for (profile, source) in [
             ("ai", "fn same(flag: bool, n: int): bool { return flag }"),
-            ("sk", "funkcia same(flag: logicke, n: cele): logicke { vrat flag }"),
-            ("en", "function same(flag: bool, n: int): bool { return flag }"),
+            (
+                "sk",
+                "funkcia same(flag: logicke, n: cele): logicke { vrat flag }",
+            ),
+            (
+                "en",
+                "function same(flag: bool, n: int): bool { return flag }",
+            ),
         ] {
             let exported = export_ast_json_v2(source, profile).unwrap();
             let imported = import_ast_json_v2(&exported).unwrap();
             assert_eq!(imported.root.children.len(), 1);
             assert!(imported.node_count > 3);
             assert_eq!(normalize_ast_json_v2(&exported).unwrap(), exported);
-            assert!(matches!(&imported.root.children[0].value, AstValue::Function {
+            assert!(
+                matches!(&imported.root.children[0].value, AstValue::Function {
                 parameter_types, return_type, ..
             } if parameter_types == &vec![Some("bool".into()), Some("int".into())]
-                && return_type.as_deref() == Some("bool")));
+                && return_type.as_deref() == Some("bool"))
+            );
         }
     }
 
