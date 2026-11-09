@@ -1,14 +1,14 @@
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, compile_bytecode_source, evaluate_source, execute_bytecode_source,
-    export_ast_json, lower_source, migrate_legacy_ai, parse, parse_validated, same_ir, scan,
+    export_ast_json, export_ast_json_v2, lower_source, migrate_legacy_ai, parse, parse_validated, same_ir, scan,
     translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -20,7 +20,7 @@ fn main() {
         }
         Some("compile-bytecode" | "compile-native") if arguments.len() == 5 => true,
         Some(
-            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode"
+            "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2" | "bytecode"
             | "native-asm" | "run-bytecode",
         ) if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
@@ -255,8 +255,9 @@ fn main() {
         }
         return;
     }
-    if command == "ast-json" {
-        match export_ast_json(&source, &arguments[2]) {
+    if command == "ast-json" || command == "ast-json-v2" {
+        let export = if command == "ast-json-v2" { export_ast_json_v2 } else { export_ast_json };
+        match export(&source, &arguments[2]) {
             Ok(json) => println!("{json}"),
             Err(error) => {
                 eprintln!("{error}");
