@@ -410,8 +410,14 @@ fn native_boolean_parameters_work_in_real_elf_for_all_three_profiles() {
 fn native_boolean_parameters_can_drive_loops_and_shadow_locals() {
     for (fixture, expected) in [
         ("native_bool_params_nested_ai.nbd", b"9\n0\n".as_slice()),
-        ("native_bool_params_shadow_ai.nbd", b"11\ntrue\nfalse\n".as_slice()),
-        ("native_bool_params_chain_ai.nbd", b"true\nfalse\nfalse\ntrue\n".as_slice()),
+        (
+            "native_bool_params_shadow_ai.nbd",
+            b"11\ntrue\nfalse\n".as_slice(),
+        ),
+        (
+            "native_bool_params_chain_ai.nbd",
+            b"true\nfalse\nfalse\ntrue\n".as_slice(),
+        ),
     ] {
         let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let temporary = temporary();
@@ -443,7 +449,10 @@ fn bool_parameter_type_errors_do_not_create_native_binary() {
         let temporary = temporary();
         let binary = temporary.join("should-not-exist");
         let compiled = compile("ai", Path::new(&source), &binary);
-        assert!(!compiled.status.success(), "{fixture} compiled despite type mismatch");
+        assert!(
+            !compiled.status.success(),
+            "{fixture} compiled despite type mismatch"
+        );
         assert!(
             String::from_utf8_lossy(&compiled.stderr).contains("N4004"),
             "{fixture}: {}",
