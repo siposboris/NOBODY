@@ -282,7 +282,9 @@ fn infer_native_parameters(
         ));
     }
     if parameters.len() != annotations.len() {
-        return Err(unsupported("Parameter annotation count does not match function parameters"));
+        return Err(unsupported(
+            "Parameter annotation count does not match function parameters",
+        ));
     }
     let mut annotated = [None; 32];
     for (index, ty) in annotations.iter().enumerate() {
@@ -1129,7 +1131,11 @@ print(choose(false, 3, 9))";
             "fn f(n: float): int { return 4 }\nprint(f(3))",
             "fn f(n: bool): bool { return n + 1 }\nprint(f(true))",
         ] {
-            assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
         }
     }
 
