@@ -190,6 +190,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn typed_function_signatures_never_silently_disappear_from_ast_v1() {
+        let source = "fn choose(flag: bool): bool { return flag }";
+        assert_eq!(export_ast_json(source, "ai").unwrap_err().code, 4004);
+        let nested = "if true { fn choose(flag: bool): bool { return flag } }";
+        assert_eq!(export_ast_json(nested, "ai").unwrap_err().code, 4004);
+        let old = export_ast_json("fn choose(flag) { return flag }", "ai").unwrap();
+        assert!(old.contains("\"function\""));
+    }
+
+    #[test]
     fn emits_exact_sorted_python_reference_shape() {
         let output = export_ast_json("nech n = 3", "sk").unwrap();
         assert_eq!(
