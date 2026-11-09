@@ -1,0 +1,2 @@
+fn echo(value: str): str { return value }
+print(echo("ahoj"))
