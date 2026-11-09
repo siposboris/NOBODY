@@ -181,21 +181,36 @@ fn compiled_file_runs_after_source_is_removed_and_cannot_be_overwritten() {
     let src = source.to_str().unwrap();
     let dst = binary.to_str().unwrap();
     let compile = launch(&["compile-bytecode", "ai", src, dst]);
-    assert!(compile.status.success(), "{}", String::from_utf8_lossy(&compile.stderr));
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
     let original = std::fs::read(&binary).unwrap();
     assert!(original.starts_with(b"NOBBC001"));
 
     std::fs::remove_file(&source).unwrap();
     let verify = launch(&["verify-bytecode", dst]);
-    assert!(verify.status.success(), "{}", String::from_utf8_lossy(&verify.stderr));
+    assert!(
+        verify.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verify.stderr)
+    );
     let run = launch(&["run-compiled", dst]);
-    assert!(run.status.success(), "{}", String::from_utf8_lossy(&run.stderr));
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
     assert_eq!(run.stdout, b"13\n6\n");
 
     let duplicate = temp.join("second-source.nbd");
     std::fs::write(&duplicate, "print(100)").unwrap();
     let overwrite = launch(&["compile-bytecode", "ai", duplicate.to_str().unwrap(), dst]);
-    assert!(!overwrite.status.success(), "existing binaries must not be overwritten");
+    assert!(
+        !overwrite.status.success(),
+        "existing binaries must not be overwritten"
+    );
     assert_eq!(std::fs::read(&binary).unwrap(), original);
 
     std::fs::remove_dir_all(&temp).unwrap();
@@ -213,7 +228,11 @@ fn compiled_artifacts_are_identical_across_language_profiles() {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let output = temp.join(format!("{lang}.nbc"));
         let result = launch(&["compile-bytecode", lang, &input, output.to_str().unwrap()]);
-        assert!(result.status.success(), "{lang}: {}", String::from_utf8_lossy(&result.stderr));
+        assert!(
+            result.status.success(),
+            "{lang}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
         results.push(std::fs::read(output).unwrap());
     }
     assert_eq!(results[0], results[1]);
@@ -224,9 +243,17 @@ fn compiled_artifacts_are_identical_across_language_profiles() {
 #[test]
 fn damaged_binary_is_rejected_by_both_verify_and_run_commands() {
     let temp = temporary_bytecode_directory();
-    let input = format!("{}/examples/bytecode_for_en.nbd", env!("CARGO_MANIFEST_DIR"));
+    let input = format!(
+        "{}/examples/bytecode_for_en.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let destination = temp.join("valid.nbc");
-    let output = launch(&["compile-bytecode", "en", &input, destination.to_str().unwrap()]);
+    let output = launch(&[
+        "compile-bytecode",
+        "en",
+        &input,
+        destination.to_str().unwrap(),
+    ]);
     assert!(output.status.success());
     let mut bytes = std::fs::read(&destination).unwrap();
     bytes[24] ^= 0x40; // corrupt an opcode without updating checksum
