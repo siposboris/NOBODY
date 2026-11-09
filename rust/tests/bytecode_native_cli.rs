@@ -130,9 +130,16 @@ fn zero_range_step_fails_with_n4006_not_a_hang() {
 
 #[test]
 fn functions_compile_to_separate_bytecode_units() {
-    let file = format!("{}/examples/bytecode_functions_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let file = format!(
+        "{}/examples/bytecode_functions_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let output = launch(&["bytecode", "ai", &file]);
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let instructions = String::from_utf8(output.stdout).unwrap();
     assert!(instructions.contains("CompiledFunction"));
     assert!(instructions.contains("Call {"));
