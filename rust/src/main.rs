@@ -1,19 +1,20 @@
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, compile_bytecode_source, evaluate_source, execute_bytecode_source,
-    export_ast_json, export_ast_json_v2, lower_source, migrate_legacy_ai, parse, parse_validated,
+    export_ast_json, export_ast_json_v2, import_ast_json_v2, normalize_ast_json_v2,
+    lower_source, migrate_legacy_ai, parse, parse_validated,
     same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
-        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled")
+        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled" | "verify-ast-json-v2" | "normalize-ast-json-v2")
             if arguments.len() == 3 =>
         {
             true
@@ -137,6 +138,39 @@ fn main() {
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "verify-ast-json-v2" || command == "normalize-ast-json-v2" {
+        let path = &arguments[2];
+        let file = fs::File::open(path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot open AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        let mut input = String::new();
+        file.take(1_048_577).read_to_string(&mut input).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read UTF-8 AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        if command == "verify-ast-json-v2" {
+            match import_ast_json_v2(&input) {
+                Ok(doc) => println!(
+                    "Validated nobody.ast.v2: {} nodes (structural only; not executed).",
+                    doc.node_count
+                ),
+                Err(error) => {
+                    eprintln!("{error}");
+                    process::exit(1);
+                }
+            }
+        } else {
+            match normalize_ast_json_v2(&input) {
+                Ok(output) => println!("{output}"),
+                Err(error) => {
+                    eprintln!("{error}");
+                    process::exit(1);
+                }
             }
         }
         return;
