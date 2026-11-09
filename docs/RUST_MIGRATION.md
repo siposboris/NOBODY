@@ -11,9 +11,9 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
-## Typed AST JSON V2 export (2026-11-09; pending CI verification)
+## Typed AST JSON V2 export (2026-11-09; verified)
 
-The Rust-only `ast-json-v2` command adds an opt-in `nobody.ast.v2` export schema. Function nodes encode four positional fields: `[name, parameter_names, parameter_types, return_type]`. Types are canonicalized across human syntax profiles; `null` preserves missing annotations rather than implying an inferred type. The V1 command remains byte-for-byte compatible and still refuses typed signatures. The new token-aligned location walker consumes type annotations so multiline sources can preserve real line positions. This **does not** implement JSON import, AST schema validation, source re-emission, a stable interchange format, or full Python parity. Only mark verified after CI passes.
+The Rust-only `ast-json-v2` command adds an opt-in `nobody.ast.v2` export schema. Function nodes encode four positional fields: `[name, parameter_names, parameter_types, return_type]`. Types are canonicalized across human syntax profiles; `null` preserves missing annotations rather than implying an inferred type. The V1 command remains byte-for-byte compatible and still refuses typed signatures. The new token-aligned location walker consumes type annotations so multiline sources can preserve real line positions. This **does not** implement JSON import, AST schema validation, source re-emission, a stable interchange format, or full Python parity. All four GitHub workflows passed, including [Rust CI #42668682647](https://github.com/siposboris/NOBODY/actions/runs/42668682647) with integration tests for `ai`, `sk`, `en` and v1 compatibility. Merged status is tracked separately.
 
 ## Typed independent bytecode VM and .nbc v2 files (2026-11-09; verified)
 
