@@ -4,6 +4,17 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## First real native Linux x86-64 backend (experimental)
+
+The Rust CLI now supports **real machine-code compilation** for a small signed-i64 Nobody subset, separate from the bytecode VM:
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-native sk rust/examples/native_flow_sk.nbd my-program
+./my-program
+```
+
+The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while/break/continue and one-integer print. Unsupported features (including functions, for-range, text and full i128) fail closed. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+
 ## Experimental portable `.nbc` files
 
 The native Rust CLI now supports an explicit compiled-artifact workflow:
