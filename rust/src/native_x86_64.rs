@@ -425,8 +425,11 @@ impl NativeCompiler {
                 if self.functions.contains_key(name) || self.lookup(name).is_some() {
                     return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
                 }
-                if parameters.len() > MAX_SLOTS {
-                    return Err(issue(4005, "Too many native function parameters"));
+                if self.functions.len() >= 32 {
+                    return Err(issue(4005, "The native backend supports at most 32 functions"));
+                }
+                if parameters.len() > 32 {
+                    return Err(issue(4005, "Native functions support at most 32 integer parameters"));
                 }
                 if !Self::definitely_returns(body) {
                     return Err(unsupported("Native functions must return an integer on every possible path; implicit null is unsupported"));
@@ -744,7 +747,7 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("fn f(x) { return x }", "ai")
+            compile_to_assembly("fn f(x) { print(x) }", "ai")
                 .unwrap_err()
                 .code,
             4004
@@ -788,6 +791,50 @@ mod tests {
                 .code,
             4004
         );
+    }
+
+    #[test]
+    fn native_function_assembly_uses_independent_frames() {
+        let source = "fn twice(x) { return x * 2 }
+fn combine(a, b) { return twice(a) + b }
+print(combine(4, 3))";
+        let assembly = compile_to_assembly(source, "ai").unwrap();
+        assert!(assembly.contains("    push rbp"));
+        assert!(assembly.contains("    mov rbp, rsp"));
+        assert!(assembly.contains("    leave"));
+        assert!(assembly.contains("    ret"));
+        assert!(assembly.contains("    call .L"));
+        assert!(assembly.contains("QWORD PTR [rbp+"));
+        assert!(!assembly.contains("combine("));
+        assert!(!assembly.contains("twice("));
+    }
+
+    #[test]
+    fn native_function_rejects_forward_calls_and_incomplete_returns() {
+        let forward = "fn a(x) { return b(x) }\nfn b(x) { return x }\nprint(a(4))";
+        assert_eq!(compile_to_assembly(forward, "ai").unwrap_err().code, 4001);
+        let recursion = "fn recurse(x) { return recurse(x) }\nprint(recurse(2))";
+        assert_eq!(compile_to_assembly(recursion, "ai").unwrap_err().code, 4001);
+        let implicit_null = "fn only_print(x) { print(x) }\nonly_print(2)";
+        assert_eq!(compile_to_assembly(implicit_null, "ai").unwrap_err().code, 4004);
+        let missing_path = "fn missing(x) { if x > 0 { return x } }\nprint(missing(2))";
+        assert_eq!(compile_to_assembly(missing_path, "ai").unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn native_function_checks_argument_types_and_local_boundaries() {
+        let wrong_arity = "fn twice(x) { return x * 2 }\nprint(twice(1, 2))";
+        assert_eq!(compile_to_assembly(wrong_arity, "ai").unwrap_err().code, 4007);
+        let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
+        assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
+        let bool_return = "fn bigger(a, b) { return a > b }\nprint(bigger(4, 2))";
+        assert_eq!(compile_to_assembly(bool_return, "ai").unwrap_err().code, 4004);
+        let global = "let global_value = 10\nfn f() { return global_value }\nprint(f())";
+        assert_eq!(compile_to_assembly(global, "ai").unwrap_err().code, 4001);
+        let nested = "fn outer(x) { fn inner(y) { return y } return x }";
+        assert_eq!(compile_to_assembly(nested, "ai").unwrap_err().code, 4004);
+        let shadow = "fn f(x) { return x }\nlet f = 2\nprint(f(2))";
+        assert_eq!(compile_to_assembly(shadow, "ai").unwrap_err().code, 4004);
     }
 
     #[test]
