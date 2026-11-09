@@ -783,7 +783,9 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("print(true, false)", "ai").unwrap_err().code,
+            compile_to_assembly("print(true, false)", "ai")
+                .unwrap_err()
+                .code,
             4004
         );
         assert_eq!(
@@ -888,7 +890,8 @@ print(combine(4, 3))";
         );
         let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
         assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
-        let mixed_return = "fn bigger(a, b) { if a > b { return true } else { return a } }\nprint(bigger(4, 2))";
+        let mixed_return =
+            "fn bigger(a, b) { if a > b { return true } else { return a } }\nprint(bigger(4, 2))";
         assert_eq!(
             compile_to_assembly(mixed_return, "ai").unwrap_err().code,
             4004
