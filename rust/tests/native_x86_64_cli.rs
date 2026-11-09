@@ -346,7 +346,11 @@ fn native_short_circuit_skips_boolean_function_side_effects() {
     let temp = temporary();
     let binary = temp.join("side-effects");
     let compiled = compile("ai", Path::new(&source), &binary);
-    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
     let native = Command::new(&binary).output().unwrap();
     assert!(native.status.success());
     assert_eq!(native.stdout, b"false\ntrue\n11\ntrue\n");
