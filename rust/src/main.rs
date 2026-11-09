@@ -13,7 +13,11 @@ fn usage() {
 fn main() {
     let arguments: Vec<String> = env::args().collect();
     let valid = match arguments.get(1).map(String::as_str) {
-        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled") if arguments.len() == 3 => true,
+        Some("lex" | "check" | "direction" | "verify-bytecode" | "run-compiled")
+            if arguments.len() == 3 =>
+        {
+            true
+        }
         Some("compile-bytecode") if arguments.len() == 5 => true,
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "bytecode"
@@ -171,10 +175,17 @@ fn main() {
         if let Err(error) = file.write_all(&bytes).and_then(|()| file.sync_all()) {
             drop(file);
             let _ = fs::remove_file(destination);
-            eprintln!("N9001: Cannot finish writing bytecode {:?}: {error}", destination);
+            eprintln!(
+                "N9001: Cannot finish writing bytecode {:?}: {error}",
+                destination
+            );
             process::exit(1);
         }
-        println!("Wrote {} bytes of experimental bytecode to {}", bytes.len(), destination);
+        println!(
+            "Wrote {} bytes of experimental bytecode to {}",
+            bytes.len(),
+            destination
+        );
         return;
     }
     let filename = arguments.last().expect("validated CLI args");
