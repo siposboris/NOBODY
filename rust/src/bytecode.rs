@@ -429,7 +429,14 @@ impl Compiler {
                 }
                 Ok(())
             }
-            IrStatement::Function { name, parameters, body } => {
+            IrStatement::Function {
+                name, parameters, parameter_types, return_type, body,
+            } => {
+                // Typed signatures cannot be serialized or enforced by the
+                // experimental VM yet. Reject rather than silently dropping them.
+                if parameter_types.iter().any(Option::is_some) || return_type.is_some() {
+                    return Err(unsupported("Explicit function signatures require typed bytecode runtime guards; use the Rust evaluator or native x86-64 subset for now"));
+                }
                 if self.in_function || self.scopes.len() != 1 {
                     return Err(unsupported("Nested bytecode functions and closures are not supported"));
                 }
