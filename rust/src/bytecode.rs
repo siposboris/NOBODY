@@ -36,8 +36,17 @@ pub enum Instruction {
     JumpIfFalse(usize),
     // A signed range keeps current/stop/step in compiler-owned slots.
     // Check verifies a nonzero step; Advance exits on i128 overflow.
-    RangeCheck { current: usize, stop: usize, step: usize, exit: usize },
-    RangeAdvance { current: usize, step: usize, exit: usize },
+    RangeCheck {
+        current: usize,
+        stop: usize,
+        step: usize,
+        exit: usize,
+    },
+    RangeAdvance {
+        current: usize,
+        step: usize,
+        exit: usize,
+    },
     Drop,
     Print(usize),
     Halt,
@@ -457,7 +466,9 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
             Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }
                 if *exit >= program.code.len() =>
             {
-                return Err(unsupported("Bytecode range jump destination is outside the program"));
+                return Err(unsupported(
+                    "Bytecode range jump destination is outside the program",
+                ));
             }
             _ => {}
         }
@@ -547,7 +558,12 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
             Instruction::Jump(target) => successors.push(*target),
-            Instruction::RangeCheck { current, stop, step, exit } => {
+            Instruction::RangeCheck {
+                current,
+                stop,
+                step,
+                exit,
+            } => {
                 for slot in [current, stop, step] {
                     if !state.initialized.get(*slot).copied().unwrap_or(false) {
                         return Err(unsupported("Range check references an uninitialized slot"));
@@ -555,10 +571,16 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                 }
                 successors.push(*exit);
             }
-            Instruction::RangeAdvance { current, step, exit } => {
+            Instruction::RangeAdvance {
+                current,
+                step,
+                exit,
+            } => {
                 for slot in [current, step] {
                     if !state.initialized.get(*slot).copied().unwrap_or(false) {
-                        return Err(unsupported("Range advance references an uninitialized slot"));
+                        return Err(unsupported(
+                            "Range advance references an uninitialized slot",
+                        ));
                     }
                 }
                 successors.push(*exit);
@@ -726,7 +748,12 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 };
                 stack.push(Value::Bool(value));
             }
-            Instruction::RangeCheck { current, stop, step, exit } => {
+            Instruction::RangeCheck {
+                current,
+                stop,
+                step,
+                exit,
+            } => {
                 let (Some(Value::Int(current)), Some(Value::Int(stop)), Some(Value::Int(step))) =
                     (&variables[*current], &variables[*stop], &variables[*step])
                 else {
@@ -735,13 +762,21 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 if *step == 0 {
                     return Err(diagnostic(4006, "range step cannot be zero"));
                 }
-                let in_range = if *step > 0 { current < stop } else { current > stop };
+                let in_range = if *step > 0 {
+                    current < stop
+                } else {
+                    current > stop
+                };
                 if !in_range {
                     pc = *exit;
                     continue;
                 }
             }
-            Instruction::RangeAdvance { current, step, exit } => {
+            Instruction::RangeAdvance {
+                current,
+                step,
+                exit,
+            } => {
                 let (Some(Value::Int(value)), Some(Value::Int(step))) =
                     (&variables[*current], &variables[*step])
                 else {
@@ -854,7 +889,10 @@ mod tests {
             ("en", include_str!("../examples/bytecode_for_en.nbd")),
             ("ai", include_str!("../examples/bytecode_for_nested_ai.nbd")),
             ("ai", include_str!("../examples/bytecode_for_shadow_ai.nbd")),
-            ("ai", include_str!("../examples/bytecode_for_overflow_ai.nbd")),
+            (
+                "ai",
+                include_str!("../examples/bytecode_for_overflow_ai.nbd"),
+            ),
         ] {
             let vm = execute_source(source, profile).unwrap();
             let reference = crate::evaluate_source(source, profile).unwrap();
