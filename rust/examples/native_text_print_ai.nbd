@@ -1,0 +1,6 @@
+print("Hello, Nobody!", 42, true, false)
+print()
+print("Unicode: Život ☸", "line\nnext", -3)
+print("escaped \"quote\"", "data: .global not_code")
+let n = 4
+for i in range(2) { print("step", i, n + i) }
