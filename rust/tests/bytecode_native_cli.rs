@@ -282,7 +282,8 @@ fn typed_v2_compiled_files_run_without_sources_and_match_across_profiles() {
         std::fs::write(
             &source,
             std::fs::read(format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"))).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         let result_file = temp.join(format!("{lang}.nbc"));
         let compile = launch(&[
             "compile-bytecode",
@@ -290,7 +291,11 @@ fn typed_v2_compiled_files_run_without_sources_and_match_across_profiles() {
             source.to_str().unwrap(),
             result_file.to_str().unwrap(),
         ]);
-        assert!(compile.status.success(), "{lang}: {}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "{lang}: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let bytes = std::fs::read(&result_file).unwrap();
         assert_eq!(&bytes[8..10], &2u16.to_le_bytes());
         binaries.push(bytes);
@@ -298,7 +303,11 @@ fn typed_v2_compiled_files_run_without_sources_and_match_across_profiles() {
         let verify = launch(&["verify-bytecode", result_file.to_str().unwrap()]);
         assert!(verify.status.success());
         let output = launch(&["run-compiled", result_file.to_str().unwrap()]);
-        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert_eq!(output.stdout, b"3\n8\nfalse\n5\n");
     }
     assert_eq!(binaries[0], binaries[1]);
@@ -308,13 +317,19 @@ fn typed_v2_compiled_files_run_without_sources_and_match_across_profiles() {
 
 #[test]
 fn typed_bytecode_rejects_incorrect_arguments_and_return_values() {
-    for fixture in ["native_typed_bad_argument_ai.nbd", "native_typed_bad_return_ai.nbd"] {
+    for fixture in [
+        "native_typed_bad_argument_ai.nbd",
+        "native_typed_bad_return_ai.nbd",
+    ] {
         let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let result = launch(&["run-bytecode", "ai", &source]);
         assert!(!result.status.success(), "{fixture}");
         assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
     }
-    let source = format!("{}/examples/eval_typed_string_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let source = format!(
+        "{}/examples/eval_typed_string_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let unsupported = launch(&["run-bytecode", "ai", &source]);
     assert!(!unsupported.status.success());
     assert!(String::from_utf8_lossy(&unsupported.stderr).contains("N4004"));
