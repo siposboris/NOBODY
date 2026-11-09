@@ -22,7 +22,9 @@ fn run(args: &[&str]) -> std::process::Output {
 #[test]
 fn source_and_imported_ast_match_in_three_profiles() {
     for profile in ["ai", "sk", "en"] {
-        let source = fixture(&format!("rust/examples/native_typed_signatures_{profile}.nbd"));
+        let source = fixture(&format!(
+            "rust/examples/native_typed_signatures_{profile}.nbd"
+        ));
         let exported = run(&["ast-json-v2", profile, &source]);
         assert!(
             exported.status.success(),
