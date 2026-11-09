@@ -477,7 +477,11 @@ fn explicit_typed_function_signatures_emit_standalone_elf_in_three_profiles() {
         let temp = temporary();
         let binary = temp.join("typed-signatures");
         let built = compile(language, Path::new(&source), &binary);
-        assert!(built.status.success(), "{fixture}: {}", String::from_utf8_lossy(&built.stderr));
+        assert!(
+            built.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&built.stderr)
+        );
         let elf = Command::new(&binary).output().unwrap();
         assert!(elf.status.success(), "{fixture}: {:?}", elf.status);
         assert_eq!(elf.stdout, b"3\n8\nfalse\n5\n");
@@ -500,8 +504,14 @@ fn native_annotated_signatures_reject_mismatches_without_writing_elf() {
         let temp = temporary();
         let destination = temp.join("must-not-exist");
         let built = compile("ai", Path::new(&source), &destination);
-        assert!(!built.status.success(), "invalid native typed program compiled: {fixture}");
-        assert!(String::from_utf8_lossy(&built.stderr).contains("N4004"), "{fixture}");
+        assert!(
+            !built.status.success(),
+            "invalid native typed program compiled: {fixture}"
+        );
+        assert!(
+            String::from_utf8_lossy(&built.stderr).contains("N4004"),
+            "{fixture}"
+        );
         assert!(!destination.exists());
         std::fs::remove_dir_all(temp).unwrap();
     }
