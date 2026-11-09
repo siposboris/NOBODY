@@ -1,0 +1,2 @@
+fn divisible_by_two(n) { return n % 2 == 0 }
+print(false or true)
