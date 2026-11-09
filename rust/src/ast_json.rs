@@ -134,15 +134,23 @@ fn stmt(statement: &Statement) -> String {
 fn has_typed_function(statements: &[Statement]) -> bool {
     statements.iter().any(|statement| match statement {
         Statement::Function {
-            parameter_types, return_type, body, ..
+            parameter_types,
+            return_type,
+            body,
+            ..
         } => {
             parameter_types.iter().any(Option::is_some)
                 || return_type.is_some()
                 || has_typed_function(body)
         }
-        Statement::If { branches, otherwise } => {
+        Statement::If {
+            branches,
+            otherwise,
+        } => {
             branches.iter().any(|(_, body)| has_typed_function(body))
-                || otherwise.as_ref().is_some_and(|body| has_typed_function(body))
+                || otherwise
+                    .as_ref()
+                    .is_some_and(|body| has_typed_function(body))
         }
         Statement::While { body, .. } | Statement::For { body, .. } => has_typed_function(body),
         _ => false,
@@ -156,7 +164,7 @@ pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic
     let program = parse_validated(source, profile)?;
     if has_typed_function(&program.statements) {
         return Err(unsupported(
-            "AST JSON v1 has no typed function signature fields; refusing to discard annotations"
+            "AST JSON v1 has no typed function signature fields; refusing to discard annotations",
         ));
     }
     let tree = bare("module", program.statements.iter().map(stmt).collect());
