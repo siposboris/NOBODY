@@ -11,6 +11,12 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Explicit localized function signatures in Rust source and IR (2026-11-09; pending CI)
+
+The Rust parser now accepts optional primitive annotations in function signatures (`fn f(flag: bool, n: int): bool`) and normalizes localized primitive keywords (e.g. Slovak `logicke`, `cele`) into canonical fields on every Rust IR function node. The Rust evaluator enforces declared parameter/return types at runtime. The standalone native x86-64 compiler honors `int` and `bool` annotations and rejects conflicting inferred constraints or mismatched call/return types. The existing untyped function syntax remains valid.
+
+**Deliberately partial:** no stable new AST JSON schema or typed bytecode runtime yet. These output modes reject annotated functions rather than lose their metadata, and native compilation currently rejects `float` or `str` function signatures. The partial Rust static checker does not guarantee global type soundness; Python legacy comparison and future self-hosting remain separate work.
+
 ## Native x86-64 boolean parameter inference (2026-11-09; verified)
 
 The standalone Linux x86-64 machine-code backend now infers fixed i64/bool parameter signatures from direct typed contexts in previously declared functions. It checks typed call sites, lexical shadowing and contradictory constraints, rejecting unsupported ambiguous boolean signatures rather than silently converting values. Real ELF-vs-Rust evaluator tests run `ai`, `sk` and `en` functions with boolean parameters. This is not a general flow-sensitive type system, polymorphic specialization, a replacement for the Python frontend or self-hosting. This conservative type-inference slice passed all four GitHub checks, including [Rust CI #42654797725](https://github.com/siposboris/NOBODY/actions/runs/42654797725), and merged via [PR #32](https://github.com/siposboris/NOBODY/pull/32).
