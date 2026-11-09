@@ -73,7 +73,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-bool-params
 ```
 
-The ELF still has no Python, libc, Rust or Nobody VM runtime dependency.
+The ELF still has no Python, libc, Rust or Nobody VM runtime dependency. This conservative type-inference slice passed all four GitHub checks, including [Rust CI #42654797725](https://github.com/siposboris/NOBODY/actions/runs/42654797725), and merged via [PR #32](https://github.com/siposboris/NOBODY/pull/32).
 
 ## Architecture and safety limits
 
