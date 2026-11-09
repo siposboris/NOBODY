@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Signed `for range` bytecode VM (experimental)
+
+The independent native VM now supports `for variable in range(stop)`, `range(start, stop)`, and `range(start, stop, step)` for integer arguments with nonzero signed step. Arguments are evaluated once. Nested `for` and `while` loops maintain separate `break` and `continue` targets, loop variables use a lexical scope, zero step gives N4006, and checked i128 overflow terminates iteration without wrapping. Static verification validates slot initialization on range-control edges and jump target bounds. Unsupported iterables still fail explicitly; Python is not part of Rust execution.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode sk rust/examples/bytecode_for_sk.nbd
+```
+
+The bytecode format remains in memory only, incomplete and experimental. This does not provide native machine-code output, arbitrary iterables, function calls, full type coverage or a security sandbox.
+
 ## Bytecode VM control flow (experimental)
 
 The separate Python-free bytecode runtime now handles `if/elif/else`, `while`, `break`, `continue`, comparisons, boolean literals and `not`. Branch bodies have lexically scoped variable slots; shadowing a name inside an `if` does not overwrite the outer declaration. A control-flow verifier checks every reachable edge, rejecting stack-height disagreement, uninitialized slots, invalid jumps and nonempty terminal stacks. Runtime software step budgets also stop empty infinite loops. The compiled VM and the pre-existing Rust AST evaluator are compared on `ai`, Slovak and English programs in CI.
@@ -12,7 +22,7 @@ The separate Python-free bytecode runtime now handles `if/elif/else`, `while`, `
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/bytecode_control_ai.nbd
 ```
 
-These capabilities remain **experimental**. The bytecode is in memory, not yet a stable portable format; `for range`, functions, short-circuit `and/or`, floats, strings, native output and complete self-hosting remain unimplemented. Resource counters do not form a security sandbox.
+These capabilities remain **experimental**. The bytecode is in memory, not yet a stable portable format; arbitrary iterables, functions, short-circuit `and/or`, floats, strings, native output and complete self-hosting remain unimplemented. Resource counters do not form a security sandbox.
 
 ## Phase 4: first independent bytecode compiler + VM (experimental)
 
