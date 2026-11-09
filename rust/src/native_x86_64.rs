@@ -783,7 +783,7 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("print(true)", "ai").unwrap_err().code,
+            compile_to_assembly("print(true, false)", "ai").unwrap_err().code,
             4004
         );
         assert_eq!(
@@ -888,9 +888,9 @@ print(combine(4, 3))";
         );
         let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
         assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
-        let bool_return = "fn bigger(a, b) { return a > b }\nprint(bigger(4, 2))";
+        let mixed_return = "fn bigger(a, b) { if a > b { return true } else { return a } }\nprint(bigger(4, 2))";
         assert_eq!(
-            compile_to_assembly(bool_return, "ai").unwrap_err().code,
+            compile_to_assembly(mixed_return, "ai").unwrap_err().code,
             4004
         );
         let global = "let global_value = 10\nfn f() { return global_value }\nprint(f())";
@@ -899,6 +899,54 @@ print(combine(4, 3))";
         assert_eq!(compile_to_assembly(nested, "ai").unwrap_err().code, 4004);
         let shadow = "fn f(x) { return x }\nlet f = 2\nprint(f(2))";
         assert_eq!(compile_to_assembly(shadow, "ai").unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn boolean_values_short_circuit_without_evaluating_overflowing_rhs() {
+        let source = "print(true)
+print(false)
+print(false and (9223372036854775807 + 1 > 0))
+print(true or (9223372036854775807 + 1 > 0))
+print(true and false)
+print(false or true)";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("nobody_print_bool:"));
+        assert!(asm.contains(".Lnobody_bool_true_text:"));
+        assert!(asm.contains(".Lnobody_bool_false_text:"));
+        assert!(asm.contains("    jz .L"));
+        assert!(asm.contains("    jnz .L"));
+    }
+
+    #[test]
+    fn native_boolean_function_returns_are_typed_and_reusable() {
+        let source = "fn positive(x) { return x > 0 }
+fn greater(a, b) {
+  if a > b { return true } else { return false }
+}
+print(positive(4))
+print(greater(3, 8))
+if positive(2) and greater(9, 2) { print(1) } else { print(0) }";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("    ret"));
+    }
+
+    #[test]
+    fn invalid_logical_operators_and_mixed_returns_fail_closed() {
+        for source in [
+            "print(true and 4)",
+            "print(7 or true)",
+            "print(false or 9)",
+            "fn f(x) { if x > 0 { return true } else { return 2 } }\nprint(f(3))",
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
+        }
     }
 
     #[test]
