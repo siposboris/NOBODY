@@ -22,7 +22,9 @@ fn run(args: &[&str]) -> std::process::Output {
 #[test]
 fn typed_ast_json_emits_source_in_three_profiles() {
     for profile in ["ai", "sk", "en"] {
-        let input = fixture(&format!("rust/examples/native_typed_signatures_{profile}.nbd"));
+        let input = fixture(&format!(
+            "rust/examples/native_typed_signatures_{profile}.nbd"
+        ));
         let exported = run(&["ast-json-v2", profile, &input]);
         assert!(
             exported.status.success(),
