@@ -76,4 +76,18 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- ru
   printf 'VM did not terminate an infinite loop within its instruction budget.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: signed for-range bytecode parity =='
+for lang in ai sk en; do
+  source="rust/examples/bytecode_for_"$lang".nbd"
+  tree_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run "$lang" "$source")
+  vm_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode "$lang" "$source")
+  if [[ "$tree_output" != "$vm_output" || "$vm_output" != "6" ]]; then
+    printf 'For-range VM output mismatch: %s\n' "$source" >&2
+    exit 1
+  fi
+done
+if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- run-bytecode ai rust/examples/bytecode_for_bad_step_ai.nbd; then
+  printf 'Zero-step range was accepted by bytecode VM.\n' >&2
+  exit 1
+fi
 printf '%s\n' 'Nobody Rust verification passed.'
