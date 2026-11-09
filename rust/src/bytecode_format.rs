@@ -6,7 +6,9 @@
 //! EXPERIMENTAL and not promised to remain compatible across releases.
 //! FNV-1a detects accidental corruption; it is NOT a signature or security
 //! boundary. Never execute untrusted files outside an OS sandbox.
-use crate::bytecode::{verify, Bytecode, CompiledFunction, Instruction, ValueType, BYTECODE_VERSION};
+use crate::bytecode::{
+    verify, Bytecode, CompiledFunction, Instruction, ValueType, BYTECODE_VERSION,
+};
 use crate::Diagnostic;
 
 const MAGIC: &[u8; 8] = b"NOBBC001";
@@ -466,25 +468,40 @@ mod tests {
     #[test]
     fn v2_signatures_roundtrip_and_match_three_syntax_profiles() {
         let sources = [
-            ("ai", include_str!("../examples/native_typed_signatures_ai.nbd")),
-            ("sk", include_str!("../examples/native_typed_signatures_sk.nbd")),
-            ("en", include_str!("../examples/native_typed_signatures_en.nbd")),
+            (
+                "ai",
+                include_str!("../examples/native_typed_signatures_ai.nbd"),
+            ),
+            (
+                "sk",
+                include_str!("../examples/native_typed_signatures_sk.nbd"),
+            ),
+            (
+                "en",
+                include_str!("../examples/native_typed_signatures_en.nbd"),
+            ),
         ];
         let mut binaries = Vec::new();
         for (profile, source) in sources {
             let compiled = compile_source(source, profile).unwrap();
-            assert_eq!(compiled.functions[0].parameter_types, vec![
-                Some(ValueType::Bool),
-                Some(ValueType::Int),
-                Some(ValueType::Int)
-            ]);
+            assert_eq!(
+                compiled.functions[0].parameter_types,
+                vec![
+                    Some(ValueType::Bool),
+                    Some(ValueType::Int),
+                    Some(ValueType::Int)
+                ]
+            );
             assert_eq!(compiled.functions[0].return_type, Some(ValueType::Int));
             let bytes = encode(&compiled).unwrap();
             assert_eq!(&bytes[8..10], &WIRE_VERSION.to_le_bytes());
             let restored = decode(&bytes).unwrap();
             assert_eq!(restored, compiled);
             assert_eq!(execute(&restored).unwrap(), "3\n8\nfalse\n5\n");
-            assert_eq!(execute(&restored).unwrap(), crate::evaluate_source(source, profile).unwrap());
+            assert_eq!(
+                execute(&restored).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
             binaries.push(bytes);
         }
         assert_eq!(binaries[0], binaries[1]);
@@ -512,10 +529,14 @@ mod tests {
         let compiled = compile_source(
             "fn identity(flag: bool): bool { return flag }\nprint(identity(true))",
             "ai",
-        ).unwrap();
+        )
+        .unwrap();
         let mut bytes = encode(&compiled).unwrap();
         let split = bytes.len() - 8;
-        let mut reader = Reader { bytes: &bytes[..split], position: 0 };
+        let mut reader = Reader {
+            bytes: &bytes[..split],
+            position: 0,
+        };
         reader.take(8).unwrap();
         reader.u16().unwrap();
         reader.u16().unwrap();
