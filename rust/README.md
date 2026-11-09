@@ -15,9 +15,17 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 
 The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
 
+## Typed AST JSON export (experimental V2)
+
+`ast-json-v2 PROFILE FILE.nbd` exports deterministic `nobody.ast.v2` JSON using the Rust parser alone. A function node's `value` is `[name, [parameter_names], [parameter_types], return_type]`, using canonical `int`/`bool`/`float`/`str` type strings or JSON `null` for an absent annotation. The positional parameter-type array always matches the parameter-name array. Multiline nodes retain source line numbers when the conservative location visitor can map them; unsupported shapes fail closed. The existing `ast-json` V1 command and its untyped format are unchanged. **No V2 JSON import, validation, source re-emission, stable ABI, or complete Rust frontend parity yet.**
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- ast-json-v2 sk rust/examples/native_typed_signatures_sk.nbd
+```
+
 ## Typed functions in bytecode VM and portable `.nbc` v2
 
-The Rust bytecode VM now enforces annotated `int`/`bool` function parameters and returns at runtime. Both source execution and persisted binary execution support this subset, with a deterministic v2 file format and backward-compatible decoding of untyped v1 bytecode. Unsupported `float`/`str` function signatures fail explicitly. `nobody.ast.v1` JSON still rejects typed function signatures rather than losing them.
+The Rust bytecode VM now enforces annotated `int`/`bool` function parameters and returns at runtime. Both source execution and persisted binary execution support this subset, with a deterministic v2 file format and backward-compatible decoding of untyped v1 bytecode. Unsupported `float`/`str` function signatures fail explicitly. `nobody.ast.v1` JSON still rejects typed function signatures rather than losing them; the opt-in Rust `ast-json-v2` command exports these signatures without using Python.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-bytecode sk rust/examples/native_typed_signatures_sk.nbd typed.nbc
@@ -37,7 +45,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-typed
 ```
 
-**Compatibility boundary:** the bytecode VM now supports `int`/`bool` annotated signatures through `.nbc` v2; `nobody.ast.v1` JSON export continues to reject them until its schema is upgraded. Source-level `str`/`float` function signatures are not yet supported by native ELF; the Rust type checker is still partial.
+**Compatibility boundary:** the bytecode VM now supports `int`/`bool` annotated signatures through `.nbc` v2; `nobody.ast.v1` JSON export deliberately rejects them; `nobody.ast.v2` export now preserves them, with JSON import still planned. Source-level `str`/`float` function signatures are not yet supported by native ELF; the Rust type checker is still partial.
 
 ## Native boolean function parameters (conservative subset)
 

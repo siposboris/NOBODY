@@ -282,8 +282,9 @@ impl Cursor<'_> {
             Statement::Function {
                 name,
                 parameters,
+                parameter_types,
+                return_type,
                 body,
-                ..
             } => {
                 let start = self.keyword("def")?;
                 self.exact(name)?;
@@ -293,8 +294,16 @@ impl Cursor<'_> {
                         self.exact(",")?;
                     }
                     self.exact(name)?;
+                    if let Some(ty) = parameter_types.get(index).and_then(Option::as_deref) {
+                        self.exact(":")?;
+                        self.keyword(ty)?;
+                    }
                 }
                 self.exact(")")?;
+                if let Some(ty) = return_type {
+                    self.exact(":")?;
+                    self.keyword(ty)?;
+                }
                 Ok(Lines::new(start.line, self.block_statements(body)?))
             }
             Statement::If {

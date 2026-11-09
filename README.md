@@ -19,8 +19,10 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 - **40 experimental syntax profiles** — 39 human languages plus canonical `ai`. One syntax language per source file.
 - **Rust frontend** — lexer, parser subset, source translation, canonical IR and conservative type checks.
 - **Experimental Rust `run`** — variables, integer arithmetic, `print`, conditions, bounded loops and **basic named functions with parameters and `return`**. Closures, recursion, complete semantics and self-hosting are not ready.
-- **First native Linux x86-64 ELF compiler slice (verified):** `compile-native` turns a restricted signed-i64 Nobody subset directly into standalone ELF64 machine code using GNU `as` and `ld`; **no Python, Rust runtime, libc or Nobody VM inside the output**. Functions, for-range, strings and complete native language coverage are not yet available. [Exact scope](docs/NATIVE_X86_64.md).
+- **First native Linux x86-64 ELF compiler slice (verified):** `compile-native` turns a restricted signed-i64 Nobody subset directly into standalone ELF64 machine code using GNU `as` and `ld`; **no Python, Rust runtime, libc or Nobody VM inside the output**. Named integer/boolean functions and signed for-range loops work in this subset; strings, recursion and full native language coverage are not yet available. [Exact scope](docs/NATIVE_X86_64.md).
 - **Primary CLI is Rust:** run the compiled `nobody` executable without Python for the documented subset. The Python reference remains **test-only** until full parity is proven.
+
+Opt-in Rust `ast-json-v2` export preserves typed function signatures; JSON import remains unfinished. The legacy `ast-json` format is unchanged.
 
 ## Try Nobody
 

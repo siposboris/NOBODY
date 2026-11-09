@@ -14,7 +14,7 @@ pub use bytecode::{
     compile_source as compile_bytecode_source, execute_source as execute_bytecode_source,
 };
 mod ast_json_locations;
-pub use ast_json::export_ast_json;
+pub use ast_json::{export_ast_json, export_ast_json_v2};
 pub mod evaluator;
 pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
 pub mod ir;

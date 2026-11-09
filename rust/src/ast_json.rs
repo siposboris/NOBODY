@@ -2,7 +2,7 @@
 //! Rust parser nodes do not yet carry source spans. For multiline input a
 //! token-aligned visitor recovers real line numbers or rejects unsupported
 //! constructs, rather than fabricating them. No code is executed; JSON
-//! imports are NOT implemented.
+//! imports are NOT implemented. Version 2 preserves typed function signatures.
 use crate::syntax::{Expr, Statement};
 use crate::{parse_validated, Diagnostic};
 
@@ -69,11 +69,16 @@ fn expr(input: &Expr) -> String {
     }
 }
 
-fn block(body: &[Statement]) -> String {
-    bare("block", body.iter().map(stmt).collect())
+fn block(body: &[Statement], version: u8) -> String {
+    bare(
+        "block",
+        body.iter()
+            .map(|statement| stmt(statement, version))
+            .collect(),
+    )
 }
 
-fn stmt(statement: &Statement) -> String {
+fn stmt(statement: &Statement, version: u8) -> String {
     match statement {
         Statement::Let {
             name,
@@ -94,33 +99,72 @@ fn stmt(statement: &Statement) -> String {
         } => {
             let mut children: Vec<_> = branches
                 .iter()
-                .map(|(condition, body)| bare("branch", vec![expr(condition), block(body)]))
+                .map(|(condition, body)| {
+                    bare("branch", vec![expr(condition), block(body, version)])
+                })
                 .collect();
             if let Some(body) = otherwise {
-                children.push(bare("else", body.iter().map(stmt).collect()));
+                children.push(bare(
+                    "else",
+                    body.iter()
+                        .map(|statement| stmt(statement, version))
+                        .collect(),
+                ));
             }
             bare("if", children)
         }
-        Statement::While { condition, body } => bare("while", vec![expr(condition), block(body)]),
+        Statement::While { condition, body } => {
+            bare("while", vec![expr(condition), block(body, version)])
+        }
         Statement::For {
             variable,
             iterable,
             body,
-        } => node("for", quoted(variable), vec![expr(iterable), block(body)]),
+        } => node(
+            "for",
+            quoted(variable),
+            vec![expr(iterable), block(body, version)],
+        ),
         Statement::Function {
             name,
             parameters,
+            parameter_types,
+            return_type,
             body,
-            ..
         } => {
             let params = parameters
                 .iter()
                 .map(|name| quoted(name))
                 .collect::<Vec<_>>();
+            // V2 adds positional types and the return type. Null means
+            // unspecified; the old V1 layout remains byte-for-byte stable.
+            let value = if version == 2 {
+                let types = parameter_types
+                    .iter()
+                    .map(|ty| {
+                        ty.as_ref()
+                            .map_or_else(|| "null".into(), |name| quoted(name))
+                    })
+                    .collect::<Vec<_>>();
+                let result = return_type
+                    .as_ref()
+                    .map_or_else(|| "null".into(), |name| quoted(name));
+                format!(
+                    "[{},[{}],[{}],{}]",
+                    quoted(name),
+                    params.join(","),
+                    types.join(","),
+                    result
+                )
+            } else {
+                format!("[{},[{}]]", quoted(name), params.join(","))
+            };
             node(
                 "function",
-                format!("[{},[{}]]", quoted(name), params.join(",")),
-                body.iter().map(stmt).collect(),
+                value,
+                body.iter()
+                    .map(|statement| stmt(statement, version))
+                    .collect(),
             )
         }
         Statement::Return(value) => bare("return", vec![expr(value)]),
@@ -158,17 +202,39 @@ fn has_typed_function(statements: &[Statement]) -> bool {
 }
 
 /// Export the supported subset to deterministic nobody.ast.v1 JSON.
-/// A token-aligned position map recovers multiline node locations when safe;
-/// otherwise return N4004 rather than reporting fabricated line information.
+/// Typed function signatures deliberately remain unsupported in V1.
 pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic> {
+    export_ast_json_versioned(source, profile, 1)
+}
+
+/// Export nobody.ast.v2: V1 nodes plus lossless primitive function signatures.
+/// This is export-only, not a validated JSON importer or a stable AST ABI.
+pub fn export_ast_json_v2(source: &str, profile: &str) -> Result<String, Diagnostic> {
+    export_ast_json_versioned(source, profile, 2)
+}
+
+/// A token-aligned visitor recovers multiline source positions when possible.
+/// Reject unmappable source shapes rather than inventing location data.
+fn export_ast_json_versioned(
+    source: &str,
+    profile: &str,
+    version: u8,
+) -> Result<String, Diagnostic> {
     let program = parse_validated(source, profile)?;
-    if has_typed_function(&program.statements) {
+    if version == 1 && has_typed_function(&program.statements) {
         return Err(unsupported(
             "AST JSON v1 has no typed function signature fields; refusing to discard annotations",
         ));
     }
-    let tree = bare("module", program.statements.iter().map(stmt).collect());
-    let json = format!(r#"{{"ast":{tree},"schema":"nobody.ast.v1"}}"#);
+    let tree = bare(
+        "module",
+        program
+            .statements
+            .iter()
+            .map(|statement| stmt(statement, version))
+            .collect(),
+    );
+    let json = format!(r#"{{"ast":{tree},"schema":"nobody.ast.v{version}"}}"#);
     if !source.contains('\n') && !source.contains('\r') {
         return Ok(json);
     }
@@ -196,6 +262,34 @@ pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v2_preserves_function_types_and_multiline_lines() {
+        let source =
+            "fn choose(flag: bool, count: int): bool {\n return flag\n}\nprint(choose(true, 2))";
+        let output = export_ast_json_v2(source, "ai").unwrap();
+        assert!(output.contains(r#""schema":"nobody.ast.v2""#));
+        assert!(output.contains(r#""value":["choose",["flag","count"],["bool","int"],"bool"]"#));
+        assert!(output.contains(r#""kind":"return","line":2"#));
+        assert!(output.contains(r#""kind":"expression_statement","line":4"#));
+        let untyped = export_ast_json_v2("fn identity(value) { return value }", "ai").unwrap();
+        assert!(untyped.contains(r#""value":["identity",["value"],[null],null]"#));
+    }
+
+    #[test]
+    fn v2_canonical_type_names_match_across_syntax_profiles() {
+        let ai = export_ast_json_v2("fn identity(flag: bool): bool { return flag }", "ai").unwrap();
+        let sk = export_ast_json_v2(
+            "funkcia identity(flag: logicke): logicke { vrat flag }",
+            "sk",
+        )
+        .unwrap();
+        let en = export_ast_json_v2("function identity(flag: bool): bool { return flag }", "en")
+            .unwrap();
+        assert_eq!(ai, sk);
+        assert_eq!(ai, en);
+        assert!(export_ast_json("fn identity(flag: bool): bool { return flag }", "ai").is_err());
+    }
 
     #[test]
     fn typed_function_signatures_never_silently_disappear_from_ast_v1() {
