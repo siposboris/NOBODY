@@ -1,0 +1,6 @@
+vypis("Ahoj, Nobody!", 42, pravda, nepravda)
+vypis()
+vypis("Unicode: Život ☸", "riadok\nďalší", -3)
+vypis("escaped \"quote\"", "data: .global not_code")
+nech n = 4
+pre i v rozsah(2) { vypis("krok", i, n + i) }
