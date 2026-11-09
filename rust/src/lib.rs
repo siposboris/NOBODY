@@ -10,11 +10,11 @@ pub mod ast_json;
 pub mod ast_json_import;
 pub mod ast_json_lower;
 pub mod ast_source;
-pub use ast_source::{emit_ast_json_v2, emit_program};
 pub use ast_json_import::{
     import_ast_json_v2, normalize_ast_json_v2, AstDocument, AstNode, AstValue,
 };
 pub use ast_json_lower::{lower_ast_json_v2, same_ast_json_v2};
+pub use ast_source::{emit_ast_json_v2, emit_program};
 pub mod bytecode;
 pub mod bytecode_format;
 pub mod native_x86_64;
