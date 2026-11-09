@@ -71,6 +71,8 @@ pub enum IrStatement {
     Function {
         name: String,
         parameters: Vec<String>,
+        parameter_types: Vec<Option<String>>,
+        return_type: Option<String>,
         body: Vec<IrStatement>,
     },
     Return(IrExpr),
@@ -205,6 +207,8 @@ fn lower_block(
                 Statement::Function {
                     name,
                     parameters,
+                    parameter_types,
+                    return_type,
                     body,
                 } => {
                     let mut function_scope = visible.clone();
@@ -213,6 +217,8 @@ fn lower_block(
                     IrStatement::Function {
                         name: name.clone(),
                         parameters: parameters.clone(),
+                        parameter_types: parameter_types.clone(),
+                        return_type: return_type.clone(),
                         body: lower_block(body, language, &function_scope),
                     }
                 }
@@ -344,6 +350,24 @@ mod tests {
     fn invalid_profile_keeps_numbered_error() {
         let err = lower_source("let n = 1", "zz").unwrap_err();
         assert_eq!(err.code, 3007);
+    }
+
+    #[test]
+    fn explicit_function_types_are_language_neutral_in_ir() {
+        let sk = lower_source(
+            "funkcia choose(flag: logicke, a: cele, b: cele): cele { ak flag { vrat a } inak { vrat b } }",
+            "sk",
+        ).unwrap();
+        let ai = lower_source(
+            "fn choose(flag: bool, a: int, b: int): int { if flag { return a } else { return b } }",
+            "ai",
+        ).unwrap();
+        assert_eq!(sk, ai);
+        let IrStatement::Function { parameter_types, return_type, .. } = &sk.statements[0] else {
+            panic!("expected function");
+        };
+        assert_eq!(parameter_types, &[Some("bool".into()), Some("int".into()), Some("int".into())]);
+        assert_eq!(return_type.as_deref(), Some("int"));
     }
 
     #[test]
