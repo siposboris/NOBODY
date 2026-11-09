@@ -225,10 +225,17 @@ impl NativeCompiler {
         for statement in body {
             match statement {
                 IrStatement::Return(_) => return true,
-                IrStatement::If { branches, otherwise: Some(otherwise) }
-                    if !branches.is_empty()
-                        && branches.iter().all(|(_, body)| Self::definitely_returns(body))
-                        && Self::definitely_returns(otherwise) => return true,
+                IrStatement::If {
+                    branches,
+                    otherwise: Some(otherwise),
+                } if !branches.is_empty()
+                    && branches
+                        .iter()
+                        .all(|(_, body)| Self::definitely_returns(body))
+                    && Self::definitely_returns(otherwise) =>
+                {
+                    return true
+                }
                 _ => {}
             }
         }
@@ -816,19 +823,31 @@ print(combine(4, 3))";
         let recursion = "fn recurse(x) { return recurse(x) }\nprint(recurse(2))";
         assert_eq!(compile_to_assembly(recursion, "ai").unwrap_err().code, 4001);
         let implicit_null = "fn only_print(x) { print(x) }\nonly_print(2)";
-        assert_eq!(compile_to_assembly(implicit_null, "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            compile_to_assembly(implicit_null, "ai").unwrap_err().code,
+            4004
+        );
         let missing_path = "fn missing(x) { if x > 0 { return x } }\nprint(missing(2))";
-        assert_eq!(compile_to_assembly(missing_path, "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            compile_to_assembly(missing_path, "ai").unwrap_err().code,
+            4004
+        );
     }
 
     #[test]
     fn native_function_checks_argument_types_and_local_boundaries() {
         let wrong_arity = "fn twice(x) { return x * 2 }\nprint(twice(1, 2))";
-        assert_eq!(compile_to_assembly(wrong_arity, "ai").unwrap_err().code, 4007);
+        assert_eq!(
+            compile_to_assembly(wrong_arity, "ai").unwrap_err().code,
+            4007
+        );
         let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
         assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
         let bool_return = "fn bigger(a, b) { return a > b }\nprint(bigger(4, 2))";
-        assert_eq!(compile_to_assembly(bool_return, "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            compile_to_assembly(bool_return, "ai").unwrap_err().code,
+            4004
+        );
         let global = "let global_value = 10\nfn f() { return global_value }\nprint(f())";
         assert_eq!(compile_to_assembly(global, "ai").unwrap_err().code, 4001);
         let nested = "fn outer(x) { fn inner(y) { return y } return x }";
