@@ -27,10 +27,12 @@ Expected output for the example is `8` and `-42` on separate lines. `compile-nat
 - Exactly one source-language profile per file; lowercased Nobody keywords are normalized by Rust IR first.
 - Signed **64-bit** decimal integer literals, strict boolean literals and lexical variables.
 - Checked `+`, `-`, `*`, unary `+`/`-`, and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Equality of booleans and logical `not` are supported.
-- `let`/localized declaration, assignment with unchanged value type, `if`/`elif`/`else`, `while`, `break`, `continue`.
+- `let`/localized declaration, assignment with unchanged value type, `if`/`elif`/`else`, `while`, `for` over signed `range(...)`, `break`, `continue`.
 - **`print(one integer)`** with decimal output and newline via `write(1, ...)`; signed negatives, zero and `i64::MAX` are tested.
 
-Unsupported features are rejected at compile time: `for/range`, functions, recursive calls, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, `and/or`, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `range(start, stop, step)` use one-time source-order integer argument evaluation. Iterator variables are lexically scoped and shadow same-named outer variables without destroying them; nested `for` and `while` loops have correct `break`/`continue` handling. Zero step exits with process status **6**, while range iterator overflow ends the range without wrapping. The i64-specific range boundary is narrower than the i128 bytecode/evaluator domain; out-of-i64 literals are rejected during compilation. Tests compare actual linked Linux ELF output to the Rust evaluator for `ai`, Slovak and English. 
+
+Unsupported features are rejected at compile time: arbitrary iterables, functions, recursive calls, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, `and/or`, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
 
 ## Architecture and safety limits
 

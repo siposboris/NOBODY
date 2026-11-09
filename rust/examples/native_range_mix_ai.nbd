@@ -1,0 +1,11 @@
+let total = 0
+for i in range(3) {
+  let j = 0
+  while j < 3 {
+    j = j + 1
+    if j == 2 { continue }
+    if i == 2 { break }
+    total = total + i + j
+  }
+}
+print(total)

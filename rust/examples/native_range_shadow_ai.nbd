@@ -1,0 +1,7 @@
+let n = 99
+let limit = 3
+for n in range(limit) {
+  limit = 1
+  print(n)
+}
+print(n)
