@@ -22,7 +22,7 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 - **First native Linux x86-64 ELF compiler slice (verified):** `compile-native` turns a restricted signed-i64 Nobody subset directly into standalone ELF64 machine code using GNU `as` and `ld`; **no Python, Rust runtime, libc or Nobody VM inside the output**. Named integer/boolean functions and signed for-range loops work in this subset; strings, recursion and full native language coverage are not yet available. [Exact scope](docs/NATIVE_X86_64.md).
 - **Primary CLI is Rust:** run the compiled `nobody` executable without Python for the documented subset. The Python reference remains **test-only** until full parity is proven.
 
-Rust `ast-json-v2` preserves typed function signatures; `verify-ast-json-v2` and `normalize-ast-json-v2` now import and validate the experimental JSON structure without executing it. Source re-emission remains unfinished. The legacy `ast-json` format is unchanged.
+Rust `ast-json-v2` preserves typed function signatures; `verify-ast-json-v2` and `normalize-ast-json-v2` now import and validate the experimental JSON structure without executing it. Conversion to the internal Rust parser AST and structural source/JSON comparison are now available through `compare-ast-v2`. Execution of imported JSON and source re-emission remain unfinished. The legacy `ast-json` format is unchanged.
 
 ## Try Nobody
 

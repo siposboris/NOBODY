@@ -11,6 +11,10 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Imported AST JSON V2 → Rust syntax AST (2026-11-09; pending CI)
+
+The Rust-only `ast_json_lower` layer converts typed AST JSON V2 to the ordinary in-memory Rust `Program` tree, validates identifiers and decimal tokens with the existing lexer and checks return/break/continue context. The `compare-ast-v2 PROFILE SOURCE.nbd TREE.json` CLI command compares imported and freshly parsed ASTs. This is a source-structure comparison without executing JSON, comparing source spans, or proving semantic equivalence. No Python needed for the command. Native source re-emission, full imported-code execution, compiler parity and deletion of legacy Python remain open. CI pending.
+
 ## Bounded AST JSON V2 structural importer (2026-11-09; verified)
 
 New dependency-free Rust `import_ast_json_v2` builds a typed structural tree from strict JSON, validates all recognized AST node kinds and typed function signatures, and exposes `verify-ast-json-v2` and `normalize-ast-json-v2` CLI commands. The importer rejects unknown/duplicate keys, unsupported types, broken Unicode escapes and invalid shape with N5001, using a 1 MiB input bound, maximum depth 64 and 10,000 AST nodes. Normalization preserves exporter-compatible JSON, not executable source. **Limits:** no source/semantic roundtrip, no parser-level identifier/scope checks on imported nodes, no imported-code execution, no full Python parity. Do not delete Python files for this partial step. All four workflows passed, including [Rust CI #42686022615](https://github.com/siposboris/NOBODY/actions/runs/42686022615); implemented in [PR #36](https://github.com/siposboris/NOBODY/pull/36).
