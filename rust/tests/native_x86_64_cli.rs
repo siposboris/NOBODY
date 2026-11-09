@@ -524,7 +524,11 @@ fn typed_functions_work_in_v2_bytecode_but_ast_json_v1_still_rejects_them() {
         env!("CARGO_MANIFEST_DIR")
     );
     let bytecode = nobody(&["run-bytecode", "ai", &source]);
-    assert!(bytecode.status.success(), "{}", String::from_utf8_lossy(&bytecode.stderr));
+    assert!(
+        bytecode.status.success(),
+        "{}",
+        String::from_utf8_lossy(&bytecode.stderr)
+    );
     assert_eq!(bytecode.stdout, b"3\n8\nfalse\n5\n");
 
     let ast = nobody(&["ast-json", "ai", &source]);
