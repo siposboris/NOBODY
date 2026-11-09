@@ -129,4 +129,45 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
   printf 'Persisted bytecode accepted trailing corruption.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: independent native Linux x86-64 ELF smoke =='
+if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
+  for tool in as ld readelf; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      printf 'Native Linux backend prerequisite missing: %s (GNU binutils).\n' "$tool" >&2
+      exit 2
+    fi
+  done
+  native_temp=$(mktemp -d)
+  trap 'rm -rf "$bytecode_temp" "$native_temp"' EXIT
+  for language in ai sk en; do
+    source="rust/examples/native_flow_"$language".nbd"
+    executable="$native_temp/program-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    readelf -h "$executable" | grep -F 'ELF64'
+    readelf -h "$executable" | grep -F 'Advanced Micro Devices X86-64'
+    interpreted=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    native_output=$("$executable")
+    if [[ "$interpreted" != "$native_output" || "$native_output" != "$(printf '8\n-42')" ]]; then
+      printf 'Native ELF output does not match Rust evaluator for: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-native ai rust/examples/native_overflow_ai.nbd "$native_temp/overflow"
+  set +e
+  "$native_temp/overflow"
+  overflow_status=$?
+  set -e
+  if [[ "$overflow_status" -ne 3 ]]; then
+    printf 'Native signed overflow did not exit with code 3.\n' >&2
+    exit 1
+  fi
+  if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-native ai rust/examples/bytecode_functions_ai.nbd "$native_temp/unsupported"; then
+    printf 'Native backend unexpectedly accepted unsupported function syntax.\n' >&2
+    exit 1
+  fi
+fi
 printf '%s\n' 'Nobody Rust verification passed.'
