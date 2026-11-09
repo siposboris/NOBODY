@@ -613,7 +613,7 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("for n in range(3) { print(n) }", "ai")
+            compile_to_assembly("for n in range(true) { print(n) }", "ai")
                 .unwrap_err()
                 .code,
             4004
@@ -626,6 +626,39 @@ mod tests {
         );
         assert_eq!(
             compile_to_assembly("let x = 2\nx = false", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+    }
+
+    #[test]
+    fn native_signed_range_uses_checked_advance_and_independent_iterator_slots() {
+        let asm = compile_to_assembly(
+            "let n = 99\nfor n in range(4, 0, -2) { print(n) }\nprint(n)",
+            "ai",
+        )
+        .unwrap();
+        assert!(asm.contains("jz .Lnobody_range_zero_step"));
+        assert!(asm.contains("js .L"));
+        assert!(asm.contains("jo .L"));
+        assert!(asm.contains("cmp rax, QWORD PTR [rbp-"));
+        assert!(asm.contains("    mov QWORD PTR [rbp-"));
+        assert!(!asm.contains("range("));
+    }
+
+    #[test]
+    fn native_range_rejects_shadowed_builtin_and_unsupported_iterable() {
+        let shadowed = "let range = 2\nfor n in range(4) { print(n) }";
+        assert_eq!(compile_to_assembly(shadowed, "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            compile_to_assembly("for n in 7 { print(n) }", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("for n in range(1, 3, true) { print(n) }", "ai")
                 .unwrap_err()
                 .code,
             4004
