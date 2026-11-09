@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Real standalone UTF-8 text output in native ELF
+
+The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Dynamic strings, string arithmetic and native string parameters/returns remain unsupported.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_print_sk.nbd native-text
+./native-text
+```
+
 ## First real native Linux x86-64 backend (experimental)
 
 The Rust CLI now supports **real machine-code compilation** for a small signed-i64 Nobody subset, separate from the bytecode VM:
@@ -13,7 +23,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 ./my-program
 ```
 
-The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and **UTF-8 literal/mixed-argument print**, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
 
 ## Deterministic Nobody source emission (experimental V2)
 
@@ -95,7 +105,7 @@ Actual ELF differential tests cover `ai`, `sk` and `en`, nested loops/calls and 
 
 ## Native lazy booleans and boolean-returning functions (experimental)
 
-The Linux ELF backend now supports true lazy boolean `and`/`or` with compile-time type checking. The right operand is skipped when the left decides the result; differential ELF fixtures verify this with arithmetic-overflow and function-side-effect cases. Native `print` now accepts a **single signed i64 or boolean**, printing lowercase `true`/`false` for the latter. Functions accept i64 arguments and may explicitly return an i64 or bool, but all return paths must agree.
+The Linux ELF backend now supports true lazy boolean `and`/`or` with compile-time type checking. The right operand is skipped when the left decides the result; differential ELF fixtures verify this with arithmetic-overflow and function-side-effect cases. Native `print` now accepts zero or more signed i64/boolean expressions or direct UTF-8 string literals, joining them with spaces and a newline. String-valued variables and concatenation are still unsupported in native ELF. Functions accept i64 arguments and may explicitly return an i64 or bool, but all return paths must agree.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \

@@ -67,6 +67,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_bool_params_shadow_ai.nbd"),
         ("ai", "native_bool_params_nested_ai.nbd"),
         ("ai", "native_typed_signatures_ai.nbd"),
+        ("ai", "native_text_print_ai.nbd"),
+        ("sk", "native_text_print_sk.nbd"),
+        ("en", "native_text_print_en.nbd"),
         ("sk", "native_typed_signatures_sk.nbd"),
         ("en", "native_typed_signatures_en.nbd"),
     ] {
@@ -111,6 +114,63 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         assert!(direct.stderr.is_empty());
         std::fs::remove_dir_all(tmp).unwrap();
     }
+}
+
+#[test]
+fn native_utf8_mixed_prints_are_standalone_and_match_evaluator() {
+    for (profile, filename) in [
+        ("ai", "native_text_print_ai.nbd"),
+        ("sk", "native_text_print_sk.nbd"),
+        ("en", "native_text_print_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{filename}", env!("CARGO_MANIFEST_DIR"));
+        let tmp = temporary();
+        let output = tmp.join("hello-nobody");
+        let compilation = compile(profile, Path::new(&source), &output);
+        assert!(
+            compilation.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&compilation.stderr)
+        );
+        let direct = Command::new(&output).output().unwrap();
+        let evaluator = nobody(&["run", profile, &source]);
+        assert!(direct.status.success(), "{profile}: {:?}", direct.status);
+        assert!(
+            evaluator.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&evaluator.stderr)
+        );
+        assert_eq!(direct.stdout, evaluator.stdout, "{profile}");
+        assert!(direct
+            .stdout
+            .windows("Život ☸".len())
+            .any(|bytes| bytes == "Život ☸".as_bytes()));
+        assert!(direct.stdout.windows(2).any(|bytes| bytes == b"\n\n"));
+        assert!(direct
+            .stdout
+            .windows(".global not_code".len())
+            .any(|bytes| bytes == b".global not_code"));
+        let assembly = nobody(&["native-asm", profile, &source]);
+        let asm = String::from_utf8(assembly.stdout).unwrap();
+        assert!(assembly.status.success());
+        assert!(asm.contains("nobody_write_raw"));
+        assert!(asm.contains(".byte"));
+        // A literal is data bytes, never promoted into an assembler directive.
+        assert!(!asm.contains(".global not_code"));
+        std::fs::remove_dir_all(tmp).unwrap();
+    }
+}
+
+#[test]
+fn native_print_rejects_unsupported_dynamic_strings() {
+    let tmp = temporary();
+    let source = tmp.join("dynamic.nbd");
+    let output = tmp.join("program");
+    std::fs::write(&source, "let message = \"Ahoj\"\nprint(message)").unwrap();
+    let result = compile("ai", &source, &output);
+    assert!(!result.status.success());
+    assert!(!output.exists());
+    std::fs::remove_dir_all(tmp).unwrap();
 }
 
 #[test]

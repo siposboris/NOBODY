@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — real native UTF-8 text and mixed-argument output (2026-11-09)
+
+- **Implemented and verified in [PR #39](https://github.com/siposboris/NOBODY/pull/39)**: standalone Linux x86-64 ELF now prints direct UTF-8 text literals, multiple numeric/boolean/text arguments separated by spaces, and empty `print()` calls, including inside loops.
+- Text decoding shares the Rust evaluator's escape rules. Literal bytes are emitted as numeric directives in ELF read-only data to prevent source strings from becoming assembler instructions.
+- New `native_text_print_ai.nbd`, `native_text_print_sk.nbd`, `native_text_print_en.nbd` fixtures are compiled into and **run as independent ELF processes**; their exact stdout must match the Rust evaluator. Existing standalone ELF regression suite still passes. [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) passed, along with the three other workflows.
+- **Still open:** dynamic string variables, string concatenation, text function parameters and results, recursion, whole-language native compilation, Python parity/removal and Nobody self-hosting. No extra broad roadmap checkbox claimed.
+
+
 ## Unreleased — first genuine native Linux x86-64 ELF compiler (2026-11-09)
 
 - **Verified GitHub CI and merged [PR #28](https://github.com/siposboris/NOBODY/pull/28).** Rust now generates GNU Intel-syntax x86-64 assembly directly from a restricted Nobody IR subset; GNU `as` and `ld` link genuine standalone ELF64 machine code. **The resulting executable does not embed Python, Rust runtime, libc or the Nobody bytecode VM.**

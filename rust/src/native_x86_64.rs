@@ -67,6 +67,8 @@ struct NativeCompiler {
     functions: BTreeMap<String, FunctionInfo>,
     in_function: bool,
     return_kind: Option<Type>,
+    // Every literal is stored in read-only data as numeric bytes, never raw assembler.
+    static_texts: Vec<(usize, Vec<u8>)>,
 }
 
 /// Infer only conservative parameter constraints from their direct typed
@@ -320,6 +322,20 @@ impl NativeCompiler {
         Ok(())
     }
 
+    fn emit_static_text(&mut self, value: &str) -> Result<(), Diagnostic> {
+        if value.len() > MAX_ASM_BYTES / 4 {
+            return Err(issue(
+                4005,
+                "Native text literal exceeds static data budget",
+            ));
+        }
+        let label = self.new_label();
+        self.static_texts.push((label, value.as_bytes().to_vec()));
+        self.emit(&format!("    lea rsi, [rip+.L{label}]"))?;
+        self.emit(&format!("    mov edx, {}", value.len()))?;
+        self.emit("    call nobody_write_raw")
+    }
+
     fn new_label(&mut self) -> usize {
         let id = self.labels;
         self.labels += 1;
@@ -534,15 +550,28 @@ impl NativeCompiler {
             IrStatement::Expression(IrExpr::Call { callee, args })
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("print"))) =>
             {
-                if args.len() != 1 {
-                    return Err(unsupported("Native output currently supports print(one argument) only"));
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        self.emit("    lea rsi, [rip+.Lnobody_space]")?;
+                        self.emit("    mov edx, 1")?;
+                        self.emit("    call nobody_write_raw")?;
+                    }
+                    if let IrExpr::String(raw) = arg {
+                        // Share Rust evaluator decoding for escapes and Unicode.
+                        let decoded = crate::evaluator::literal_text(raw)?;
+                        self.emit_static_text(&decoded)?;
+                    } else {
+                        let kind = self.expression(arg, 0)?;
+                        self.emit("    mov rdi, rax")?;
+                        self.emit(match kind {
+                            Type::Int => "    call nobody_print_i64",
+                            Type::Bool => "    call nobody_print_bool",
+                        })?;
+                    }
                 }
-                let kind = self.expression(&args[0], 0)?;
-                self.emit("    mov rdi, rax")?;
-                self.emit(match kind {
-                    Type::Int => "    call nobody_print_i64",
-                    Type::Bool => "    call nobody_print_bool",
-                })
+                self.emit("    lea rsi, [rip+.Lnobody_newline]")?;
+                self.emit("    mov edx, 1")?;
+                self.emit("    call nobody_write_raw")
             }
             IrStatement::Expression(expression) => {
                 self.expression(expression, 0)?;
@@ -811,6 +840,7 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
         functions: BTreeMap::new(),
         in_function: false,
         return_kind: None,
+        static_texts: Vec::new(),
     };
     compiler.emit(".intel_syntax noprefix")?;
     compiler.emit(".global _start")?;
@@ -841,9 +871,8 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     // The native output does not use libc or the bytecode interpreter.
     // Unsigned division handles i64::MIN after two's-complement negation.
     compiler.emit("    sub rsp, 64")?;
-    compiler.emit("    lea rsi, [rsp+63]")?;
-    compiler.emit("    mov BYTE PTR [rsi], 10")?;
-    compiler.emit("    mov r10, 1")?;
+    compiler.emit("    lea rsi, [rsp+64]")?;
+    compiler.emit("    xor r10d, r10d")?;
     compiler.emit("    mov rax, rdi")?;
     compiler.emit("    xor r9d, r9d")?;
     compiler.emit("    test rax, rax")?;
@@ -877,21 +906,45 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("    test rdi, rdi")?;
     compiler.emit("    jz .Lnobody_bool_false")?;
     compiler.emit("    lea rsi, [rip+.Lnobody_bool_true_text]")?;
-    compiler.emit("    mov edx, 5")?;
+    compiler.emit("    mov edx, 4")?;
     compiler.emit("    jmp .Lnobody_bool_write")?;
     compiler.emit(".Lnobody_bool_false:")?;
     compiler.emit("    lea rsi, [rip+.Lnobody_bool_false_text]")?;
-    compiler.emit("    mov edx, 6")?;
+    compiler.emit("    mov edx, 5")?;
     compiler.emit(".Lnobody_bool_write:")?;
     compiler.emit("    mov edi, 1")?;
     compiler.emit("    mov eax, 1")?;
     compiler.emit("    syscall")?;
     compiler.emit("    ret")?;
+    // Raw writes are shared by text literals, separators and newlines.
+    compiler.emit("nobody_write_raw:")?;
+    compiler.emit("    mov eax, 1")?;
+    compiler.emit("    mov edi, 1")?;
+    compiler.emit("    syscall")?;
+    compiler.emit("    ret")?;
     compiler.emit(".section .rodata")?;
     compiler.emit(".Lnobody_bool_true_text:")?;
-    compiler.emit("    .ascii \"true\\n\"")?;
+    compiler.emit("    .ascii \"true\"")?;
     compiler.emit(".Lnobody_bool_false_text:")?;
-    compiler.emit("    .ascii \"false\\n\"")?;
+    compiler.emit("    .ascii \"false\"")?;
+    compiler.emit(".Lnobody_space:")?;
+    compiler.emit("    .byte 32")?;
+    compiler.emit(".Lnobody_newline:")?;
+    compiler.emit("    .byte 10")?;
+    for (label, bytes) in std::mem::take(&mut compiler.static_texts) {
+        compiler.emit(&format!(".L{label}:"))?;
+        if bytes.is_empty() {
+            compiler.emit("    .byte 0")?;
+        } else {
+            // A string containing '.global' stays plain data, never assembly.
+            let sequence = bytes
+                .iter()
+                .map(u8::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            compiler.emit(&format!("    .byte {sequence}"))?;
+        }
+    }
     compiler.emit(".section .note.GNU-stack,\"\",@progbits")?;
 
     // Allocate stack storage before the first statement, but after frame setup.
@@ -1037,13 +1090,13 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("print(\"text\")", "ai")
+            compile_to_assembly("let text = \"hello\"\nprint(text)", "ai")
                 .unwrap_err()
                 .code,
             4004
         );
         assert_eq!(
-            compile_to_assembly("print(true, false)", "ai")
+            compile_to_assembly("print(\"a\" + \"b\")", "ai")
                 .unwrap_err()
                 .code,
             4004
