@@ -518,17 +518,20 @@ fn native_annotated_signatures_reject_mismatches_without_writing_elf() {
 }
 
 #[test]
-fn annotated_functions_fail_closed_in_legacy_ast_json_and_bytecode() {
+fn typed_functions_work_in_v2_bytecode_but_ast_json_v1_still_rejects_them() {
     let source = format!(
         "{}/examples/native_typed_signatures_ai.nbd",
         env!("CARGO_MANIFEST_DIR")
     );
-    for arguments in [
-        vec!["run-bytecode", "ai", source.as_str()],
-        vec!["ast-json", "ai", source.as_str()],
-    ] {
-        let result = nobody(&arguments);
-        assert!(!result.status.success());
-        assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
-    }
+    let bytecode = nobody(&["run-bytecode", "ai", &source]);
+    assert!(
+        bytecode.status.success(),
+        "{}",
+        String::from_utf8_lossy(&bytecode.stderr)
+    );
+    assert_eq!(bytecode.stdout, b"3\n8\nfalse\n5\n");
+
+    let ast = nobody(&["ast-json", "ai", &source]);
+    assert!(!ast.status.success());
+    assert!(String::from_utf8_lossy(&ast.stderr).contains("N4004"));
 }

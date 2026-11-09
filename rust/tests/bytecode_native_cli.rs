@@ -29,6 +29,9 @@ fn bytecode_matches_the_existing_ast_runtime_for_three_profiles() {
         ("en", "bytecode_functions_en.nbd"),
         ("ai", "bytecode_function_control_ai.nbd"),
         ("ai", "bytecode_function_null_ai.nbd"),
+        ("ai", "native_typed_signatures_ai.nbd"),
+        ("sk", "native_typed_signatures_sk.nbd"),
+        ("en", "native_typed_signatures_en.nbd"),
     ] {
         let file = format!("{}/examples/{}", env!("CARGO_MANIFEST_DIR"), file);
         let regular = launch(&["run", language, &file]);
@@ -264,4 +267,104 @@ fn damaged_binary_is_rejected_by_both_verify_and_run_commands() {
         assert!(String::from_utf8_lossy(&rejected.stderr).contains("N4004"));
     }
     std::fs::remove_dir_all(&temp).unwrap();
+}
+
+#[test]
+fn typed_v2_compiled_files_run_without_sources_and_match_across_profiles() {
+    let temp = temporary_bytecode_directory();
+    let mut binaries = Vec::new();
+    for (lang, fixture) in [
+        ("ai", "native_typed_signatures_ai.nbd"),
+        ("sk", "native_typed_signatures_sk.nbd"),
+        ("en", "native_typed_signatures_en.nbd"),
+    ] {
+        let source = temp.join(format!("{lang}.nbd"));
+        std::fs::write(
+            &source,
+            std::fs::read(format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"))).unwrap(),
+        )
+        .unwrap();
+        let result_file = temp.join(format!("{lang}.nbc"));
+        let compile = launch(&[
+            "compile-bytecode",
+            lang,
+            source.to_str().unwrap(),
+            result_file.to_str().unwrap(),
+        ]);
+        assert!(
+            compile.status.success(),
+            "{lang}: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        let bytes = std::fs::read(&result_file).unwrap();
+        assert_eq!(&bytes[8..10], &2u16.to_le_bytes());
+        binaries.push(bytes);
+        std::fs::remove_file(&source).unwrap();
+        let verify = launch(&["verify-bytecode", result_file.to_str().unwrap()]);
+        assert!(verify.status.success());
+        let output = launch(&["run-compiled", result_file.to_str().unwrap()]);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, b"3\n8\nfalse\n5\n");
+    }
+    assert_eq!(binaries[0], binaries[1]);
+    assert_eq!(binaries[0], binaries[2]);
+    std::fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn typed_bytecode_rejects_incorrect_arguments_and_return_values() {
+    for fixture in [
+        "native_typed_bad_argument_ai.nbd",
+        "native_typed_bad_return_ai.nbd",
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let result = launch(&["run-bytecode", "ai", &source]);
+        assert!(!result.status.success(), "{fixture}");
+        assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
+    }
+    let source = format!(
+        "{}/examples/eval_typed_string_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let unsupported = launch(&["run-bytecode", "ai", &source]);
+    assert!(!unsupported.status.success());
+    assert!(String::from_utf8_lossy(&unsupported.stderr).contains("N4004"));
+}
+
+#[test]
+fn saved_typed_bytecode_still_rejects_runtime_type_mismatches() {
+    let temp = temporary_bytecode_directory();
+    for (index, fixture) in [
+        "native_typed_bad_argument_ai.nbd",
+        "native_typed_bad_return_ai.nbd",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let binary = temp.join(format!("invalid-at-runtime-{index}.nbc"));
+        let compiled = launch(&["compile-bytecode", "ai", &source, binary.to_str().unwrap()]);
+        assert!(
+            compiled.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let checked = launch(&["verify-bytecode", binary.to_str().unwrap()]);
+        assert!(
+            checked.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&checked.stderr)
+        );
+        let executed = launch(&["run-compiled", binary.to_str().unwrap()]);
+        assert!(
+            !executed.status.success(),
+            "{fixture} bypassed runtime type guards"
+        );
+        assert!(String::from_utf8_lossy(&executed.stderr).contains("N4004"));
+    }
+    std::fs::remove_dir_all(temp).unwrap();
 }

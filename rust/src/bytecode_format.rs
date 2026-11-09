@@ -1,15 +1,19 @@
-//! Platform-independent, experimental Nobody bytecode file format (v1).
+//! Platform-independent, experimental Nobody bytecode file format (v2).
+//! Decoder still supports legacy v1 files with untyped function metadata.
 //!
 //! Fixed-width little-endian values and strict bounds make it independent of
 //! Rust's struct layout, pointer width and host endianness. This format is
 //! EXPERIMENTAL and not promised to remain compatible across releases.
 //! FNV-1a detects accidental corruption; it is NOT a signature or security
 //! boundary. Never execute untrusted files outside an OS sandbox.
-use crate::bytecode::{verify, Bytecode, CompiledFunction, Instruction, BYTECODE_VERSION};
+use crate::bytecode::{
+    verify, Bytecode, CompiledFunction, Instruction, ValueType, BYTECODE_VERSION,
+};
 use crate::Diagnostic;
 
 const MAGIC: &[u8; 8] = b"NOBBC001";
-const WIRE_VERSION: u16 = 1;
+const WIRE_VERSION: u16 = 2;
+const LEGACY_WIRE_VERSION: u16 = 1;
 const MAX_UNITS: usize = 1024;
 const MAX_OPCODES: usize = 10_000;
 const MAX_NAME_BYTES: usize = 256;
@@ -136,6 +140,15 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
     Ok(())
 }
 
+/// Stable v2 wire tags: 0 = untyped, 1 = int, 2 = bool.
+fn write_type(out: &mut Vec<u8>, kind: Option<ValueType>) {
+    out.push(match kind {
+        None => 0,
+        Some(ValueType::Int) => 1,
+        Some(ValueType::Bool) => 2,
+    });
+}
+
 fn write_code(out: &mut Vec<u8>, code: &[Instruction]) -> Result<(), Diagnostic> {
     if code.len() > MAX_OPCODES {
         return Err(too_large());
@@ -172,6 +185,11 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
         write_u32(&mut out, function.arity)?;
         write_u32(&mut out, function.slots)?;
         write_u32(&mut out, function.code.len())?;
+        // v2 stores exactly arity one-byte type tags plus one return tag.
+        for annotation in &function.parameter_types {
+            write_type(&mut out, *annotation);
+        }
+        write_type(&mut out, function.return_type);
         write_code(&mut out, &function.code)?;
         if out.len() > MAX_FILE_BYTES - 8 {
             return Err(too_large());
@@ -205,6 +223,14 @@ impl<'a> Reader<'a> {
     }
     fn u8(&mut self) -> Result<u8, Diagnostic> {
         Ok(self.take(1)?[0])
+    }
+    fn annotation(&mut self) -> Result<Option<ValueType>, Diagnostic> {
+        match self.u8()? {
+            0 => Ok(None),
+            1 => Ok(Some(ValueType::Int)),
+            2 => Ok(Some(ValueType::Bool)),
+            _ => Err(invalid("Invalid bytecode v2 function type tag")),
+        }
     }
     fn u16(&mut self) -> Result<u16, Diagnostic> {
         let mut buf = [0u8; 2];
@@ -305,7 +331,8 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
     if reader.take(8)? != MAGIC {
         return Err(invalid("Unknown Nobody bytecode file magic"));
     }
-    if reader.u16()? != WIRE_VERSION {
+    let version = reader.u16()?;
+    if version != WIRE_VERSION && version != LEGACY_WIRE_VERSION {
         return Err(invalid("Unsupported Nobody bytecode file version"));
     }
     if reader.u16()? != 0 {
@@ -333,11 +360,23 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
         if arity > local_slots || local_slots > 1024 {
             return Err(invalid("Invalid bytecode function parameter or slot count"));
         }
+        let (parameter_types, return_type) = if version == WIRE_VERSION {
+            let mut types = Vec::with_capacity(arity);
+            for _ in 0..arity {
+                types.push(reader.annotation()?);
+            }
+            (types, reader.annotation()?)
+        } else {
+            // v1 has no signatures; it is intentionally treated as untyped.
+            (vec![None; arity], None)
+        };
         let unit = reader.code(instruction_count)?;
         functions.push(CompiledFunction {
             name,
             arity,
             slots: local_slots,
+            parameter_types,
+            return_type,
             code: unit,
         });
     }
@@ -399,6 +438,131 @@ mod tests {
             compile_source(include_str!("../examples/bytecode_functions_en.nbd"), "en").unwrap();
         assert_eq!(encode(&ai).unwrap(), encode(&sk).unwrap());
         assert_eq!(encode(&ai).unwrap(), encode(&en).unwrap());
+    }
+
+    fn legacy_v1_bytes(program: &Bytecode) -> Vec<u8> {
+        verify(program).unwrap();
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(MAGIC);
+        write_u16(&mut bytes, LEGACY_WIRE_VERSION);
+        write_u16(&mut bytes, 0);
+        write_u32(&mut bytes, program.slots).unwrap();
+        write_u32(&mut bytes, program.code.len()).unwrap();
+        write_u32(&mut bytes, program.functions.len()).unwrap();
+        write_code(&mut bytes, &program.code).unwrap();
+        for function in &program.functions {
+            assert!(function.parameter_types.iter().all(Option::is_none));
+            assert_eq!(function.return_type, None);
+            write_u16(&mut bytes, function.name.len() as u16);
+            bytes.extend_from_slice(function.name.as_bytes());
+            write_u32(&mut bytes, function.arity).unwrap();
+            write_u32(&mut bytes, function.slots).unwrap();
+            write_u32(&mut bytes, function.code.len()).unwrap();
+            write_code(&mut bytes, &function.code).unwrap();
+        }
+        let hash = checksum(&bytes);
+        bytes.extend_from_slice(&hash.to_le_bytes());
+        bytes
+    }
+
+    #[test]
+    fn v2_signatures_roundtrip_and_match_three_syntax_profiles() {
+        let sources = [
+            (
+                "ai",
+                include_str!("../examples/native_typed_signatures_ai.nbd"),
+            ),
+            (
+                "sk",
+                include_str!("../examples/native_typed_signatures_sk.nbd"),
+            ),
+            (
+                "en",
+                include_str!("../examples/native_typed_signatures_en.nbd"),
+            ),
+        ];
+        let mut binaries = Vec::new();
+        for (profile, source) in sources {
+            let compiled = compile_source(source, profile).unwrap();
+            assert_eq!(
+                compiled.functions[0].parameter_types,
+                vec![
+                    Some(ValueType::Bool),
+                    Some(ValueType::Int),
+                    Some(ValueType::Int)
+                ]
+            );
+            assert_eq!(compiled.functions[0].return_type, Some(ValueType::Int));
+            let bytes = encode(&compiled).unwrap();
+            assert_eq!(&bytes[8..10], &WIRE_VERSION.to_le_bytes());
+            let restored = decode(&bytes).unwrap();
+            assert_eq!(restored, compiled);
+            assert_eq!(execute(&restored).unwrap(), "3\n8\nfalse\n5\n");
+            assert_eq!(
+                execute(&restored).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
+            binaries.push(bytes);
+        }
+        assert_eq!(binaries[0], binaries[1]);
+        assert_eq!(binaries[0], binaries[2]);
+    }
+
+    #[test]
+    fn legacy_v1_function_files_are_readable_as_untyped() {
+        let source = include_str!("../examples/bytecode_functions_ai.nbd");
+        let original = compile_source(source, "ai").unwrap();
+        let legacy = legacy_v1_bytes(&original);
+        assert_eq!(&legacy[8..10], &LEGACY_WIRE_VERSION.to_le_bytes());
+        let restored = decode(&legacy).unwrap();
+        assert_eq!(restored, original);
+        assert_eq!(execute(&restored).unwrap(), "13\n6\n");
+        // Reading v1 and emitting v2 preserves meaning while adding explicit
+        // untyped metadata, rather than changing the old file in place.
+        let upgraded = encode(&restored).unwrap();
+        assert_eq!(&upgraded[8..10], &WIRE_VERSION.to_le_bytes());
+        assert_eq!(decode(&upgraded).unwrap(), original);
+    }
+
+    #[test]
+    fn malformed_v2_type_tag_fails_even_with_valid_checksum() {
+        let compiled = compile_source(
+            "fn identity(flag: bool): bool { return flag }\nprint(identity(true))",
+            "ai",
+        )
+        .unwrap();
+        let mut bytes = encode(&compiled).unwrap();
+        let split = bytes.len() - 8;
+        let mut reader = Reader {
+            bytes: &bytes[..split],
+            position: 0,
+        };
+        reader.take(8).unwrap();
+        reader.u16().unwrap();
+        reader.u16().unwrap();
+        reader.u32().unwrap();
+        let main_code = reader.u32().unwrap();
+        assert_eq!(reader.u32().unwrap(), 1);
+        reader.code(main_code).unwrap();
+        let name_length = reader.u16().unwrap() as usize;
+        reader.take(name_length).unwrap();
+        assert_eq!(reader.u32().unwrap(), 1);
+        reader.u32().unwrap();
+        reader.u32().unwrap();
+        let first_parameter_tag = reader.position;
+        bytes[first_parameter_tag] = 0xFF;
+        refresh_checksum(&mut bytes);
+        assert_eq!(decode(&bytes).unwrap_err().code, 4004);
+        bytes[first_parameter_tag] = 2;
+        bytes[first_parameter_tag + 1] = 0xFF;
+        refresh_checksum(&mut bytes);
+        assert_eq!(decode(&bytes).unwrap_err().code, 4004);
+        // Extra tags must never be silently accepted.
+        bytes[first_parameter_tag] = 2;
+        bytes[first_parameter_tag + 1] = 2;
+        bytes.insert(first_parameter_tag + 2, 0);
+        refresh_checksum(&mut bytes);
+        assert_eq!(decode(&bytes).unwrap_err().code, 4004);
     }
 
     #[test]

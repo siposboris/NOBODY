@@ -129,6 +129,33 @@ if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
   printf 'Persisted bytecode accepted trailing corruption.\n' >&2
   exit 1
 fi
+printf '%s\n' '== Nobody Phase 4: typed bytecode v2 and runtime guards =='
+for lang in ai sk en; do
+  source="rust/examples/native_typed_signatures_"$lang".nbd"
+  cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-bytecode "$lang" "$source" "$bytecode_temp/typed-$lang.nbc"
+  cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    verify-bytecode "$bytecode_temp/typed-$lang.nbc"
+  expected_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    run "$lang" "$source")
+  disk_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    run-compiled "$bytecode_temp/typed-$lang.nbc")
+  if [[ "$expected_output" != "$disk_output" || "$disk_output" != "$(printf '3\n8\nfalse\n5')" ]]; then
+    printf 'Typed v2 file output mismatch: %s\n' "$lang" >&2
+    exit 1
+  fi
+done
+cmp "$bytecode_temp/typed-ai.nbc" "$bytecode_temp/typed-sk.nbc"
+cmp "$bytecode_temp/typed-ai.nbc" "$bytecode_temp/typed-en.nbc"
+for source in \
+  rust/examples/native_typed_bad_argument_ai.nbd \
+  rust/examples/native_typed_bad_return_ai.nbd; do
+  if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    run-bytecode ai "$source"; then
+    printf 'VM failed to reject a typed function mismatch: %s\n' "$source" >&2
+    exit 1
+  fi
+done
 printf '%s\n' '== Nobody Phase 4: independent native Linux x86-64 ELF smoke =='
 if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
   for tool in as ld readelf; do
@@ -284,13 +311,11 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
       exit 1
     fi
   done
-  for command in run-bytecode ast-json; do
-    if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
-      "$command" ai rust/examples/native_typed_signatures_ai.nbd; then
-      printf 'Experimental format %s silently lost typed signature metadata.\n' "$command" >&2
-      exit 1
-    fi
-  done
+  if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    ast-json ai rust/examples/native_typed_signatures_ai.nbd; then
+    printf 'AST JSON v1 silently lost typed signature metadata.\n' >&2
+    exit 1
+  fi
   for source in \
     rust/examples/native_function_bad_implicit_ai.nbd \
     rust/examples/native_function_bad_forward_ai.nbd \
