@@ -77,7 +77,10 @@ impl NativeCompiler {
     }
 
     fn lookup(&self, name: &str) -> Option<Binding> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(name).copied())
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).copied())
     }
 
     fn tick(&mut self) -> Result<(), Diagnostic> {
@@ -174,7 +177,9 @@ impl NativeCompiler {
 
     fn block(&mut self, statements: &[IrStatement]) -> Result<(), Diagnostic> {
         self.scopes.push(BTreeMap::new());
-        let result = statements.iter().try_for_each(|statement| self.statement(statement));
+        let result = statements
+            .iter()
+            .try_for_each(|statement| self.statement(statement));
         self.scopes.pop();
         result
     }
@@ -370,12 +375,19 @@ impl Drop for TemporaryBuild {
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 fn run_tool(name: &str, args: &[&std::ffi::OsStr]) -> Result<(), Diagnostic> {
     use std::process::Command;
-    let output = Command::new(name).args(args).output()
-        .map_err(|error| issue(9001, format!("Cannot launch required native tool {name:?}: {error}")))?;
+    let output = Command::new(name).args(args).output().map_err(|error| {
+        issue(
+            9001,
+            format!("Cannot launch required native tool {name:?}: {error}"),
+        )
+    })?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let detail = stderr.chars().take(1500).collect::<String>();
-        return Err(issue(4004, format!("Native tool {name:?} failed: {detail}")));
+        return Err(issue(
+            4004,
+            format!("Native tool {name:?} failed: {detail}"),
+        ));
     }
     Ok(())
 }
@@ -388,31 +400,64 @@ pub fn compile_native(source: &str, profile: &str, target: &Path) -> Result<(), 
     #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
     {
         let _ = (source, profile, target);
-        Err(unsupported("The first native backend only runs on Linux x86-64"))
+        Err(unsupported(
+            "The first native backend only runs on Linux x86-64",
+        ))
     }
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         use std::ffi::OsStr;
         use std::os::unix::fs::DirBuilderExt;
         let assembler = compile_to_assembly(source, profile)?;
-        let parent = target.parent().filter(|path| !path.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
+        let parent = target
+            .parent()
+            .filter(|path| !path.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
         let mut directory = None;
         for attempt in 0..128 {
             let candidate = parent.join(format!(".nobody-native-{}-{attempt}", std::process::id()));
             match std::fs::DirBuilder::new().mode(0o700).create(&candidate) {
-                Ok(()) => { directory = Some(candidate); break; }
+                Ok(()) => {
+                    directory = Some(candidate);
+                    break;
+                }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(error) => return Err(issue(9001, format!("Cannot create temporary native-build directory: {error}"))),
+                Err(error) => {
+                    return Err(issue(
+                        9001,
+                        format!("Cannot create temporary native-build directory: {error}"),
+                    ))
+                }
             }
         }
-        let scratch = TemporaryBuild(directory.ok_or_else(|| issue(9001, "No safe native-build directory name is available"))?);
+        let scratch = TemporaryBuild(
+            directory
+                .ok_or_else(|| issue(9001, "No safe native-build directory name is available"))?,
+        );
         let assembly = scratch.0.join("program.s");
         let object = scratch.0.join("program.o");
         let executable = scratch.0.join("program.elf");
         std::fs::write(&assembly, assembler)
             .map_err(|error| issue(9001, format!("Cannot write native assembly: {error}")))?;
-        run_tool("as", &[OsStr::new("--64"), OsStr::new("-o"), object.as_os_str(), assembly.as_os_str()])?;
-        run_tool("ld", &[OsStr::new("-m"), OsStr::new("elf_x86_64"), OsStr::new("-o"), executable.as_os_str(), object.as_os_str()])?;
+        run_tool(
+            "as",
+            &[
+                OsStr::new("--64"),
+                OsStr::new("-o"),
+                object.as_os_str(),
+                assembly.as_os_str(),
+            ],
+        )?;
+        run_tool(
+            "ld",
+            &[
+                OsStr::new("-m"),
+                OsStr::new("elf_x86_64"),
+                OsStr::new("-o"),
+                executable.as_os_str(),
+                object.as_os_str(),
+            ],
+        )?;
         std::fs::hard_link(&executable, target)
             .map_err(|error| issue(9001, format!("Cannot create new native executable {:?}; existing files are never overwritten: {error}", target)))?;
         Ok(())
@@ -435,18 +480,52 @@ mod tests {
 
     #[test]
     fn native_backend_rejects_out_of_range_and_unsupported_features() {
-        assert_eq!(compile_to_assembly("print(9223372036854775808)", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("print(\"text\")", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("print(true)", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("if 1 { print(2) }", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("for n in range(3) { print(n) }", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("fn f(x) { return x }", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("let x = 2\nx = false", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            compile_to_assembly("print(9223372036854775808)", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("print(\"text\")", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("print(true)", "ai").unwrap_err().code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("if 1 { print(2) }", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("for n in range(3) { print(n) }", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("fn f(x) { return x }", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("let x = 2\nx = false", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
     }
 
     #[test]
     fn native_backend_does_not_interpolate_user_variable_names_into_assembly() {
-        let asm = compile_to_assembly("let slovensky_nazov = 5\nprint(slovensky_nazov)", "ai").unwrap();
+        let asm =
+            compile_to_assembly("let slovensky_nazov = 5\nprint(slovensky_nazov)", "ai").unwrap();
         assert!(!asm.contains("slovensky_nazov"));
         assert!(asm.contains("[rbp-8]"));
     }
