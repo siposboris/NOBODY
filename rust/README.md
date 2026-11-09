@@ -13,11 +13,23 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 ./my-program
 ```
 
-The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer print. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, noninteger function arguments/results, strings and full i128 semantics. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, noninteger function arguments, inconsistent return types, strings and full i128 semantics. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+
+## Native lazy booleans and boolean-returning functions (experimental)
+
+The Linux ELF backend now supports true lazy boolean `and`/`or` with compile-time type checking. The right operand is skipped when the left decides the result; differential ELF fixtures verify this with arithmetic-overflow and function-side-effect cases. Native `print` now accepts a **single signed i64 or boolean**, printing lowercase `true`/`false` for the latter. Functions accept i64 arguments and may explicitly return an i64 or bool, but all return paths must agree.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_bool_sk.nbd native-bool
+./native-bool
+```
+
+This is still a restricted native subset: no boolean function parameters, arbitrary text, closures, recursion, full i128 or cross-platform support. See [native backend limits](../docs/NATIVE_X86_64.md).
 
 ## Native Linux function call/return subset (experimental)
 
-Standalone x86-64 ELF output now supports top-level named functions defined before their call sites, integer-only parameters and explicit integer returns, along with local statements, conditions and loops inside function bodies. This does **not** mean full function parity: no recursion, closures, global capture, implicit null returns or arbitrary value types. The compiler uses its own stack-based calling convention, and function invocation still consumes a shared software step budget. Verified via actual ELF execution and differential Rust evaluator fixtures for `ai`, `sk` and `en`.
+Standalone x86-64 ELF output now supports top-level named functions defined before their call sites, integer-only parameters and explicit integer/boolean returns, along with local statements, conditions and loops inside function bodies. This does **not** mean full function parity: no recursion, closures, global capture, implicit null returns or arbitrary value types. The compiler uses its own stack-based calling convention, and function invocation still consumes a shared software step budget. Verified via actual ELF execution and differential Rust evaluator fixtures for `ai`, `sk` and `en`.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
