@@ -526,43 +526,69 @@ pub fn compile_source(source: &str, language: &str) -> Result<Bytecode, Diagnost
 /// Identical stack heights and definitely initialized slots are required at
 /// merges, including loop back-edges. This is not yet static type checking.
 pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
-    use std::collections::VecDeque;
-
     if program.version != BYTECODE_VERSION {
         return Err(unsupported("Unknown bytecode version"));
     }
-    if program.code.is_empty() || program.code.len() > MAX_INSTRUCTIONS {
-        return Err(unsupported(
-            "Bytecode instruction count outside verifier limits",
-        ));
+    if program.functions.len() > MAX_STACK {
+        return Err(diagnostic(4005, "Bytecode function count exceeds limit"));
     }
-    if program.slots > MAX_STACK {
+    for (id, function) in program.functions.iter().enumerate() {
+        if function.name.is_empty() || function.arity > function.slots {
+            return Err(unsupported("Invalid bytecode function metadata"));
+        }
+        verify_unit(&function.code, function.slots, function.arity, &program.functions, Some(id))?;
+    }
+    verify_unit(&program.code, program.slots, 0, &program.functions, None)
+}
+
+fn verify_unit(
+    code: &[Instruction],
+    slots: usize,
+    params: usize,
+    functions: &[CompiledFunction],
+    function_id: Option<usize>,
+) -> Result<(), Diagnostic> {
+    use std::collections::VecDeque;
+
+    if code.is_empty() || code.len() > MAX_INSTRUCTIONS {
+        return Err(unsupported("Bytecode instruction count outside verifier limits"));
+    }
+    if slots > MAX_STACK || params > slots {
         return Err(unsupported("Bytecode slot count outside verifier limits"));
     }
-    let last = program.code.len() - 1;
-    if !matches!(program.code[last], Instruction::Halt) {
-        return Err(unsupported("Bytecode must end with Halt"));
+    let last = code.len() - 1;
+    match (function_id, &code[last]) {
+        (None, Instruction::Halt) | (Some(_), Instruction::Return) => {}
+        _ => return Err(unsupported("Bytecode unit has the wrong terminal opcode")),
     }
-    for (pc, instruction) in program.code.iter().enumerate() {
+    for (pc, instruction) in code.iter().enumerate() {
         match instruction {
-            Instruction::Halt if pc != last => {
-                return Err(unsupported(
-                    "Halt cannot appear before the last instruction",
-                ));
+            Instruction::Halt if function_id.is_some() || pc != last => {
+                return Err(unsupported("Halt is only allowed at the end of top-level bytecode"));
+            }
+            Instruction::Return if function_id.is_none() => {
+                return Err(unsupported("Return is only allowed inside a function"));
             }
             Instruction::Jump(target) | Instruction::JumpIfFalse(target)
-                if *target >= program.code.len() =>
+                if *target >= code.len() =>
             {
-                return Err(unsupported(
-                    "Bytecode jump destination is outside the program",
-                ));
+                return Err(unsupported("Bytecode jump destination is outside the program"));
             }
             Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }
-                if *exit >= program.code.len() =>
+                if *exit >= code.len() =>
             {
-                return Err(unsupported(
-                    "Bytecode range jump destination is outside the program",
-                ));
+                return Err(unsupported("Bytecode range jump destination is outside the program"));
+            }
+            Instruction::Call { function, argc } => {
+                let Some(target) = functions.get(*function) else {
+                    return Err(unsupported("Call references an invalid function"));
+                };
+                if target.arity != *argc {
+                    return Err(unsupported("Call argument count differs from function metadata"));
+                }
+                if function_id.is_some_and(|current| *function >= current) {
+                    return Err(unsupported("Recursive and forward bytecode calls are unsupported"));
+                }
             }
             _ => {}
         }
@@ -574,20 +600,22 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
         initialized: Vec<bool>,
     }
 
-    let mut states: Vec<Option<State>> = vec![None; program.code.len()];
+    let mut initially_defined = vec![false; slots];
+    initially_defined.iter_mut().take(params).for_each(|flag| *flag = true);
+    let mut states: Vec<Option<State>> = vec![None; code.len()];
     states[0] = Some(State {
         depth: 0,
-        initialized: vec![false; program.slots],
+        initialized: initially_defined,
     });
     let mut pending = VecDeque::from([0usize]);
     let mut reaches_halt = false;
 
     while let Some(pc) = pending.pop_front() {
         let mut state = states[pc].clone().expect("queued state exists");
-        let instruction = &program.code[pc];
+        let instruction = &code[pc];
         let mut successors = Vec::with_capacity(2);
         match instruction {
-            Instruction::Push(_) | Instruction::PushBool(_) => state.depth += 1,
+            Instruction::Push(_) | Instruction::PushBool(_) | Instruction::PushNull => state.depth += 1,
             Instruction::Load(slot) => {
                 if !state.initialized.get(*slot).copied().unwrap_or(false) {
                     return Err(unsupported(
@@ -651,6 +679,18 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     .checked_sub(*count)
                     .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
+            Instruction::Call { argc, .. } => {
+                state.depth = state.depth.checked_sub(*argc).ok_or_else(|| {
+                    unsupported("Bytecode function-call argument stack underflow")
+                })? + 1;
+            }
+            Instruction::Return => {
+                if state.depth != 1 {
+                    return Err(unsupported("Bytecode Return requires exactly one result value"));
+                }
+                reaches_halt = true;
+                continue;
+            }
             Instruction::Jump(target) => successors.push(*target),
             Instruction::RangeCheck {
                 current,
@@ -701,7 +741,7 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
             successors.push(pc + 1);
         }
         for target in successors {
-            if target >= program.code.len() {
+            if target >= code.len() {
                 return Err(unsupported("Bytecode control flow falls beyond final Halt"));
             }
             match states[target].as_mut() {
@@ -730,7 +770,7 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
         }
     }
     if !reaches_halt {
-        return Err(unsupported("Bytecode has no reachable Halt"));
+        return Err(unsupported("Bytecode has no reachable terminal instruction"));
     }
     Ok(())
 }
