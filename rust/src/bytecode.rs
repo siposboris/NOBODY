@@ -34,6 +34,19 @@ pub enum Instruction {
     Ge,
     Jump(usize),
     JumpIfFalse(usize),
+    // A signed range keeps current/stop/step in compiler-owned slots.
+    // Check verifies a nonzero step; Advance exits on i128 overflow.
+    RangeCheck {
+        current: usize,
+        stop: usize,
+        step: usize,
+        exit: usize,
+    },
+    RangeAdvance {
+        current: usize,
+        step: usize,
+        exit: usize,
+    },
     Drop,
     Print(usize),
     Halt,
@@ -73,6 +86,7 @@ struct Compiler {
 struct LoopContext {
     continue_target: usize,
     breaks: Vec<usize>,
+    continues: Vec<usize>,
 }
 
 impl Compiler {
@@ -100,8 +114,21 @@ impl Compiler {
                 *address = target;
                 Ok(())
             }
+            Some(Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }) => {
+                *exit = target;
+                Ok(())
+            }
             _ => Err(unsupported("Bytecode branch patch location is invalid")),
         }
+    }
+
+    fn temp(&mut self) -> Result<usize, Diagnostic> {
+        if self.slots >= MAX_STACK {
+            return Err(diagnostic(4005, "Bytecode slot budget exceeded"));
+        }
+        let slot = self.slots;
+        self.slots += 1;
+        Ok(slot)
     }
 
     fn variable(&self, name: &str) -> Option<usize> {
@@ -187,9 +214,8 @@ impl Compiler {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 self.expression(expr, 0)?;
-                let slot = self.slots;
+                let slot = self.temp()?;
                 self.emit(Instruction::Define(slot))?;
-                self.slots += 1;
                 self.scopes.last_mut().expect("compiler root scope exists")
                     .insert(name.clone(), slot);
                 Ok(())
@@ -239,7 +265,11 @@ impl Compiler {
                 self.expression(condition, 0)?;
                 let exit = self.mark();
                 self.emit(Instruction::JumpIfFalse(usize::MAX))?;
-                self.loops.push(LoopContext { continue_target: start, breaks: Vec::new() });
+                self.loops.push(LoopContext {
+                    continue_target: start,
+                    breaks: Vec::new(),
+                    continues: Vec::new(),
+                });
                 let result = self.block(body);
                 let control = self.loops.pop().expect("loop context exists");
                 result?;
@@ -251,9 +281,105 @@ impl Compiler {
                 }
                 Ok(())
             }
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
+                let IrExpr::Call { callee, args } = iterable else {
+                    return Err(unsupported("Bytecode for loops require range(...)"));
+                };
+                if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
+                    return Err(unsupported("Bytecode for loops require unshadowed range(...)"));
+                }
+                if !(1..=3).contains(&args.len()) {
+                    return Err(unsupported("range requires one, two or three integer arguments"));
+                }
+
+                // Evaluate range arguments in source order and exactly once.
+                // Hidden slots are deliberately unreachable from user source.
+                let mut argument_slots = Vec::with_capacity(args.len());
+                for arg in args {
+                    self.expression(arg, 0)?;
+                    let slot = self.temp()?;
+                    self.emit(Instruction::Define(slot))?;
+                    argument_slots.push(slot);
+                }
+
+                let current = self.temp()?;
+                let stop = self.temp()?;
+                let step = self.temp()?;
+                match argument_slots.as_slice() {
+                    [end] => {
+                        self.emit(Instruction::Push(0))?;
+                        self.emit(Instruction::Define(current))?;
+                        self.emit(Instruction::Load(*end))?;
+                        self.emit(Instruction::Define(stop))?;
+                    }
+                    [start, end] | [start, end, _] => {
+                        self.emit(Instruction::Load(*start))?;
+                        self.emit(Instruction::Define(current))?;
+                        self.emit(Instruction::Load(*end))?;
+                        self.emit(Instruction::Define(stop))?;
+                    }
+                    _ => unreachable!("range argument arity checked"),
+                }
+                if let [_, _, stride] = argument_slots.as_slice() {
+                    self.emit(Instruction::Load(*stride))?;
+                } else {
+                    self.emit(Instruction::Push(1))?;
+                }
+                self.emit(Instruction::Define(step))?;
+
+                // The loop's iterator shadows an outer binding and is never
+                // visible after the loop. Body declarations have a child scope.
+                self.scopes.push(BTreeMap::new());
+                let iterator = self.temp()?;
+                self.scopes.last_mut().expect("range scope exists")
+                    .insert(variable.clone(), iterator);
+
+                let start = self.mark();
+                self.emit(Instruction::RangeCheck {
+                    current,
+                    stop,
+                    step,
+                    exit: usize::MAX,
+                })?;
+                self.emit(Instruction::Load(current))?;
+                self.emit(Instruction::Define(iterator))?;
+
+                self.loops.push(LoopContext {
+                    continue_target: usize::MAX,
+                    breaks: Vec::new(),
+                    continues: Vec::new(),
+                });
+                let result = self.block(body);
+                let loop_context = self.loops.pop().expect("range loop context exists");
+                self.scopes.pop();
+                result?;
+
+                let advance = self.mark();
+                for jump in loop_context.continues {
+                    self.patch(jump, advance)?;
+                }
+                self.emit(Instruction::RangeAdvance {
+                    current,
+                    step,
+                    exit: usize::MAX,
+                })?;
+                let advance_instruction = advance;
+                self.emit(Instruction::Jump(start))?;
+                let end = self.mark();
+                self.patch(start, end)?;
+                self.patch(advance_instruction, end)?;
+                for jump in loop_context.breaks {
+                    self.patch(jump, end)?;
+                }
+                Ok(())
+            }
             IrStatement::Break => {
                 if self.loops.is_empty() {
-                    return Err(unsupported("Break is only valid inside a bytecode while loop"));
+                    return Err(unsupported("Break is only valid inside a bytecode loop"));
                 }
                 let at = self.mark();
                 self.emit(Instruction::Jump(usize::MAX))?;
@@ -262,11 +388,16 @@ impl Compiler {
             }
             IrStatement::Continue => {
                 let target = self.loops.last().ok_or_else(|| {
-                    unsupported("Continue is only valid inside a bytecode while loop")
+                    unsupported("Continue is only valid inside a bytecode loop")
                 })?.continue_target;
-                self.emit(Instruction::Jump(target))
+                let at = self.mark();
+                self.emit(Instruction::Jump(target))?;
+                if target == usize::MAX {
+                    self.loops.last_mut().expect("loop exists").continues.push(at);
+                }
+                Ok(())
             }
-            _ => Err(unsupported("Bytecode currently supports only untyped declarations, assignments, integer/boolean expressions, conditionals, while, break/continue and print")),
+            _ => Err(unsupported("Bytecode currently supports untyped declarations, integer/boolean expressions, conditionals, while, for-range, break/continue and print")),
         }
     }
 }
@@ -330,6 +461,13 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
             {
                 return Err(unsupported(
                     "Bytecode jump destination is outside the program",
+                ));
+            }
+            Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }
+                if *exit >= program.code.len() =>
+            {
+                return Err(unsupported(
+                    "Bytecode range jump destination is outside the program",
                 ));
             }
             _ => {}
@@ -420,6 +558,33 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
             Instruction::Jump(target) => successors.push(*target),
+            Instruction::RangeCheck {
+                current,
+                stop,
+                step,
+                exit,
+            } => {
+                for slot in [current, stop, step] {
+                    if !state.initialized.get(*slot).copied().unwrap_or(false) {
+                        return Err(unsupported("Range check references an uninitialized slot"));
+                    }
+                }
+                successors.push(*exit);
+            }
+            Instruction::RangeAdvance {
+                current,
+                step,
+                exit,
+            } => {
+                for slot in [current, step] {
+                    if !state.initialized.get(*slot).copied().unwrap_or(false) {
+                        return Err(unsupported(
+                            "Range advance references an uninitialized slot",
+                        ));
+                    }
+                }
+                successors.push(*exit);
+            }
             Instruction::JumpIfFalse(target) => {
                 state.depth = state
                     .depth
@@ -583,6 +748,49 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 };
                 stack.push(Value::Bool(value));
             }
+            Instruction::RangeCheck {
+                current,
+                stop,
+                step,
+                exit,
+            } => {
+                let (Some(Value::Int(current)), Some(Value::Int(stop)), Some(Value::Int(step))) =
+                    (&variables[*current], &variables[*stop], &variables[*step])
+                else {
+                    return Err(unsupported("range arguments must be integers"));
+                };
+                if *step == 0 {
+                    return Err(diagnostic(4006, "range step cannot be zero"));
+                }
+                let in_range = if *step > 0 {
+                    current < stop
+                } else {
+                    current > stop
+                };
+                if !in_range {
+                    pc = *exit;
+                    continue;
+                }
+            }
+            Instruction::RangeAdvance {
+                current,
+                step,
+                exit,
+            } => {
+                let (Some(Value::Int(value)), Some(Value::Int(step))) =
+                    (&variables[*current], &variables[*step])
+                else {
+                    return Err(unsupported("range current value and step must be integers"));
+                };
+                if let Some(next) = value.checked_add(*step) {
+                    variables[*current] = Some(Value::Int(next));
+                } else {
+                    // The reference evaluator terminates rather than wrapping
+                    // when the final iteration crosses the i128 boundary.
+                    pc = *exit;
+                    continue;
+                }
+            }
             Instruction::Jump(target) => {
                 pc = *target;
                 continue;
@@ -668,9 +876,66 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_range_loop_is_explicitly_rejected() {
-        let err = compile_source("for n in range(3) { print(n) }", "ai").unwrap_err();
+    fn unsupported_string_values_remain_explicitly_rejected() {
+        let err = compile_source("print(\"not yet supported\")", "ai").unwrap_err();
         assert_eq!(err.code, 4004);
+    }
+
+    #[test]
+    fn signed_range_loops_match_the_reference_evaluator() {
+        for (profile, source) in [
+            ("ai", include_str!("../examples/bytecode_for_ai.nbd")),
+            ("sk", include_str!("../examples/bytecode_for_sk.nbd")),
+            ("en", include_str!("../examples/bytecode_for_en.nbd")),
+            ("ai", include_str!("../examples/bytecode_for_nested_ai.nbd")),
+            ("ai", include_str!("../examples/bytecode_for_shadow_ai.nbd")),
+            (
+                "ai",
+                include_str!("../examples/bytecode_for_overflow_ai.nbd"),
+            ),
+        ] {
+            let vm = execute_source(source, profile).unwrap();
+            let reference = crate::evaluate_source(source, profile).unwrap();
+            assert_eq!(vm, reference, "{profile}: {source}");
+        }
+    }
+
+    #[test]
+    fn range_step_zero_has_the_reference_error_number() {
+        let source = include_str!("../examples/bytecode_for_bad_step_ai.nbd");
+        assert_eq!(execute_source(source, "ai").unwrap_err().code, 4006);
+        assert_eq!(crate::evaluate_source(source, "ai").unwrap_err().code, 4006);
+    }
+
+    #[test]
+    fn malicious_range_slots_and_jump_targets_fail_verification() {
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 3,
+            code: vec![
+                Instruction::RangeCheck {
+                    current: 0,
+                    stop: 1,
+                    step: 2,
+                    exit: 1,
+                },
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&bad).unwrap_err().code, 4004);
+        let bad = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![
+                Instruction::RangeAdvance {
+                    current: 0,
+                    step: 0,
+                    exit: 4,
+                },
+                Instruction::Halt,
+            ],
+        };
+        assert_eq!(verify(&bad).unwrap_err().code, 4004);
     }
 
     #[test]

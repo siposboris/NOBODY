@@ -1,0 +1,7 @@
+nech total = 0
+pre n v rozsah(1, 8, 2) {
+  ak n == 3 { pokracuj }
+  total = total + n
+  ak n >= 5 { prerus }
+}
+vypis(total)
