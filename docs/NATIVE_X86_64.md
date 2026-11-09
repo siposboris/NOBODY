@@ -29,11 +29,11 @@ Expected output for the example is `8` and `-42` on separate lines. `compile-nat
 - Checked `+`, `-`, `*`, unary `+`/`-`, and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Equality of booleans and logical `not` are supported.
 - `let`/localized declaration, assignment with unchanged value type, `if`/`elif`/`else`, `while`, `for` over signed `range(...)`, `break`, `continue`.
 - **`print(one value)`** accepts a signed integer or boolean and writes the exact lowercase `true`/`false` text or decimal integer followed by a newline via Linux `write(1, ...)`.
-- **Top-level named functions defined before use**, accepting up to 32 positional signed i64 integer arguments and returning an explicit signed i64 **or boolean** value on every control-flow path. Chained calls to earlier functions, function-local integer/boolean variables, if/else, while and for-range inside functions, and expression-level calls are compiled directly to native x86-64 machine code. A maximum of 32 functions is supported.
+- **Top-level named functions defined before use**, accepting up to 32 positional signed i64 **or boolean** arguments (inferred conservatively from typed uses) and returning an explicit signed i64 **or boolean** value on every control-flow path. Chained calls to earlier functions, function-local integer/boolean variables, if/else, while and for-range inside functions, and expression-level calls are compiled directly to native x86-64 machine code. A maximum of 32 functions is supported.
 
 Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `range(start, stop, step)` use one-time source-order integer argument evaluation. Iterator variables are lexically scoped and shadow same-named outer variables without destroying them; nested `for` and `while` loops have correct `break`/`continue` handling. Zero step exits with process status **6**, while range iterator overflow ends the range without wrapping. The i64-specific range boundary is narrower than the i128 bytecode/evaluator domain; out-of-i64 literals are rejected during compilation. Tests compare actual linked Linux ELF output to the Rust evaluator for `ai`, Slovak and English. 
 
-Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, boolean or text function parameters, text return values, mixed integer/boolean return paths, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, text function parameters, uninferrable boolean parameters, text return values, mixed integer/boolean return paths, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
 
 ## Independent native function call frames
 
@@ -51,7 +51,7 @@ Expected output: `13` then `6` on separate lines. Generated ELF files execute wi
 
 The native backend now emits true **short-circuit** `and`/`or`: it checks the left boolean and jumps around the entire right expression when the result is already determined. The skipped expression is never executed, even when it contains a function call with output side effects or overflowing arithmetic. Both operands still must be boolean-typed at compile time. Native `print` accepts **one integer or boolean** and emits decimal or lowercase `true`/`false` via Linux syscalls.
 
-Functions continue to require signed i64 **parameters**, but they may now explicitly return a **boolean or i64**. Every return statement in the same function must have the same type; unsupported/mixed returns fail compilation. The compiler tracks the known return type for calls to earlier-declared functions, so predicates can be composed in conditions. These changes do not implement boolean function parameters, implicit null returns, recursion, full static typing, arbitrary values or a general purpose ABI.
+Functions may now have signed i64 **or inferred boolean parameters**, and explicitly return a **boolean or i64**. Every return statement in the same function must have the same type; unsupported/mixed returns fail compilation. The compiler tracks the known return type for calls to earlier-declared functions, so predicates can be composed in conditions. Parameter types are inferred only from direct, unambiguous uses such as `if flag`, `not flag`, boolean `and`/`or`, arithmetic, comparisons or arguments to earlier known functions. Unconstrained parameters default to i64; passing `bool` to such a parameter is rejected, and conflicting constraints fail compilation. This is deliberately **not** flow-sensitive whole-program type inference. These changes do not implement implicit null returns, recursion, fully generic functions, complete static typing, arbitrary values or a general purpose ABI.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
@@ -60,6 +60,20 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ```
 
 Expected output is `true`, `false`, `false`, `true`, `77` on separate lines.
+
+## Conservative boolean parameter inference
+
+Nobody's existing function declaration syntax has no explicit parameter-type annotations. The native compiler can now infer parameters as `bool` from direct boolean contexts (`if`, `while`, `not`, `and`/`or`), boolean-literal equality or passing the parameter to an earlier compiled boolean-parameter function. Integer contexts constrain the parameter to signed i64. Lexically shadowing a parameter with a local variable does not reclassify the original parameter.
+
+This intentionally accepts only a **conservative subset**. A parameter with no resolvable type constraints defaults to i64, and a call with an incompatible boolean argument fails compilation rather than implicitly converting values. Conflicting type constraints also fail. Inference through intermediate aliases, complex flow-sensitive assignments, annotations, generic specialization and full type-system soundness remain future work.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_bool_params_sk.nbd native-bool-params
+./native-bool-params
+```
+
+The ELF still has no Python, libc, Rust or Nobody VM runtime dependency.
 
 ## Architecture and safety limits
 
