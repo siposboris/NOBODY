@@ -1073,7 +1073,8 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                     if annotation.is_some_and(|expected| !argument.matches_type(expected)) {
                         return Err(unsupported(format!(
                             "Function {:?} argument {} violates its bytecode type annotation",
-                            target.name, index + 1
+                            target.name,
+                            index + 1
                         )));
                     }
                 }
@@ -1097,9 +1098,13 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 let value = stack
                     .pop()
                     .ok_or_else(|| unsupported("Empty function return stack"))?;
-                let function_id = current_function.ok_or_else(|| unsupported("Return without function"))?;
+                let function_id =
+                    current_function.ok_or_else(|| unsupported("Return without function"))?;
                 let function = &program.functions[function_id];
-                if function.return_type.is_some_and(|expected| !value.matches_type(expected)) {
+                if function
+                    .return_type
+                    .is_some_and(|expected| !value.matches_type(expected))
+                {
                     return Err(unsupported(format!(
                         "Function {:?} returned a value incompatible with its bytecode return annotation",
                         function.name
@@ -1176,13 +1181,25 @@ mod tests {
     fn typed_function_signatures_enforce_integer_and_boolean_values() {
         let valid = "fn identity(flag: bool): bool { return flag }\nfn twice(n: int): int { return n * 2 }\nprint(identity(true))\nprint(twice(5))";
         let compiled = compile_source(valid, "ai").unwrap();
-        assert_eq!(compiled.functions[0].parameter_types, vec![Some(ValueType::Bool)]);
+        assert_eq!(
+            compiled.functions[0].parameter_types,
+            vec![Some(ValueType::Bool)]
+        );
         assert_eq!(compiled.functions[0].return_type, Some(ValueType::Bool));
-        assert_eq!(compiled.functions[1].parameter_types, vec![Some(ValueType::Int)]);
+        assert_eq!(
+            compiled.functions[1].parameter_types,
+            vec![Some(ValueType::Int)]
+        );
         assert_eq!(execute(&compiled).unwrap(), "true\n10\n");
-        assert_eq!(execute(&compiled).unwrap(), crate::evaluate_source(valid, "ai").unwrap());
+        assert_eq!(
+            execute(&compiled).unwrap(),
+            crate::evaluate_source(valid, "ai").unwrap()
+        );
         let untyped = "fn identity(flag) { return flag }\nprint(identity(true))";
-        assert_eq!(compile_source(untyped, "ai").unwrap().functions[0].parameter_types, vec![None]);
+        assert_eq!(
+            compile_source(untyped, "ai").unwrap().functions[0].parameter_types,
+            vec![None]
+        );
     }
 
     #[test]
