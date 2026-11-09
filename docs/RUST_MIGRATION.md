@@ -11,6 +11,10 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
+## Deterministic source emitter for AST V2 (2026-11-09; verified)
+
+The Rust-only `ast_source` module emits code from a validated, profile-specific Rust syntax `Program` or from imported `nobody.ast.v2` JSON. It covers the current parser subset, including localized primitive types and control flow, and re-parses emitted code, refusing any AST mismatch with N5001. `emit-ast-v2` and `format-source` are CLI frontends. It does not preserve comments, whitespace or line positions, run imported programs, or demonstrate full semantic equivalence. No Python is used by these commands; Python deletion remains gated on broader tests. All four GitHub workflows passed, including [Rust CI #42695169916](https://github.com/siposboris/NOBODY/actions/runs/42695169916), with typed `ai`/`sk`/`en` and all-40-profile basic declaration tests; implemented in [PR #38](https://github.com/siposboris/NOBODY/pull/38).
+
 ## Imported AST JSON V2 → Rust syntax AST (2026-11-09; verified)
 
 The Rust-only `ast_json_lower` layer converts typed AST JSON V2 to the ordinary in-memory Rust `Program` tree, validates identifiers and decimal tokens with the existing lexer and checks return/break/continue context. The `compare-ast-v2 PROFILE SOURCE.nbd TREE.json` CLI command compares imported and freshly parsed ASTs. This is a source-structure comparison without executing JSON, comparing source spans, or proving semantic equivalence. No Python needed for the command. Native source re-emission, full imported-code execution, compiler parity and deletion of legacy Python remain open. All four workflows passed, including [Rust CI #42687593990](https://github.com/siposboris/NOBODY/actions/runs/42687593990); [PR #37](https://github.com/siposboris/NOBODY/pull/37).

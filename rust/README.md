@@ -15,6 +15,19 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 
 The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
 
+## Deterministic Nobody source emission (experimental V2)
+
+The Rust-only `ast_source` module can now emit readable Nobody code from an imported, validated `nobody.ast.v2` document. It supports the current Rust parser subset: declarations, primitive type annotations, expressions, functions, `if/elif/else`, `while`, `for`, and `break/continue` in **one selected syntax language per file**. Typed function signatures and localized keywords are preserved. Every emitted file is **parsed back in Rust and compared with the original in-memory syntax AST**; mismatches fail with N5001. Original comments, spacing and source line locations are not preserved, and the importer is not executed or compiled.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- ast-json-v2 sk rust/examples/native_typed_signatures_sk.nbd > program.json
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- emit-ast-v2 sk program.json > restored.nbd
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compare-ast-v2 sk rust/examples/native_typed_signatures_sk.nbd program.json
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- format-source sk rust/examples/native_typed_signatures_sk.nbd
+```
+
+This is **syntax-tree parity**, not a proof of runtime or semantic equivalence for all 40 profiles, full lexer safety, or whole-program compiler correctness. The Python reference is still retained until all migration gates pass.
+
 ## Imported AST to Rust parser AST (experimental V2)
 
 The new `lower_ast_json_v2(json, profile)` converts validated JSON into the native Rust `Program`/`Statement`/`Expr` tree without executing it. It verifies names and decimal literals through Rust's lexer, rejects profile-reserved keywords, retains canonical function annotations and applies the Rust control-flow context validator. `same_ast_json_v2(source, profile, json)` compares it with a freshly parsed Nobody source file; the new CLI command reports MATCH/DIFFERENT.
@@ -24,7 +37,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- ast-json-v2 s
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compare-ast-v2 sk rust/examples/native_typed_signatures_sk.nbd /tmp/nobody-typed.json
 ```
 
-This is an **unspanned structural AST comparison**, not verification of matching source positions or complete language semantics. Imported JSON still cannot be run, compiled to bytecode/native ELF or re-emitted as Nobody source. It is not a sandbox or a proof of full Python parity.
+This is an **unspanned structural AST comparison**, not verification of matching source positions or complete language semantics. Imported JSON still cannot be run or compiled to bytecode/native ELF. Its validated syntax subset can now be re-emitted as Nobody source; execution and full semantic parity remain unverified. It is not a sandbox or a proof of full Python parity.
 
 ## Typed AST JSON import and validation (experimental V2)
 
@@ -38,7 +51,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- normalize-ast
 
 ## Typed AST JSON export (experimental V2)
 
-`ast-json-v2 PROFILE FILE.nbd` exports deterministic `nobody.ast.v2` JSON using the Rust parser alone. A function node's `value` is `[name, [parameter_names], [parameter_types], return_type]`, using canonical `int`/`bool`/`float`/`str` type strings or JSON `null` for an absent annotation. The positional parameter-type array always matches the parameter-name array. Multiline nodes retain source line numbers when the conservative location visitor can map them; unsupported shapes fail closed. The existing `ast-json` V1 command and its untyped format are unchanged. **V2 JSON import, normalization and non-executing Rust syntax AST lowering are available as separate experimental steps; full source re-emission, a stable ABI and complete parity remain open.**
+`ast-json-v2 PROFILE FILE.nbd` exports deterministic `nobody.ast.v2` JSON using the Rust parser alone. A function node's `value` is `[name, [parameter_names], [parameter_types], return_type]`, using canonical `int`/`bool`/`float`/`str` type strings or JSON `null` for an absent annotation. The positional parameter-type array always matches the parameter-name array. Multiline nodes retain source line numbers when the conservative location visitor can map them; unsupported shapes fail closed. The existing `ast-json` V1 command and its untyped format are unchanged. **V2 JSON import, normalization, non-executing Rust syntax lowering and partial source re-emission are available; a stable ABI and complete parity remain open.**
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- ast-json-v2 sk rust/examples/native_typed_signatures_sk.nbd
