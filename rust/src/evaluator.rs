@@ -350,7 +350,10 @@ impl Evaluator {
                     .zip(args)
                 {
                     let value = self.eval(arg, depth + 1)?;
-                    if annotation.as_deref().is_some_and(|annotation| !matches_explicit_type(&value, annotation)) {
+                    if annotation
+                        .as_deref()
+                        .is_some_and(|annotation| !matches_explicit_type(&value, annotation))
+                    {
                         return Err(unsupported(format!(
                             "Function {name:?} argument {parameter:?} violates its explicit type annotation"
                         )));
@@ -373,7 +376,11 @@ impl Evaluator {
                         return Err(unsupported("Loop control escaped a function body"));
                     }
                 };
-                if function.return_type.as_deref().is_some_and(|annotation| !matches_explicit_type(&returned, annotation)) {
+                if function
+                    .return_type
+                    .as_deref()
+                    .is_some_and(|annotation| !matches_explicit_type(&returned, annotation))
+                {
                     return Err(unsupported(format!(
                         "Function {name:?} returned a value incompatible with its explicit return type"
                     )));
@@ -614,7 +621,8 @@ mod tests {
     }
     #[test]
     fn explicit_function_signatures_enforce_runtime_types() {
-        let program = "fn choose(flag: bool, a: int, b: int): int { if flag { return a } else { return b } }
+        let program =
+            "fn choose(flag: bool, a: int, b: int): int { if flag { return a } else { return b } }
 print(choose(true, 7, 3))
 print(choose(false, 7, 3))";
         assert_eq!(evaluate_source(program, "ai").unwrap(), "7\n3\n");
@@ -627,17 +635,20 @@ print(choose(false, 7, 3))";
         );
         assert_eq!(
             evaluate_source("fn f(flag: bool): bool { return flag }\nprint(f(4))", "ai")
-                .unwrap_err().code,
+                .unwrap_err()
+                .code,
             4004,
         );
         assert_eq!(
             evaluate_source("fn f(x: int): bool { return x }\nprint(f(4))", "ai")
-                .unwrap_err().code,
+                .unwrap_err()
+                .code,
             4004,
         );
         assert_eq!(
             evaluate_source("fn f(x: int): bool { print(x) }\nprint(f(4))", "ai")
-                .unwrap_err().code,
+                .unwrap_err()
+                .code,
             4004,
         );
     }
