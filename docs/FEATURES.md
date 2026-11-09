@@ -4,7 +4,7 @@
 
 | Capability | Status | Notes |
 |---|---|---|
-| 22 human syntax profiles | Experimental | Native scripts for non-Latin languages; one syntax language per file. [List](LANGUAGES.md) |
+| 39 human syntax profiles plus `ai` | Experimental | Rust frontend profile dictionaries; one syntax language per source file, native scripts retained. [List](LANGUAGES.md) |
 | Lowercase native-script syntax | Experimental | ASCII-friendly Latin spelling except Vietnamese accented lowercase; non-Latin scripts supported. Strings/comments keep Unicode |
 | Variables, conditions, loops, functions | Prototype | Limited core |
 | Nobody → Nobody source translation | Prototype | .nbd output |
@@ -14,7 +14,7 @@
 | Catalog of 22 option families | Prototype | Many unimplemented |
 | Formal parser, AST/IR, modules, generics | Planned | |
 | Rust-style ownership, GC and manual memory profiles | Planned | |
-| Linux x86-64 native ELF machine-code backend | **Verified experimental subset** | Rust IR → x86-64 assembly → GNU `as`/`ld` → standalone executable. Supports i64 arithmetic, variables, conditions, while and one-integer print. [Details](NATIVE_X86_64.md); [CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Not a full compiler |\n| ARM64, Windows, macOS and WebAssembly native targets | Planned | No native machine-code backend verified for these targets |
+| Linux x86-64 native ELF machine-code backend | **Verified experimental subset** | Rust IR → x86-64 assembly → GNU `as`/`ld` → standalone executable. Supports signed i64/boolean arithmetic and named functions, variables, conditions, while and for-range, plus UTF-8 text literals and mixed arguments in `print`. Dynamic text variables still unsupported. [Details](NATIVE_X86_64.md); [CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Not a full compiler |\n| ARM64, Windows, macOS and WebAssembly native targets | Planned | No native machine-code backend verified for these targets |
 | GPU/tensors, scientific math, SIMD | Planned | |
 | Async, threads, actors, distribution | Planned | |
 | Hygienic macros and formal proof modes | Planned | |
