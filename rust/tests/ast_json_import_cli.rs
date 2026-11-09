@@ -29,10 +29,8 @@ fn exported_typed_ast_is_verified_and_normalized_without_python() {
         String::from_utf8_lossy(&exported.stderr)
     );
 
-    let path = std::env::temp_dir().join(format!(
-        "nobody_ast_v2_{}_valid.json",
-        std::process::id()
-    ));
+    let path =
+        std::env::temp_dir().join(format!("nobody_ast_v2_{}_valid.json", std::process::id()));
     fs::write(&path, &exported.stdout).unwrap();
     let name = path.to_str().unwrap();
     let verified = run(&["verify-ast-json-v2", name]);
@@ -54,10 +52,7 @@ fn exported_typed_ast_is_verified_and_normalized_without_python() {
 
 #[test]
 fn importer_rejects_corrupt_v2_signature_without_running_it() {
-    let path = std::env::temp_dir().join(format!(
-        "nobody_ast_v2_{}_bad.json",
-        std::process::id()
-    ));
+    let path = std::env::temp_dir().join(format!("nobody_ast_v2_{}_bad.json", std::process::id()));
     fs::write(
         &path,
         r#"{"ast":{"children":[{"children":[],"kind":"function","line":1,"value":["f",["x"],[],"int"]}],"kind":"module","line":1,"value":null},"schema":"nobody.ast.v2"}"#,
