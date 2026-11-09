@@ -39,6 +39,14 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_flow_ai.nbd"),
         ("sk", "native_flow_sk.nbd"),
         ("en", "native_flow_en.nbd"),
+        ("ai", "bytecode_for_ai.nbd"),
+        ("sk", "bytecode_for_sk.nbd"),
+        ("en", "bytecode_for_en.nbd"),
+        ("ai", "native_range_nested_ai.nbd"),
+        ("ai", "native_range_shadow_ai.nbd"),
+        ("ai", "native_range_mix_ai.nbd"),
+        ("ai", "native_range_overflow_ai.nbd"),
+        ("ai", "native_range_empty_ai.nbd"),
     ] {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let tmp = temporary();
@@ -159,5 +167,60 @@ fn unsupported_features_are_rejected_before_creating_output() {
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
     assert!(!output.exists());
+    std::fs::remove_dir_all(tmp).unwrap();
+}
+
+#[test]
+fn zero_step_in_even_an_empty_native_range_is_a_bounded_exit() {
+    let source = format!(
+        "{}/examples/native_range_zero_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let tmp = temporary();
+    let binary = tmp.join("range-zero");
+    let compiled = compile("ai", Path::new(&source), &binary);
+    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    let native = Command::new(&binary).output().unwrap();
+    assert_eq!(native.status.code(), Some(6));
+    assert!(native.stdout.is_empty());
+    assert!(native.stderr.is_empty());
+    let tree = nobody(&["run", "ai", &source]);
+    assert!(!tree.status.success());
+    assert!(String::from_utf8_lossy(&tree.stderr).contains("N4006"));
+    std::fs::remove_dir_all(tmp).unwrap();
+}
+
+#[test]
+fn native_range_signed_boundary_terminates_without_overflow_error() {
+    let input = format!(
+        "{}/examples/native_range_overflow_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let tmp = temporary();
+    let binary = tmp.join("range-overflow");
+    let compiled = compile("ai", Path::new(&input), &binary);
+    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{:?}", native.status);
+    assert_eq!(
+        native.stdout,
+        b"9223372036854775806\n-9223372036854775806\n"
+    );
+    std::fs::remove_dir_all(tmp).unwrap();
+}
+
+#[test]
+fn native_range_preserves_shadowed_outer_iteration_variable() {
+    let input = format!(
+        "{}/examples/native_range_shadow_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let tmp = temporary();
+    let binary = tmp.join("range-shadow");
+    let compiled = compile("ai", Path::new(&input), &binary);
+    assert!(compiled.status.success());
+    let native = Command::new(&binary).output().unwrap();
+    assert_eq!(native.stdout, b"0\n1\n2\n99\n");
+    assert!(native.status.success());
     std::fs::remove_dir_all(tmp).unwrap();
 }
