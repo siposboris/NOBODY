@@ -454,6 +454,11 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     "Bytecode jump destination is outside the program",
                 ));
             }
+            Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }
+                if *exit >= program.code.len() =>
+            {
+                return Err(unsupported("Bytecode range jump destination is outside the program"));
+            }
             _ => {}
         }
     }
@@ -542,6 +547,22 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
                     .ok_or_else(|| unsupported("Bytecode print stack underflow"))?;
             }
             Instruction::Jump(target) => successors.push(*target),
+            Instruction::RangeCheck { current, stop, step, exit } => {
+                for slot in [current, stop, step] {
+                    if !state.initialized.get(*slot).copied().unwrap_or(false) {
+                        return Err(unsupported("Range check references an uninitialized slot"));
+                    }
+                }
+                successors.push(*exit);
+            }
+            Instruction::RangeAdvance { current, step, exit } => {
+                for slot in [current, step] {
+                    if !state.initialized.get(*slot).copied().unwrap_or(false) {
+                        return Err(unsupported("Range advance references an uninitialized slot"));
+                    }
+                }
+                successors.push(*exit);
+            }
             Instruction::JumpIfFalse(target) => {
                 state.depth = state
                     .depth
@@ -704,6 +725,36 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                     _ => left >= right,
                 };
                 stack.push(Value::Bool(value));
+            }
+            Instruction::RangeCheck { current, stop, step, exit } => {
+                let (Some(Value::Int(current)), Some(Value::Int(stop)), Some(Value::Int(step))) =
+                    (&variables[*current], &variables[*stop], &variables[*step])
+                else {
+                    return Err(unsupported("range arguments must be integers"));
+                };
+                if *step == 0 {
+                    return Err(diagnostic(4006, "range step cannot be zero"));
+                }
+                let in_range = if *step > 0 { current < stop } else { current > stop };
+                if !in_range {
+                    pc = *exit;
+                    continue;
+                }
+            }
+            Instruction::RangeAdvance { current, step, exit } => {
+                let (Some(Value::Int(value)), Some(Value::Int(step))) =
+                    (&variables[*current], &variables[*step])
+                else {
+                    return Err(unsupported("range current value and step must be integers"));
+                };
+                if let Some(next) = value.checked_add(*step) {
+                    variables[*current] = Some(Value::Int(next));
+                } else {
+                    // The reference evaluator terminates rather than wrapping
+                    // when the final iteration crosses the i128 boundary.
+                    pc = *exit;
+                    continue;
+                }
             }
             Instruction::Jump(target) => {
                 pc = *target;
