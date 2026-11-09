@@ -34,6 +34,10 @@ pub enum Instruction {
     Ge,
     Jump(usize),
     JumpIfFalse(usize),
+    // A signed range keeps current/stop/step in compiler-owned slots.
+    // Check verifies a nonzero step; Advance exits on i128 overflow.
+    RangeCheck { current: usize, stop: usize, step: usize, exit: usize },
+    RangeAdvance { current: usize, step: usize, exit: usize },
     Drop,
     Print(usize),
     Halt,
@@ -73,6 +77,7 @@ struct Compiler {
 struct LoopContext {
     continue_target: usize,
     breaks: Vec<usize>,
+    continues: Vec<usize>,
 }
 
 impl Compiler {
@@ -100,8 +105,21 @@ impl Compiler {
                 *address = target;
                 Ok(())
             }
+            Some(Instruction::RangeCheck { exit, .. } | Instruction::RangeAdvance { exit, .. }) => {
+                *exit = target;
+                Ok(())
+            }
             _ => Err(unsupported("Bytecode branch patch location is invalid")),
         }
+    }
+
+    fn temp(&mut self) -> Result<usize, Diagnostic> {
+        if self.slots >= MAX_STACK {
+            return Err(diagnostic(4005, "Bytecode slot budget exceeded"));
+        }
+        let slot = self.slots;
+        self.slots += 1;
+        Ok(slot)
     }
 
     fn variable(&self, name: &str) -> Option<usize> {
@@ -187,9 +205,8 @@ impl Compiler {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 self.expression(expr, 0)?;
-                let slot = self.slots;
+                let slot = self.temp()?;
                 self.emit(Instruction::Define(slot))?;
-                self.slots += 1;
                 self.scopes.last_mut().expect("compiler root scope exists")
                     .insert(name.clone(), slot);
                 Ok(())
@@ -239,7 +256,11 @@ impl Compiler {
                 self.expression(condition, 0)?;
                 let exit = self.mark();
                 self.emit(Instruction::JumpIfFalse(usize::MAX))?;
-                self.loops.push(LoopContext { continue_target: start, breaks: Vec::new() });
+                self.loops.push(LoopContext {
+                    continue_target: start,
+                    breaks: Vec::new(),
+                    continues: Vec::new(),
+                });
                 let result = self.block(body);
                 let control = self.loops.pop().expect("loop context exists");
                 result?;
@@ -251,9 +272,105 @@ impl Compiler {
                 }
                 Ok(())
             }
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
+                let IrExpr::Call { callee, args } = iterable else {
+                    return Err(unsupported("Bytecode for loops require range(...)"));
+                };
+                if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
+                    return Err(unsupported("Bytecode for loops require unshadowed range(...)"));
+                }
+                if !(1..=3).contains(&args.len()) {
+                    return Err(unsupported("range requires one, two or three integer arguments"));
+                }
+
+                // Evaluate range arguments in source order and exactly once.
+                // Hidden slots are deliberately unreachable from user source.
+                let mut argument_slots = Vec::with_capacity(args.len());
+                for arg in args {
+                    self.expression(arg, 0)?;
+                    let slot = self.temp()?;
+                    self.emit(Instruction::Define(slot))?;
+                    argument_slots.push(slot);
+                }
+
+                let current = self.temp()?;
+                let stop = self.temp()?;
+                let step = self.temp()?;
+                match argument_slots.as_slice() {
+                    [end] => {
+                        self.emit(Instruction::Push(0))?;
+                        self.emit(Instruction::Define(current))?;
+                        self.emit(Instruction::Load(*end))?;
+                        self.emit(Instruction::Define(stop))?;
+                    }
+                    [start, end] | [start, end, _] => {
+                        self.emit(Instruction::Load(*start))?;
+                        self.emit(Instruction::Define(current))?;
+                        self.emit(Instruction::Load(*end))?;
+                        self.emit(Instruction::Define(stop))?;
+                    }
+                    _ => unreachable!("range argument arity checked"),
+                }
+                if let [_, _, stride] = argument_slots.as_slice() {
+                    self.emit(Instruction::Load(*stride))?;
+                } else {
+                    self.emit(Instruction::Push(1))?;
+                }
+                self.emit(Instruction::Define(step))?;
+
+                // The loop's iterator shadows an outer binding and is never
+                // visible after the loop. Body declarations have a child scope.
+                self.scopes.push(BTreeMap::new());
+                let iterator = self.temp()?;
+                self.scopes.last_mut().expect("range scope exists")
+                    .insert(variable.clone(), iterator);
+
+                let start = self.mark();
+                self.emit(Instruction::RangeCheck {
+                    current,
+                    stop,
+                    step,
+                    exit: usize::MAX,
+                })?;
+                self.emit(Instruction::Load(current))?;
+                self.emit(Instruction::Define(iterator))?;
+
+                self.loops.push(LoopContext {
+                    continue_target: usize::MAX,
+                    breaks: Vec::new(),
+                    continues: Vec::new(),
+                });
+                let result = self.block(body);
+                let loop_context = self.loops.pop().expect("range loop context exists");
+                self.scopes.pop();
+                result?;
+
+                let advance = self.mark();
+                for jump in loop_context.continues {
+                    self.patch(jump, advance)?;
+                }
+                self.emit(Instruction::RangeAdvance {
+                    current,
+                    step,
+                    exit: usize::MAX,
+                })?;
+                let advance_instruction = advance;
+                self.emit(Instruction::Jump(start))?;
+                let end = self.mark();
+                self.patch(start, end)?;
+                self.patch(advance_instruction, end)?;
+                for jump in loop_context.breaks {
+                    self.patch(jump, end)?;
+                }
+                Ok(())
+            }
             IrStatement::Break => {
                 if self.loops.is_empty() {
-                    return Err(unsupported("Break is only valid inside a bytecode while loop"));
+                    return Err(unsupported("Break is only valid inside a bytecode loop"));
                 }
                 let at = self.mark();
                 self.emit(Instruction::Jump(usize::MAX))?;
@@ -262,11 +379,16 @@ impl Compiler {
             }
             IrStatement::Continue => {
                 let target = self.loops.last().ok_or_else(|| {
-                    unsupported("Continue is only valid inside a bytecode while loop")
+                    unsupported("Continue is only valid inside a bytecode loop")
                 })?.continue_target;
-                self.emit(Instruction::Jump(target))
+                let at = self.mark();
+                self.emit(Instruction::Jump(target))?;
+                if target == usize::MAX {
+                    self.loops.last_mut().expect("loop exists").continues.push(at);
+                }
+                Ok(())
             }
-            _ => Err(unsupported("Bytecode currently supports only untyped declarations, assignments, integer/boolean expressions, conditionals, while, break/continue and print")),
+            _ => Err(unsupported("Bytecode currently supports untyped declarations, integer/boolean expressions, conditionals, while, for-range, break/continue and print")),
         }
     }
 }
