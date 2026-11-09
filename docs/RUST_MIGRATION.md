@@ -11,9 +11,9 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
-## Typed independent bytecode VM and .nbc v2 files (2026-11-09; pending CI)
+## Typed independent bytecode VM and .nbc v2 files (2026-11-09; verified)
 
-The Rust bytecode VM now enforces explicitly annotated `int`/`bool` arguments and return values when invoking functions. Portable `.nbc` files write wire version 2, carrying exactly one byte per parameter type and one byte for the return type; the decoder keeps backwards compatibility with old untyped v1 files. Corrupt/unknown type tags and inconsistent signature lengths fail closed. Differential tests compare saved bytecode with the Rust evaluator for `ai`, `sk` and `en`. Untyped functions remain compatible; `float`/`str` bytecode signatures and typed AST JSON v1 exports remain unsupported. This is not full static typing, Python replacement or self-hosting.
+The Rust bytecode VM now enforces explicitly annotated `int`/`bool` arguments and return values when invoking functions. Portable `.nbc` files write wire version 2, carrying exactly one byte per parameter type and one byte for the return type; the decoder keeps backwards compatibility with old untyped v1 files. Corrupt/unknown type tags and inconsistent signature lengths fail closed. Differential tests compare saved bytecode with the Rust evaluator for `ai`, `sk` and `en`. Untyped functions remain compatible; `float`/`str` bytecode signatures and typed AST JSON v1 exports remain unsupported. This is not full static typing, Python replacement or self-hosting. All four checks passed, including [Rust CI #42666833278](https://github.com/siposboris/NOBODY/actions/runs/42666833278); merged via [PR #34](https://github.com/siposboris/NOBODY/pull/34).
 
 ## Explicit localized function signatures in Rust source and IR (2026-11-09; verified)
 
