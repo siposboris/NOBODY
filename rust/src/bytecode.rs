@@ -1237,6 +1237,71 @@ while x < 7 {
     }
 
     #[test]
+    fn named_functions_match_tree_evaluator_for_ai_sk_en() {
+        for (profile, source) in [
+            ("ai", include_str!("../examples/bytecode_functions_ai.nbd")),
+            ("sk", include_str!("../examples/bytecode_functions_sk.nbd")),
+            ("en", include_str!("../examples/bytecode_functions_en.nbd")),
+            ("ai", include_str!("../examples/bytecode_function_control_ai.nbd")),
+            ("ai", include_str!("../examples/bytecode_function_null_ai.nbd")),
+        ] {
+            let compiled = compile_source(source, profile).unwrap();
+            assert!(!compiled.functions.is_empty());
+            let output = execute(&compiled).unwrap();
+            assert_eq!(output, crate::evaluate_source(source, profile).unwrap());
+        }
+    }
+
+    #[test]
+    fn wrong_arity_and_recursion_are_numbered() {
+        let arity = include_str!("../examples/bytecode_function_bad_arity_ai.nbd");
+        assert_eq!(compile_source(arity, "ai").unwrap_err().code, 4007);
+        let recursive = include_str!("../examples/bytecode_function_recursive_ai.nbd");
+        assert_eq!(compile_source(recursive, "ai").unwrap_err().code, 4005);
+    }
+
+    #[test]
+    fn globals_and_closures_are_not_silently_supported() {
+        let globals = include_str!("../examples/bytecode_function_globals_ai.nbd");
+        assert_eq!(compile_source(globals, "ai").unwrap_err().code, 4001);
+        let nested = "fn outer(x) { fn inner(y) { return y + 1 } return x }";
+        assert_eq!(compile_source(nested, "ai").unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn verifier_rejects_invalid_function_calls_and_returns() {
+        let function = CompiledFunction {
+            name: "identity".to_owned(),
+            arity: 1,
+            slots: 1,
+            code: vec![Instruction::Load(0), Instruction::Return],
+        };
+        let make = |code| Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code,
+            functions: vec![function.clone()],
+        };
+        let missing_arg = make(vec![Instruction::Call { function: 0, argc: 1 }, Instruction::Drop, Instruction::Halt]);
+        assert_eq!(verify(&missing_arg).unwrap_err().code, 4004);
+        let bad_id = make(vec![Instruction::Call { function: 1, argc: 0 }, Instruction::Drop, Instruction::Halt]);
+        assert_eq!(verify(&bad_id).unwrap_err().code, 4004);
+        let bad_return = make(vec![Instruction::Return, Instruction::Halt]);
+        assert_eq!(verify(&bad_return).unwrap_err().code, 4004);
+        let cyclic_function = CompiledFunction {
+            code: vec![Instruction::Load(0), Instruction::Call { function: 0, argc: 1 }, Instruction::Return],
+            ..function
+        };
+        let cyclic = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            code: vec![Instruction::Halt],
+            functions: vec![cyclic_function],
+        };
+        assert_eq!(verify(&cyclic).unwrap_err().code, 4004);
+    }
+
+    #[test]
     fn verifier_rejects_output_stack_underflow() {
         let program = Bytecode {
             version: BYTECODE_VERSION,
