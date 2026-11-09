@@ -50,7 +50,7 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
         "Use only the documented Rust evaluator subset: basic values, declarations, assignments, conditionals, bounded loops, arithmetic and print.",
     )
 }
-fn literal_text(raw: &str) -> Result<String, Diagnostic> {
+pub(crate) fn literal_text(raw: &str) -> Result<String, Diagnostic> {
     if raw.len() < 2 {
         return Err(unsupported("Invalid text literal"));
     }
