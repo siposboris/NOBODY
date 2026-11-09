@@ -1173,21 +1173,34 @@ mod tests {
     }
 
     #[test]
-    fn typed_function_signatures_fail_closed_until_vm_has_runtime_type_guards() {
-        let source = "fn identity(flag: bool): bool { return flag }\nprint(identity(true))";
-        let error = compile_source(source, "ai").unwrap_err();
-        assert_eq!(error.code, 4004);
-        assert!(error.detail.contains("typed bytecode runtime guards"));
-        assert_eq!(
-            compile_source(
-                "fn identity(flag) { return flag }\nprint(identity(true))",
-                "ai"
-            )
-            .unwrap()
-            .functions
-            .len(),
-            1
-        );
+    fn typed_function_signatures_enforce_integer_and_boolean_values() {
+        let valid = "fn identity(flag: bool): bool { return flag }\nfn twice(n: int): int { return n * 2 }\nprint(identity(true))\nprint(twice(5))";
+        let compiled = compile_source(valid, "ai").unwrap();
+        assert_eq!(compiled.functions[0].parameter_types, vec![Some(ValueType::Bool)]);
+        assert_eq!(compiled.functions[0].return_type, Some(ValueType::Bool));
+        assert_eq!(compiled.functions[1].parameter_types, vec![Some(ValueType::Int)]);
+        assert_eq!(execute(&compiled).unwrap(), "true\n10\n");
+        assert_eq!(execute(&compiled).unwrap(), crate::evaluate_source(valid, "ai").unwrap());
+        let untyped = "fn identity(flag) { return flag }\nprint(identity(true))";
+        assert_eq!(compile_source(untyped, "ai").unwrap().functions[0].parameter_types, vec![None]);
+    }
+
+    #[test]
+    fn bytecode_typed_calls_reject_invalid_arguments_and_returns() {
+        for source in [
+            "fn f(flag: bool): bool { return flag }\nprint(f(4))",
+            "fn f(n: int): bool { return n }\nprint(f(4))",
+            "fn f(n: int): bool { print(n) }\nprint(f(4))",
+        ] {
+            assert_eq!(execute_source(source, "ai").unwrap_err().code, 4004);
+            assert_eq!(crate::evaluate_source(source, "ai").unwrap_err().code, 4004);
+        }
+        for source in [
+            "fn f(n: str): str { return n }",
+            "fn f(n: float): int { return 1 }",
+        ] {
+            assert_eq!(compile_source(source, "ai").unwrap_err().code, 4004);
+        }
     }
 
     #[test]
@@ -1410,6 +1423,8 @@ while x < 7 {
             name: "identity".to_owned(),
             arity: 1,
             slots: 1,
+            parameter_types: vec![Some(ValueType::Bool)],
+            return_type: Some(ValueType::Bool),
             code: vec![Instruction::Load(0), Instruction::Return],
         };
         let make = |code| Bytecode {
@@ -1427,6 +1442,9 @@ while x < 7 {
             Instruction::Halt,
         ]);
         assert_eq!(verify(&missing_arg).unwrap_err().code, 4004);
+        let mut wrong_metadata = make(vec![Instruction::Halt]);
+        wrong_metadata.functions[0].parameter_types.clear();
+        assert_eq!(verify(&wrong_metadata).unwrap_err().code, 4004);
         let bad_id = make(vec![
             Instruction::Call {
                 function: 1,
