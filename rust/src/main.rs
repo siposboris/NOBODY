@@ -23,7 +23,9 @@ fn main() {
             | "verify-ast-json-v2"
             | "normalize-ast-json-v2",
         ) if arguments.len() == 3 => true,
-        Some("compile-bytecode" | "compile-native" | "compare-ast-v2") if arguments.len() == 5 => true,
+        Some("compile-bytecode" | "compile-native" | "compare-ast-v2") if arguments.len() == 5 => {
+            true
+        }
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2"
             | "bytecode" | "native-asm" | "run-bytecode",
@@ -184,7 +186,10 @@ fn main() {
     if command == "compare-ast-v2" {
         let profile = &arguments[2];
         let source = fs::read_to_string(&arguments[3]).unwrap_or_else(|error| {
-            eprintln!("N9001: Cannot read Nobody source {:?}: {error}", arguments[3]);
+            eprintln!(
+                "N9001: Cannot read Nobody source {:?}: {error}",
+                arguments[3]
+            );
             process::exit(1);
         });
         let file = fs::File::open(&arguments[4]).unwrap_or_else(|error| {
@@ -192,10 +197,15 @@ fn main() {
             process::exit(1);
         });
         let mut json = String::new();
-        file.take(1_048_577).read_to_string(&mut json).unwrap_or_else(|error| {
-            eprintln!("N9001: Cannot read UTF-8 AST JSON {:?}: {error}", arguments[4]);
-            process::exit(1);
-        });
+        file.take(1_048_577)
+            .read_to_string(&mut json)
+            .unwrap_or_else(|error| {
+                eprintln!(
+                    "N9001: Cannot read UTF-8 AST JSON {:?}: {error}",
+                    arguments[4]
+                );
+                process::exit(1);
+            });
         match same_ast_json_v2(&source, profile, &json) {
             Ok(true) => println!(
                 "MATCH: JSON and source lower to the same validated Rust syntax AST (not executed; source lines not compared)."
