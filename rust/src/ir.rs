@@ -361,12 +361,21 @@ mod tests {
         let ai = lower_source(
             "fn choose(flag: bool, a: int, b: int): int { if flag { return a } else { return b } }",
             "ai",
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(sk, ai);
-        let IrStatement::Function { parameter_types, return_type, .. } = &sk.statements[0] else {
+        let IrStatement::Function {
+            parameter_types,
+            return_type,
+            ..
+        } = &sk.statements[0]
+        else {
             panic!("expected function");
         };
-        assert_eq!(parameter_types, &[Some("bool".into()), Some("int".into()), Some("int".into())]);
+        assert_eq!(
+            parameter_types,
+            &[Some("bool".into()), Some("int".into()), Some("int".into())]
+        );
         assert_eq!(return_type.as_deref(), Some("int"));
     }
 
