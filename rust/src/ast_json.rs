@@ -111,6 +111,7 @@ fn stmt(statement: &Statement) -> String {
             name,
             parameters,
             body,
+            ..
         } => {
             let params = parameters
                 .iter()
@@ -129,11 +130,35 @@ fn stmt(statement: &Statement) -> String {
     }
 }
 
+// AST JSON v1 cannot carry typed function signatures. Do not erase them.
+fn has_typed_function(statements: &[Statement]) -> bool {
+    statements.iter().any(|statement| match statement {
+        Statement::Function {
+            parameter_types, return_type, body, ..
+        } => {
+            parameter_types.iter().any(Option::is_some)
+                || return_type.is_some()
+                || has_typed_function(body)
+        }
+        Statement::If { branches, otherwise } => {
+            branches.iter().any(|(_, body)| has_typed_function(body))
+                || otherwise.as_ref().is_some_and(|body| has_typed_function(body))
+        }
+        Statement::While { body, .. } | Statement::For { body, .. } => has_typed_function(body),
+        _ => false,
+    })
+}
+
 /// Export the supported subset to deterministic nobody.ast.v1 JSON.
 /// A token-aligned position map recovers multiline node locations when safe;
 /// otherwise return N4004 rather than reporting fabricated line information.
 pub fn export_ast_json(source: &str, profile: &str) -> Result<String, Diagnostic> {
     let program = parse_validated(source, profile)?;
+    if has_typed_function(&program.statements) {
+        return Err(unsupported(
+            "AST JSON v1 has no typed function signature fields; refusing to discard annotations"
+        ));
+    }
     let tree = bare("module", program.statements.iter().map(stmt).collect());
     let json = format!(r#"{{"ast":{tree},"schema":"nobody.ast.v1"}}"#);
     if !source.contains('\n') && !source.contains('\r') {
