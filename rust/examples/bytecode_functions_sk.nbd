@@ -1,0 +1,4 @@
+funkcia triple(x) { vrat x * 3 }
+funkcia combine(a, b) { nech result = triple(a) + b vrat result }
+vypis(combine(3, 4))
+vypis(triple(2))
