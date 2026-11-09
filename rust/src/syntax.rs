@@ -119,6 +119,9 @@ pub enum Statement {
     Function {
         name: String,
         parameters: Vec<String>,
+        // Mirrors the positional names, preserving legacy untyped syntax.
+        parameter_types: Vec<Option<String>>,
+        return_type: Option<String>,
         body: Vec<Statement>,
     },
     Return(Expr),
@@ -448,6 +451,7 @@ impl Parser {
             let name = self.identifier()?;
             self.need("(")?;
             let mut parameters = Vec::new();
+            let mut parameter_types = Vec::new();
             if !self.at_symbol(")") {
                 loop {
                     let name = self.identifier()?;
@@ -460,17 +464,54 @@ impl Parser {
                             format!("Duplicate function parameter {name:?}"),
                         ));
                     }
+                    let annotation = if self.take_symbol(":") {
+                        let (line, col) = self.location();
+                        let token = self.take().ok_or_else(|| self.expected("parameter type"))?;
+                        Some(
+                            self.language
+                                .ty(&token.value)
+                                .ok_or_else(|| error(
+                                    1007,
+                                    line,
+                                    col,
+                                    format!("Unknown function parameter type {:?} in selected profile", token.value),
+                                ))?
+                                .to_owned(),
+                        )
+                    } else {
+                        None
+                    };
                     parameters.push(name);
+                    parameter_types.push(annotation);
                     if !self.take_symbol(",") {
                         break;
                     }
                 }
             }
             self.need(")")?;
+            let return_type = if self.take_symbol(":") {
+                let (line, col) = self.location();
+                let token = self.take().ok_or_else(|| self.expected("return type"))?;
+                Some(
+                    self.language
+                        .ty(&token.value)
+                        .ok_or_else(|| error(
+                            1007,
+                            line,
+                            col,
+                            format!("Unknown function return type {:?} in selected profile", token.value),
+                        ))?
+                        .to_owned(),
+                )
+            } else {
+                None
+            };
             let body = self.block()?;
             return Ok(Statement::Function {
                 name,
                 parameters,
+                parameter_types,
+                return_type,
                 body,
             });
         }
@@ -642,6 +683,34 @@ mod tests {
         let program = parse("for n in range(3) { print(n) }", "en").unwrap();
         assert!(matches!(&program.statements[0],Statement::For{variable,..} if variable=="n"));
     }
+    #[test]
+    fn explicit_function_signatures_normalize_localized_primitive_types() {
+        let ai = parse("fn check(flag: bool, n: int): bool { return flag and n > 0 }", "ai").unwrap();
+        let sk = parse("funkcia check(flag: logicke, n: cele): logicke { vrat flag a_zaroven n > 0 }", "sk").unwrap();
+        for program in [ai, sk] {
+            let Statement::Function {
+                parameters,
+                parameter_types,
+                return_type,
+                ..
+            } = &program.statements[0] else {
+                panic!("expected function");
+            };
+            assert_eq!(parameters, &["flag", "n"]);
+            assert_eq!(parameter_types, &[Some("bool".into()), Some("int".into())]);
+            assert_eq!(return_type.as_deref(), Some("bool"));
+        }
+    }
+
+    #[test]
+    fn explicit_function_signatures_reject_wrong_profile_types() {
+        assert_eq!(parse("fn check(flag: floatish) { return flag }", "ai").unwrap_err().code, 1007);
+        assert_eq!(parse("funkcia check(flag: bool): logicke { vrat flag }", "sk").unwrap_err().code, 1007);
+        assert_eq!(parse("fn check(flag): wrong { return flag }", "ai").unwrap_err().code, 1007);
+        let legacy = parse("fn identity(x) { return x }", "ai").unwrap();
+        assert!(matches!(&legacy.statements[0], Statement::Function { parameter_types, return_type, .. } if parameter_types == &[None] && return_type.is_none()));
+    }
+
     #[test]
     fn ai_function_return() {
         let program = parse("fn make(x) { return x }", "ai").unwrap();
