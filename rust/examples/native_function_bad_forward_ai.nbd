@@ -1,0 +1,3 @@
+fn earlier(x) { return later(x) }
+fn later(x) { return x + 1 }
+print(earlier(2))
