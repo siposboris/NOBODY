@@ -202,6 +202,32 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
       exit 1
     fi
   done
+  printf '%s\n' '== Nobody Phase 4: lazy boolean native machine-code parity =='
+  for language in ai sk en; do
+    source="rust/examples/native_bool_"$language".nbd"
+    executable="$native_temp/bool-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    reference_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    elf_output=$("$executable")
+    if [[ "$elf_output" != "$reference_output" || "$elf_output" != "$(printf 'true\nfalse\nfalse\ntrue\n77')" ]]; then
+      printf 'Native boolean/short-circuit parity failed: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-native ai rust/examples/native_bool_effect_ai.nbd "$native_temp/bool-effect"
+  effect_output=$("$native_temp/bool-effect")
+  if [[ "$effect_output" != "$(printf 'false\ntrue\n11\ntrue')" ]]; then
+    printf 'Native short-circuit emitted unexpected side effects.\n' >&2
+    exit 1
+  fi
+  if cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-native ai rust/examples/native_bool_mixed_return_ai.nbd "$native_temp/invalid-bool-return"; then
+    printf 'Native backend unexpectedly compiled mismatched boolean/int returns.\n' >&2
+    exit 1
+  fi
   for source in \
     rust/examples/native_function_bad_implicit_ai.nbd \
     rust/examples/native_function_bad_forward_ai.nbd \
