@@ -1,0 +1,10 @@
+fn twice(x) { return x * 2 }
+fn sum_skip(start, stop) {
+  let total = 0
+  for n in range(start, stop) {
+    if n == 3 { continue }
+    total = total + twice(n)
+  }
+  return total
+}
+print(sum_skip(1, 5))
