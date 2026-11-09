@@ -1,0 +1,6 @@
+fn test(flag) {
+  if flag { let flag = 11 print(flag) }
+  return flag
+}
+print(test(true))
+print(test(false))
