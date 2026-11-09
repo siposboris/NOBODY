@@ -29,10 +29,23 @@ Expected output for the example is `8` and `-42` on separate lines. `compile-nat
 - Checked `+`, `-`, `*`, unary `+`/`-`, and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Equality of booleans and logical `not` are supported.
 - `let`/localized declaration, assignment with unchanged value type, `if`/`elif`/`else`, `while`, `for` over signed `range(...)`, `break`, `continue`.
 - **`print(one integer)`** with decimal output and newline via `write(1, ...)`; signed negatives, zero and `i64::MAX` are tested.
+- **Top-level named functions defined before use**, accepting up to 32 positional signed i64 integer arguments and returning an explicit i64 value on every control-flow path. Chained calls to earlier functions, function-local integer/boolean variables, if/else, while and for-range inside functions, and expression-level calls are compiled directly to native x86-64 machine code. A maximum of 32 functions is supported.
 
 Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `range(start, stop, step)` use one-time source-order integer argument evaluation. Iterator variables are lexically scoped and shadow same-named outer variables without destroying them; nested `for` and `while` loops have correct `break`/`continue` handling. Zero step exits with process status **6**, while range iterator overflow ends the range without wrapping. The i64-specific range boundary is narrower than the i128 bytecode/evaluator domain; out-of-i64 literals are rejected during compilation. Tests compare actual linked Linux ELF output to the Rust evaluator for `ai`, Slovak and English. 
 
-Unsupported features are rejected at compile time: arbitrary iterables, functions, recursive calls, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, `and/or`, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, boolean or text parameters/return values, floating-point numbers, arbitrary strings, lists, null literals, first-class functions, `and/or`, typed declarations, multiple-argument print, and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+
+## Independent native function call frames
+
+The native backend implements a deliberately small private **stack-based calling convention** between functions compiled in the same program. Arguments are evaluated in source order and pushed as signed i64 values; the callee saves its own frame pointer and copies parameters into independent local stack slots. The caller reclaims argument storage after return. All returns use the signed i64 result register. Functions have no access to calling scopes or global bindings, so captures and closures do not silently pretend to work. Only earlier declared functions can be called; direct or indirect recursion is unsupported. The compiler statically rejects missing-return paths and mismatched argument counts. An unexpected fallthrough exits status **7** as a defensive guard.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/bytecode_functions_sk.nbd native-functions
+./native-functions
+```
+
+Expected output: `13` then `6` on separate lines. Generated ELF files execute without the Nobody bytecode VM, Python, Cargo, Rust or libc. GNU binutils remain build-time prerequisites. Native functions are an experimental subset, **not** an external ABI or a security sandbox.
 
 ## Architecture and safety limits
 
