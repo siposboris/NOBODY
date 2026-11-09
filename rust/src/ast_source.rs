@@ -90,11 +90,7 @@ fn block(body: &[Statement], profile: &str, indent: usize) -> Result<String, Dia
     Ok(result)
 }
 
-fn emit_statement(
-    stmt: &Statement,
-    profile: &str,
-    indent: usize,
-) -> Result<String, Diagnostic> {
+fn emit_statement(stmt: &Statement, profile: &str, indent: usize) -> Result<String, Diagnostic> {
     if indent > MAX_DEPTH {
         return Err(invalid("Statement nesting exceeds emitter limit"));
     }
@@ -201,7 +197,11 @@ fn emit_statement(
             )
         }
         Statement::Return(value) => {
-            format!("{} {};", keyword(profile, "return")?, expression(value, profile, 0)?)
+            format!(
+                "{} {};",
+                keyword(profile, "return")?,
+                expression(value, profile, 0)?
+            )
         }
         Statement::Break => format!("{};", keyword(profile, "break")?),
         Statement::Continue => format!("{};", keyword(profile, "continue")?),
@@ -216,7 +216,9 @@ fn emit_statement(
 pub fn emit_program(program: &Program, profile: &str) -> Result<String, Diagnostic> {
     let language = crate::syntax::Language::from_code(profile)?;
     if language != program.language {
-        return Err(invalid("AST language does not match requested output profile"));
+        return Err(invalid(
+            "AST language does not match requested output profile",
+        ));
     }
     validate_program(program)?;
     let mut source = String::new();
@@ -277,7 +279,10 @@ mod tests {
 
     #[test]
     fn strings_are_preserved_as_raw_source_tokens() {
-        assert_roundtrip("ai", r#"let text: str = "A \"quote\" and \n escape"; print(text)"#);
+        assert_roundtrip(
+            "ai",
+            r#"let text: str = "A \"quote\" and \n escape"; print(text)"#,
+        );
         assert_roundtrip("sk", "nech text = 'Život'\nvypis(text)");
     }
 
