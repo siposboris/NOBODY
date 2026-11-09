@@ -47,6 +47,14 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_range_mix_ai.nbd"),
         ("ai", "native_range_overflow_ai.nbd"),
         ("ai", "native_range_empty_ai.nbd"),
+        ("ai", "bytecode_functions_ai.nbd"),
+        ("sk", "bytecode_functions_sk.nbd"),
+        ("en", "bytecode_functions_en.nbd"),
+        ("ai", "bytecode_function_control_ai.nbd"),
+        ("ai", "native_function_args_ai.nbd"),
+        ("ai", "native_function_branches_ai.nbd"),
+        ("ai", "native_function_loops_ai.nbd"),
+        ("ai", "native_function_scope_ai.nbd"),
     ] {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let tmp = temporary();
@@ -162,7 +170,7 @@ fn unsupported_features_are_rejected_before_creating_output() {
     let tmp = temporary();
     let source = tmp.join("unsupported.nbd");
     let output = tmp.join("not-created");
-    std::fs::write(&source, "fn f(x) { return x + 1 }\nprint(f(3))").unwrap();
+    std::fs::write(&source, "fn f(x) { print(x) }\nprint(f(3))").unwrap();
     let result = compile("ai", &source, &output);
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
@@ -231,4 +239,63 @@ fn native_range_preserves_shadowed_outer_iteration_variable() {
     assert_eq!(native.stdout, b"0\n1\n2\n99\n");
     assert!(native.status.success());
     std::fs::remove_dir_all(tmp).unwrap();
+}
+
+#[test]
+fn native_function_calls_preserve_arg_order_and_stack_frames() {
+    let source = format!(
+        "{}/examples/native_function_args_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let temp = temporary();
+    let binary = temp.join("functions-args");
+    let compiled = compile("ai", Path::new(&source), &binary);
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let direct = Command::new(&binary).output().unwrap();
+    assert!(direct.status.success());
+    assert_eq!(direct.stdout, b"123\n474\n");
+    std::fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn native_functions_reject_global_capture_forward_calls_and_missing_return() {
+    for (fixture, error_code) in [
+        ("native_function_bad_implicit_ai.nbd", "N4004"),
+        ("native_function_bad_forward_ai.nbd", "N4001"),
+        ("native_function_bad_global_ai.nbd", "N4001"),
+        ("bytecode_function_bad_arity_ai.nbd", "N4007"),
+        ("bytecode_function_recursive_ai.nbd", "N4001"),
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let output = temp.join("should-not-exist");
+        let compiled = compile("ai", Path::new(&source), &output);
+        assert!(!compiled.status.success(), "{fixture} should be rejected");
+        assert!(
+            String::from_utf8_lossy(&compiled.stderr).contains(error_code),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        assert!(!output.exists());
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn standalone_native_function_binary_runs_after_sources_are_removed() {
+    let temp = temporary();
+    let source = temp.join("function-source.nbd");
+    let binary = temp.join("independent-function-elf");
+    std::fs::write(&source, include_str!("../examples/bytecode_functions_ai.nbd")).unwrap();
+    let compiled = compile("ai", &source, &binary);
+    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    std::fs::remove_file(&source).unwrap();
+    let output = Command::new(&binary).output().unwrap();
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"13\n6\n");
+    std::fs::remove_dir_all(temp).unwrap();
 }
