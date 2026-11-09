@@ -1,0 +1,3 @@
+let outside = 7
+fn read_global() { return outside }
+print(read_global())
