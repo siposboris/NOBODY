@@ -1,0 +1,8 @@
+fn greater(a, b) { return a > b }
+fn positive(x) { return x > 0 }
+let decision = greater(7, 4) and positive(3)
+print(decision)
+print(false or greater(2, 9))
+print(false and (9223372036854775807 + 1 > 0))
+print(true or (9223372036854775807 + 1 > 0))
+if greater(3, 2) and not greater(1, 5) { print(77) } else { print(0) }
