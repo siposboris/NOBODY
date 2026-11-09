@@ -13,7 +13,19 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- compile-nativ
 ./my-program
 ```
 
-The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, noninteger function arguments, inconsistent return types, strings and full i128 semantics. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+The Rust compiler generates x86-64 assembly and uses GNU `as` + `ld` (Fedora package `binutils`); the resulting ELF executable runs using Linux syscalls, **without** the Nobody VM, Python, Rust runtime or libc. `native-asm PROFILE FILE.nbd` displays the generated assembly. Currently supported: i64 arithmetic and variables, boolean comparisons, if/else, while, signed `for ... in range(...)` (1–3 integer arguments), break/continue, and one-integer/boolean print, lazy `and`/`or`, and boolean predicate return values. The native compiler evaluates range bounds once, supports nested loops and stops on iterator overflow; zero step exits with status 6. The backend also compiles **earlier-declared named functions with up to 32 integer parameters and explicit i64 or boolean return values on all paths**, including calls to earlier functions; separate stack frames isolate locals. It rejects recursion, forward calls, implicit null, captures, text/function arguments, conflicting parameter or return types, strings and full i128 semantics. Boolean parameters are supported only when their type can be inferred from direct typed use. See [native backend scope and security limits](../docs/NATIVE_X86_64.md); this is not a complete compiler or self-hosting.
+
+## Native boolean function parameters (conservative subset)
+
+Native x86-64 functions can now accept `bool` as well as signed i64 arguments. Nobody has no explicit parameter-type syntax, so the compiler uses direct typed contexts (`if flag`, `not flag`, `and`/`or`, numeric operators, calls to known functions) to infer a fixed signature. Shadowed names are handled lexically. Ambiguous parameters default to i64, type conflicts fail explicitly, and there is **no** implicit truthiness or generic specialization.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_bool_params_sk.nbd native-boolean-params
+./native-boolean-params
+```
+
+Actual ELF differential tests cover `ai`, `sk` and `en`, nested loops/calls and type mismatch rejection. This does not yet support general flow-sensitive type inference, arbitrary types, recursion or self-hosting.
 
 ## Native lazy booleans and boolean-returning functions (experimental)
 
@@ -25,7 +37,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-bool
 ```
 
-This is still a restricted native subset: no boolean function parameters, arbitrary text, closures, recursion, full i128 or cross-platform support. See [native backend limits](../docs/NATIVE_X86_64.md).
+This is still a restricted native subset: boolean parameters require conservative type inference; arbitrary text, closures, recursion, full i128 and cross-platform support remain unsupported. See [native backend limits](../docs/NATIVE_X86_64.md).
 
 ## Native Linux function call/return subset (experimental)
 
