@@ -324,7 +324,10 @@ impl NativeCompiler {
 
     fn emit_static_text(&mut self, value: &str) -> Result<(), Diagnostic> {
         if value.len() > MAX_ASM_BYTES / 4 {
-            return Err(issue(4005, "Native text literal exceeds static data budget"));
+            return Err(issue(
+                4005,
+                "Native text literal exceeds static data budget",
+            ));
         }
         let label = self.new_label();
         self.static_texts.push((label, value.as_bytes().to_vec()));
@@ -934,7 +937,11 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
             compiler.emit("    .byte 0")?;
         } else {
             // A string containing '.global' stays plain data, never assembly.
-            let sequence = bytes.iter().map(u8::to_string).collect::<Vec<_>>().join(", ");
+            let sequence = bytes
+                .iter()
+                .map(u8::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
             compiler.emit(&format!("    .byte {sequence}"))?;
         }
     }
