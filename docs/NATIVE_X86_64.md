@@ -71,7 +71,7 @@ fn choose(flag: bool, a: int, b: int): int {
 }
 ```
 
-One source file still uses exactly one selected syntax profile. Slovak spelling is `funkcia choose(flag: logicke, a: cele, b: cele): cele`; the parser converts types to canonical names in Rust IR. Both parameter and return annotations are optional. The native backend verifies calls and return types against declared annotations, and verifies that any inferred constraints agree. Untyped functions still use conservative parameter inference.
+One source file still uses exactly one selected syntax profile. Slovak spelling is `funkcia choose(flag: logicke, a: cele, b: cele): cele`; the parser converts types to canonical names in Rust IR. Both parameter and return annotations are optional. The native backend verifies calls and return types against declared annotations, and verifies that any inferred constraints agree. Untyped functions still use conservative parameter inference. All four workflows passed, including [Rust CI #42660895804](https://github.com/siposboris/NOBODY/actions/runs/42660895804) with actual native ELF differential tests; merged in [PR #33](https://github.com/siposboris/NOBODY/pull/33). This is a partial implementation, not a completed typed-IR or self-hosting roadmap criterion.
 
 Only `int` (signed 64-bit in native ELF) and `bool` signatures compile to machine code. `float`/`str` are recognized as source-level annotations but deliberately rejected by this native subset. The separate Rust evaluator can validate supported runtime value types; typed function declarations are not yet supported by experimental bytecode or AST JSON v1 output because those paths would otherwise drop type metadata.
 
