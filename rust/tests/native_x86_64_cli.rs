@@ -66,6 +66,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_bool_params_chain_ai.nbd"),
         ("ai", "native_bool_params_shadow_ai.nbd"),
         ("ai", "native_bool_params_nested_ai.nbd"),
+        ("ai", "native_typed_signatures_ai.nbd"),
+        ("sk", "native_typed_signatures_sk.nbd"),
+        ("en", "native_typed_signatures_en.nbd"),
     ] {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let tmp = temporary();
@@ -460,5 +463,62 @@ fn bool_parameter_type_errors_do_not_create_native_binary() {
         );
         assert!(!binary.exists());
         std::fs::remove_dir_all(temporary).unwrap();
+    }
+}
+
+#[test]
+fn explicit_typed_function_signatures_emit_standalone_elf_in_three_profiles() {
+    for (language, fixture) in [
+        ("ai", "native_typed_signatures_ai.nbd"),
+        ("sk", "native_typed_signatures_sk.nbd"),
+        ("en", "native_typed_signatures_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let binary = temp.join("typed-signatures");
+        let built = compile(language, Path::new(&source), &binary);
+        assert!(built.status.success(), "{fixture}: {}", String::from_utf8_lossy(&built.stderr));
+        let elf = Command::new(&binary).output().unwrap();
+        assert!(elf.status.success(), "{fixture}: {:?}", elf.status);
+        assert_eq!(elf.stdout, b"3\n8\nfalse\n5\n");
+        let interpreter = nobody(&["run", language, &source]);
+        assert!(interpreter.status.success());
+        assert_eq!(elf.stdout, interpreter.stdout);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn native_annotated_signatures_reject_mismatches_without_writing_elf() {
+    for fixture in [
+        "native_typed_bad_argument_ai.nbd",
+        "native_typed_bad_return_ai.nbd",
+        "native_typed_bad_constraint_ai.nbd",
+        "eval_typed_string_ai.nbd",
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let destination = temp.join("must-not-exist");
+        let built = compile("ai", Path::new(&source), &destination);
+        assert!(!built.status.success(), "invalid native typed program compiled: {fixture}");
+        assert!(String::from_utf8_lossy(&built.stderr).contains("N4004"), "{fixture}");
+        assert!(!destination.exists());
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn annotated_functions_fail_closed_in_legacy_ast_json_and_bytecode() {
+    let source = format!(
+        "{}/examples/native_typed_signatures_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    for arguments in [
+        vec!["run-bytecode", "ai", source.as_str()],
+        vec!["ast-json", "ai", source.as_str()],
+    ] {
+        let result = nobody(&arguments);
+        assert!(!result.status.success());
+        assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
     }
 }
