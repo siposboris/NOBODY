@@ -154,6 +154,30 @@ if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
       exit 1
     fi
   done
+  printf '%s\n' '== Nobody Phase 4: native signed for-range ELF parity =='
+  for language in ai sk en; do
+    source="rust/examples/bytecode_for_"$language".nbd"
+    executable="$native_temp/range-$language"
+    cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      compile-native "$language" "$source" "$executable"
+    tree_output=$(cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+      run "$language" "$source")
+    native_output=$("$executable")
+    if [[ "$tree_output" != "$native_output" || "$native_output" != "6" ]]; then
+      printf 'Native signed range differs from interpreter: %s\n' "$source" >&2
+      exit 1
+    fi
+  done
+  cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
+    compile-native ai rust/examples/native_range_zero_ai.nbd "$native_temp/range-zero"
+  set +e
+  "$native_temp/range-zero"
+  range_zero_status=$?
+  set -e
+  if [[ "$range_zero_status" -ne 6 ]]; then
+    printf 'Native zero-step range should exit with status 6, got: %s\n' "$range_zero_status" >&2
+    exit 1
+  fi
   cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody -- \
     compile-native ai rust/examples/native_overflow_ai.nbd "$native_temp/overflow"
   set +e
