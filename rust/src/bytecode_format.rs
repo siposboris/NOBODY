@@ -65,9 +65,18 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
         PushBool(false) => out.extend_from_slice(&[1, 0]),
         PushBool(true) => out.extend_from_slice(&[1, 1]),
         PushNull => out.push(2),
-        Load(slot) => { out.push(3); write_u32(out, *slot)?; }
-        Define(slot) => { out.push(4); write_u32(out, *slot)?; }
-        Store(slot) => { out.push(5); write_u32(out, *slot)?; }
+        Load(slot) => {
+            out.push(3);
+            write_u32(out, *slot)?;
+        }
+        Define(slot) => {
+            out.push(4);
+            write_u32(out, *slot)?;
+        }
+        Store(slot) => {
+            out.push(5);
+            write_u32(out, *slot)?;
+        }
         Add => out.push(6),
         Sub => out.push(7),
         Mul => out.push(8),
@@ -79,22 +88,40 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
         Le => out.push(14),
         Gt => out.push(15),
         Ge => out.push(16),
-        Jump(target) => { out.push(17); write_u32(out, *target)?; }
-        JumpIfFalse(target) => { out.push(18); write_u32(out, *target)?; }
-        RangeCheck { current, stop, step, exit } => {
+        Jump(target) => {
+            out.push(17);
+            write_u32(out, *target)?;
+        }
+        JumpIfFalse(target) => {
+            out.push(18);
+            write_u32(out, *target)?;
+        }
+        RangeCheck {
+            current,
+            stop,
+            step,
+            exit,
+        } => {
             out.push(19);
             for field in [current, stop, step, exit] {
                 write_u32(out, *field)?;
             }
         }
-        RangeAdvance { current, step, exit } => {
+        RangeAdvance {
+            current,
+            step,
+            exit,
+        } => {
             out.push(20);
             for field in [current, step, exit] {
                 write_u32(out, *field)?;
             }
         }
         Drop => out.push(21),
-        Print(count) => { out.push(22); write_u32(out, *count)?; }
+        Print(count) => {
+            out.push(22);
+            write_u32(out, *count)?;
+        }
         Call { function, argc } => {
             out.push(23);
             write_u32(out, *function)?;
@@ -136,7 +163,9 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
     for function in &program.functions {
         let name = function.name.as_bytes();
         if name.is_empty() || name.len() > MAX_NAME_BYTES {
-            return Err(invalid("Function name byte length is outside the file format limits"));
+            return Err(invalid(
+                "Function name byte length is outside the file format limits",
+            ));
         }
         write_u16(&mut out, name.len() as u16);
         out.extend_from_slice(name);
@@ -163,8 +192,14 @@ struct Reader<'a> {
 
 impl<'a> Reader<'a> {
     fn take(&mut self, length: usize) -> Result<&'a [u8], Diagnostic> {
-        let end = self.position.checked_add(length).ok_or_else(|| invalid("Bytecode offset overflow"))?;
-        let part = self.bytes.get(self.position..end).ok_or_else(|| invalid("Truncated bytecode file"))?;
+        let end = self
+            .position
+            .checked_add(length)
+            .ok_or_else(|| invalid("Bytecode offset overflow"))?;
+        let part = self
+            .bytes
+            .get(self.position..end)
+            .ok_or_else(|| invalid("Truncated bytecode file"))?;
         self.position = end;
         Ok(part)
     }
@@ -253,7 +288,9 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
         return Err(too_large());
     }
     if bytes.len() < 32 {
-        return Err(invalid("Bytecode file is shorter than its header and checksum"));
+        return Err(invalid(
+            "Bytecode file is shorter than its header and checksum",
+        ));
     }
     let split = bytes.len() - 8;
     let mut hash_bytes = [0u8; 8];
@@ -261,7 +298,10 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
     if u64::from_le_bytes(hash_bytes) != checksum(&bytes[..split]) {
         return Err(invalid("Bytecode checksum does not match file contents"));
     }
-    let mut reader = Reader { bytes: &bytes[..split], position: 0 };
+    let mut reader = Reader {
+        bytes: &bytes[..split],
+        position: 0,
+    };
     if reader.take(8)? != MAGIC {
         return Err(invalid("Unknown Nobody bytecode file magic"));
     }
@@ -324,7 +364,10 @@ mod tests {
             ("ai", include_str!("../examples/bytecode_functions_ai.nbd")),
             ("sk", include_str!("../examples/bytecode_for_sk.nbd")),
             ("en", include_str!("../examples/bytecode_control_en.nbd")),
-            ("ai", include_str!("../examples/bytecode_function_null_ai.nbd")),
+            (
+                "ai",
+                include_str!("../examples/bytecode_function_null_ai.nbd"),
+            ),
         ]
     }
 
@@ -348,9 +391,12 @@ mod tests {
 
     #[test]
     fn same_canonical_ir_across_languages_has_identical_bytes() {
-        let ai = compile_source(include_str!("../examples/bytecode_functions_ai.nbd"), "ai").unwrap();
-        let sk = compile_source(include_str!("../examples/bytecode_functions_sk.nbd"), "sk").unwrap();
-        let en = compile_source(include_str!("../examples/bytecode_functions_en.nbd"), "en").unwrap();
+        let ai =
+            compile_source(include_str!("../examples/bytecode_functions_ai.nbd"), "ai").unwrap();
+        let sk =
+            compile_source(include_str!("../examples/bytecode_functions_sk.nbd"), "sk").unwrap();
+        let en =
+            compile_source(include_str!("../examples/bytecode_functions_en.nbd"), "en").unwrap();
         assert_eq!(encode(&ai).unwrap(), encode(&sk).unwrap());
         assert_eq!(encode(&ai).unwrap(), encode(&en).unwrap());
     }
@@ -399,7 +445,10 @@ mod tests {
 
     #[test]
     fn oversized_and_short_frames_are_rejected_before_allocating_units() {
-        assert_eq!(decode(&vec![0u8; MAX_FILE_BYTES + 1]).unwrap_err().code, 4005);
+        assert_eq!(
+            decode(&vec![0u8; MAX_FILE_BYTES + 1]).unwrap_err().code,
+            4005
+        );
         let compiled = compile_source("print(1)", "ai").unwrap();
         let mut bytes = encode(&compiled).unwrap();
         bytes[16..20].copy_from_slice(&u32::MAX.to_le_bytes());
