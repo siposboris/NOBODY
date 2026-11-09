@@ -58,11 +58,33 @@ pub enum Instruction {
     Halt,
 }
 
+/// Supported runtime primitive signatures in the experimental bytecode VM.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValueType {
+    Int,
+    Bool,
+}
+
+impl ValueType {
+    fn from_annotation(value: &str) -> Result<Self, Diagnostic> {
+        match value {
+            "int" => Ok(Self::Int),
+            "bool" => Ok(Self::Bool),
+            _ => Err(unsupported(format!(
+                "Bytecode functions currently support int/bool annotations, not {value:?}"
+            ))),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledFunction {
     pub name: String,
     pub arity: usize,
     pub slots: usize,
+    // Each function argument has an independently serialized optional type.
+    pub parameter_types: Vec<Option<ValueType>>,
+    pub return_type: Option<ValueType>,
     pub code: Vec<Instruction>,
 }
 
@@ -432,11 +454,16 @@ impl Compiler {
             IrStatement::Function {
                 name, parameters, parameter_types, return_type, body,
             } => {
-                // Typed signatures cannot be serialized or enforced by the
-                // experimental VM yet. Reject rather than silently dropping them.
-                if parameter_types.iter().any(Option::is_some) || return_type.is_some() {
-                    return Err(unsupported("Explicit function signatures require typed bytecode runtime guards; use the Rust evaluator or native x86-64 subset for now"));
+                if parameters.len() != parameter_types.len() {
+                    return Err(unsupported("Function signature parameter metadata is inconsistent"));
                 }
+                let expected_types = parameter_types
+                    .iter()
+                    .map(|ty| ty.as_deref().map(ValueType::from_annotation).transpose())
+                    .collect::<Result<Vec<_>, _>>()?;
+                let expected_return = return_type.as_deref()
+                    .map(ValueType::from_annotation)
+                    .transpose()?;
                 if self.in_function || self.scopes.len() != 1 {
                     return Err(unsupported("Nested bytecode functions and closures are not supported"));
                 }
@@ -474,6 +501,8 @@ impl Compiler {
                     name: name.clone(),
                     arity: parameters.len(),
                     slots: child.slots,
+                    parameter_types: expected_types,
+                    return_type: expected_return,
                     code: child.code,
                 });
                 self.function_ids.insert(name.clone(), id);
@@ -553,7 +582,10 @@ pub fn verify(program: &Bytecode) -> Result<(), Diagnostic> {
         return Err(diagnostic(4005, "Bytecode function count exceeds limit"));
     }
     for (id, function) in program.functions.iter().enumerate() {
-        if function.name.is_empty() || function.arity > function.slots {
+        if function.name.is_empty()
+            || function.arity > function.slots
+            || function.parameter_types.len() != function.arity
+        {
             return Err(unsupported("Invalid bytecode function metadata"));
         }
         verify_unit(
@@ -830,6 +862,13 @@ enum Value {
 }
 
 impl Value {
+    fn matches_type(&self, expected: ValueType) -> bool {
+        matches!(
+            (self, expected),
+            (Self::Int(_), ValueType::Int) | (Self::Bool(_), ValueType::Bool)
+        )
+    }
+
     fn display(&self) -> String {
         match self {
             Value::Int(value) => value.to_string(),
@@ -1024,6 +1063,20 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 }
                 let target = &program.functions[*function];
                 let start = stack.len() - *argc;
+                // Validate before consuming the caller's operands or pushing
+                // a new frame. No implicit conversions or truthiness.
+                for (index, (argument, annotation)) in stack[start..]
+                    .iter()
+                    .zip(&target.parameter_types)
+                    .enumerate()
+                {
+                    if annotation.is_some_and(|expected| !argument.matches_type(expected)) {
+                        return Err(unsupported(format!(
+                            "Function {:?} argument {} violates its bytecode type annotation",
+                            target.name, index + 1
+                        )));
+                    }
+                }
                 let arguments = stack.split_off(start);
                 frames.push(CallFrame {
                     pc: pc + 1,
@@ -1044,6 +1097,14 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 let value = stack
                     .pop()
                     .ok_or_else(|| unsupported("Empty function return stack"))?;
+                let function_id = current_function.ok_or_else(|| unsupported("Return without function"))?;
+                let function = &program.functions[function_id];
+                if function.return_type.is_some_and(|expected| !value.matches_type(expected)) {
+                    return Err(unsupported(format!(
+                        "Function {:?} returned a value incompatible with its bytecode return annotation",
+                        function.name
+                    )));
+                }
                 let saved = frames
                     .pop()
                     .ok_or_else(|| unsupported("Return without caller"))?;
