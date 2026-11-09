@@ -1,0 +1,2 @@
+fn test(flag) { return not flag }
+print(test(1))
