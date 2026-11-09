@@ -11,9 +11,9 @@
 5. Remove superseded Python files with a separate, reviewed Git commit **only after** the compatibility gate passes. Do not silently delete earlier user work or claim Python-free self-hosting prematurely.
 6. Port Rust components into Nobody itself after the Nobody compiler/runtime can express them; perform reproducible stage-1 → stage-2 → stage-3 bootstrap tests before retiring Rust.
 
-## Native Linux signed `for range` milestone (2026-11-09; pending CI)
+## Native Linux signed `for range` milestone (2026-11-09; verified)
 
-The native x86-64 AOT backend in Rust now emits direct machine-code ELF for bounded signed `for ... in range(...)` loops as well as the earlier arithmetic, branching and `while` slice. Argument expressions are evaluated once, loop variables are lexically isolated, and nested `break`/`continue` use loop-specific targets. A zero step terminates with status 6; checked iterator advance exits a range on signed i64 overflow. New actual-ELF parity tests compare `ai`, `sk` and `en` programs with the Rust evaluator. The output has no Python, libc or Nobody bytecode VM dependency, but compile-time GNU binutils are required. This is still a partial native backend, not Python module replacement or self-hosting.
+The native x86-64 AOT backend in Rust now emits direct machine-code ELF for bounded signed `for ... in range(...)` loops as well as the earlier arithmetic, branching and `while` slice. Argument expressions are evaluated once, loop variables are lexically isolated, and nested `break`/`continue` use loop-specific targets. A zero step terminates with status 6; checked iterator advance exits a range on signed i64 overflow. New actual-ELF parity tests compare `ai`, `sk` and `en` programs with the Rust evaluator. The output has no Python, libc or Nobody bytecode VM dependency, but compile-time GNU binutils are required. This is still a partial native backend, not Python module replacement or self-hosting. The implementation passed all four workflows including [Rust CI #42641964768](https://github.com/siposboris/NOBODY/actions/runs/42641964768) and was merged in [PR #29](https://github.com/siposboris/NOBODY/pull/29).
 
 ## Current verified migration direction (2026-11-08)
 
