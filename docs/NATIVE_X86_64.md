@@ -45,7 +45,7 @@ cargo run --release --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text
 ```
 
-**Limit:** string-valued variables, text concatenation and returning strings from native functions are still rejected. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops.
+**Limit:** string-valued variables, text concatenation and returning strings from native functions are still rejected. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops. All four workflows passed, including [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) in [PR #39](https://github.com/siposboris/NOBODY/pull/39).
 
 ## Independent native function call frames
 
