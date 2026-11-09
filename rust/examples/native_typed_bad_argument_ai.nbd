@@ -1,0 +1,2 @@
+fn identity(flag: bool): bool { return flag }
+print(identity(4))
