@@ -14,13 +14,17 @@
 | Catalog of 22 option families | Prototype | Many unimplemented |
 | Formal parser, AST/IR, modules, generics | Planned | |
 | Rust-style ownership, GC and manual memory profiles | Planned | |
-| Native x86-64/ARM64 and WASM backends | Planned | |
+| Linux x86-64 native ELF machine-code backend | **Verified experimental subset** | Rust IR → x86-64 assembly → GNU `as`/`ld` → standalone executable. Supports i64 arithmetic, variables, conditions, while and one-integer print. [Details](NATIVE_X86_64.md); [CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Not a full compiler |\n| ARM64, Windows, macOS and WebAssembly native targets | Planned | No native machine-code backend verified for these targets |
 | GPU/tensors, scientific math, SIMD | Planned | |
 | Async, threads, actors, distribution | Planned | |
 | Hygienic macros and formal proof modes | Planned | |
 | LSP, debugger, package manager, reproducible builds | Planned | |
 | Native self-hosted toolchain without Python | Planned | |
 | Hard resource isolation and security sandbox | Planned | |
+
+### Current confirmed native output (2026-11-09)
+
+A [limited Rust x86-64 backend](NATIVE_X86_64.md) now creates **real Linux ELF64 executables**, not interpreter wrappers. GNU binutils produces machine code that executes independently of Python, Rust, libc or the Nobody bytecode VM. All four workflows passed in [Rust CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). The native subset includes signed i64 numeric expressions, assignments, booleans and comparisons, lexical variables, if/else, while/break/continue and one-argument integer output. **No** native for-range, functions, text, complete language coverage, other platform targets, release distribution or self-hosting yet.
 
 See [full roadmap](ROADMAP.md).
 
