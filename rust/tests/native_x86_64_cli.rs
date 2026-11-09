@@ -60,6 +60,12 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("en", "native_bool_en.nbd"),
         ("ai", "native_bool_effect_ai.nbd"),
         ("ai", "native_bool_loop_ai.nbd"),
+        ("ai", "native_bool_params_ai.nbd"),
+        ("sk", "native_bool_params_sk.nbd"),
+        ("en", "native_bool_params_en.nbd"),
+        ("ai", "native_bool_params_chain_ai.nbd"),
+        ("ai", "native_bool_params_shadow_ai.nbd"),
+        ("ai", "native_bool_params_nested_ai.nbd"),
     ] {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let tmp = temporary();
@@ -372,4 +378,78 @@ fn native_boolean_return_types_must_agree_on_all_paths() {
     assert!(String::from_utf8_lossy(&compiled.stderr).contains("N4004"));
     assert!(!output.exists());
     std::fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn native_boolean_parameters_work_in_real_elf_for_all_three_profiles() {
+    for (profile, fixture) in [
+        ("ai", "native_bool_params_ai.nbd"),
+        ("sk", "native_bool_params_sk.nbd"),
+        ("en", "native_bool_params_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temporary = temporary();
+        let binary = temporary.join("boolean-params");
+        let compiled = compile(profile, Path::new(&source), &binary);
+        assert!(
+            compiled.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let native = Command::new(&binary).output().unwrap();
+        assert!(native.status.success(), "{fixture}: {:?}", native.status);
+        assert_eq!(native.stdout, b"3\n8\nfalse\nfalse\ntrue\nfalse\n");
+        let reference = nobody(&["run", profile, &source]);
+        assert!(reference.status.success());
+        assert_eq!(native.stdout, reference.stdout, "{fixture}");
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
+}
+
+#[test]
+fn native_boolean_parameters_can_drive_loops_and_shadow_locals() {
+    for (fixture, expected) in [
+        ("native_bool_params_nested_ai.nbd", b"9\n0\n".as_slice()),
+        ("native_bool_params_shadow_ai.nbd", b"11\ntrue\nfalse\n".as_slice()),
+        ("native_bool_params_chain_ai.nbd", b"true\nfalse\nfalse\ntrue\n".as_slice()),
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temporary = temporary();
+        let binary = temporary.join("typed-functions");
+        let compiled = compile("ai", Path::new(&source), &binary);
+        assert!(
+            compiled.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let native = Command::new(&binary).output().unwrap();
+        assert!(native.status.success(), "{fixture}: {:?}", native.status);
+        assert_eq!(native.stdout, expected, "{fixture}");
+        let reference = nobody(&["run", "ai", &source]);
+        assert!(reference.status.success());
+        assert_eq!(native.stdout, reference.stdout, "{fixture}");
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
+}
+
+#[test]
+fn bool_parameter_type_errors_do_not_create_native_binary() {
+    for fixture in [
+        "native_bool_params_wrong_ai.nbd",
+        "native_bool_params_conflict_ai.nbd",
+        "native_bool_params_unconstrained_ai.nbd",
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temporary = temporary();
+        let binary = temporary.join("should-not-exist");
+        let compiled = compile("ai", Path::new(&source), &binary);
+        assert!(!compiled.status.success(), "{fixture} compiled despite type mismatch");
+        assert!(
+            String::from_utf8_lossy(&compiled.stderr).contains("N4004"),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        assert!(!binary.exists());
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
 }
