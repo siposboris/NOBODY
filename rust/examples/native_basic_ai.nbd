@@ -1,0 +1,7 @@
+let a = 4
+let b = 5
+print(a + b)
+a = a * 2
+print(a)
+if a > 7 { let a = 90 print(a) } else { print(0) }
+print(a)
