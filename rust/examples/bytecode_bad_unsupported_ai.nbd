@@ -1,1 +1,1 @@
-for n in range(3) { print(n) }
+print("string values are not supported by the bytecode VM")
