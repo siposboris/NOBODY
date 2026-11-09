@@ -106,7 +106,10 @@ impl ParameterConstraints<'_> {
         depth: usize,
     ) -> Result<(), Diagnostic> {
         if depth > MAX_DEPTH {
-            return Err(issue(4005, "Native parameter inference expression depth exceeded"));
+            return Err(issue(
+                4005,
+                "Native parameter inference expression depth exceeded",
+            ));
         }
         match expr {
             IrExpr::Name(Name::User(name)) => {
@@ -184,22 +187,33 @@ impl ParameterConstraints<'_> {
 
     fn block(&mut self, body: &[IrStatement], depth: usize) -> Result<(), Diagnostic> {
         if depth > MAX_DEPTH {
-            return Err(issue(4005, "Native parameter inference block depth exceeded"));
+            return Err(issue(
+                4005,
+                "Native parameter inference block depth exceeded",
+            ));
         }
         self.scopes.push(BTreeSet::new());
-        let result = body.iter().try_for_each(|stmt| self.statement(stmt, depth + 1));
+        let result = body
+            .iter()
+            .try_for_each(|stmt| self.statement(stmt, depth + 1));
         self.scopes.pop();
         result
     }
 
     fn statement(&mut self, stmt: &IrStatement, depth: usize) -> Result<(), Diagnostic> {
         if depth > MAX_DEPTH {
-            return Err(issue(4005, "Native parameter inference statement depth exceeded"));
+            return Err(issue(
+                4005,
+                "Native parameter inference statement depth exceeded",
+            ));
         }
         match stmt {
             IrStatement::Let { name, expr, .. } => {
                 self.expression(expr, None, depth + 1)?;
-                self.scopes.last_mut().expect("inference lexical scope").insert(name.clone());
+                self.scopes
+                    .last_mut()
+                    .expect("inference lexical scope")
+                    .insert(name.clone());
             }
             IrStatement::Assign { name, expr } => {
                 self.expression(expr, None, depth + 1)?;
@@ -209,7 +223,10 @@ impl ParameterConstraints<'_> {
                     self.constrain_name(name, Type::Int)?;
                 }
             }
-            IrStatement::If { branches, otherwise } => {
+            IrStatement::If {
+                branches,
+                otherwise,
+            } => {
                 for (condition, body) in branches {
                     self.expression(condition, Some(Type::Bool), depth + 1)?;
                     self.block(body, depth + 1)?;
@@ -222,7 +239,11 @@ impl ParameterConstraints<'_> {
                 self.expression(condition, Some(Type::Bool), depth + 1)?;
                 self.block(body, depth + 1)?;
             }
-            IrStatement::For { variable, iterable, body } => {
+            IrStatement::For {
+                variable,
+                iterable,
+                body,
+            } => {
                 self.expression(iterable, None, depth + 1)?;
                 self.scopes.push(BTreeSet::from([variable.clone()]));
                 let result = self.block(body, depth + 1);
@@ -244,7 +265,10 @@ fn infer_native_parameters(
     functions: &BTreeMap<String, FunctionInfo>,
 ) -> Result<[Type; 32], Diagnostic> {
     if parameters.len() > 32 {
-        return Err(issue(4005, "Too many native function parameters for inference"));
+        return Err(issue(
+            4005,
+            "Too many native function parameters for inference",
+        ));
     }
     let mut constraints = ParameterConstraints {
         parameters,
