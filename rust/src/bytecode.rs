@@ -1112,6 +1112,15 @@ mod tests {
     }
 
     #[test]
+    fn typed_function_signatures_fail_closed_until_vm_has_runtime_type_guards() {
+        let source = "fn identity(flag: bool): bool { return flag }\nprint(identity(true))";
+        let error = compile_source(source, "ai").unwrap_err();
+        assert_eq!(error.code, 4004);
+        assert!(error.detail.contains("typed bytecode runtime guards"));
+        assert_eq!(compile_source("fn identity(flag) { return flag }\nprint(identity(true))", "ai").unwrap().functions.len(), 1);
+    }
+
+    #[test]
     fn unsupported_string_values_remain_explicitly_rejected() {
         let err = compile_source("print(\"not yet supported\")", "ai").unwrap_err();
         assert_eq!(err.code, 4004);
