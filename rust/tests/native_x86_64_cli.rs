@@ -290,9 +290,17 @@ fn standalone_native_function_binary_runs_after_sources_are_removed() {
     let temp = temporary();
     let source = temp.join("function-source.nbd");
     let binary = temp.join("independent-function-elf");
-    std::fs::write(&source, include_str!("../examples/bytecode_functions_ai.nbd")).unwrap();
+    std::fs::write(
+        &source,
+        include_str!("../examples/bytecode_functions_ai.nbd"),
+    )
+    .unwrap();
     let compiled = compile("ai", &source, &binary);
-    assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
     std::fs::remove_file(&source).unwrap();
     let output = Command::new(&binary).output().unwrap();
     assert!(output.status.success());
