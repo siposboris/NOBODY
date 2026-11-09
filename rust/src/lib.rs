@@ -8,6 +8,7 @@ use unicode_normalization::is_nfc;
 
 pub mod ast_json;
 pub mod bytecode;
+pub mod bytecode_format;
 pub use bytecode::{
     compile_source as compile_bytecode_source, execute_source as execute_bytecode_source,
 };
