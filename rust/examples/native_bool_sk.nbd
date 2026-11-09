@@ -1,0 +1,8 @@
+funkcia greater(a, b) { vrat a > b }
+funkcia positive(x) { vrat x > 0 }
+nech decision = greater(7, 4) a_zaroven positive(3)
+vypis(decision)
+vypis(nepravda alebo greater(2, 9))
+vypis(nepravda a_zaroven (9223372036854775807 + 1 > 0))
+vypis(pravda alebo (9223372036854775807 + 1 > 0))
+ak greater(3, 2) a_zaroven nie greater(1, 5) { vypis(77) } inak { vypis(0) }

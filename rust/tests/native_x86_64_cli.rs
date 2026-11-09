@@ -55,6 +55,11 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_function_branches_ai.nbd"),
         ("ai", "native_function_loops_ai.nbd"),
         ("ai", "native_function_scope_ai.nbd"),
+        ("ai", "native_bool_ai.nbd"),
+        ("sk", "native_bool_sk.nbd"),
+        ("en", "native_bool_en.nbd"),
+        ("ai", "native_bool_effect_ai.nbd"),
+        ("ai", "native_bool_loop_ai.nbd"),
     ] {
         let input = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let tmp = temporary();
@@ -305,5 +310,66 @@ fn standalone_native_function_binary_runs_after_sources_are_removed() {
     let output = Command::new(&binary).output().unwrap();
     assert!(output.status.success());
     assert_eq!(output.stdout, b"13\n6\n");
+    std::fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn native_boolean_printing_and_short_circuit_work_on_actual_elf() {
+    for (profile, fixture) in [
+        ("ai", "native_bool_ai.nbd"),
+        ("sk", "native_bool_sk.nbd"),
+        ("en", "native_bool_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let binary = temp.join("native-boolean");
+        let compiled = compile(profile, Path::new(&source), &binary);
+        assert!(
+            compiled.status.success(),
+            "{fixture}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let native = Command::new(&binary).output().unwrap();
+        assert!(native.status.success(), "{fixture}: {:?}", native.status);
+        // The potentially overflowing RHS must not run when short-circuited.
+        assert_eq!(native.stdout, b"true\nfalse\nfalse\ntrue\n77\n");
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn native_short_circuit_skips_boolean_function_side_effects() {
+    let source = format!(
+        "{}/examples/native_bool_effect_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let temp = temporary();
+    let binary = temp.join("side-effects");
+    let compiled = compile("ai", Path::new(&source), &binary);
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success());
+    assert_eq!(native.stdout, b"false\ntrue\n11\ntrue\n");
+    let reference = nobody(&["run", "ai", &source]);
+    assert_eq!(native.stdout, reference.stdout);
+    std::fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
+fn native_boolean_return_types_must_agree_on_all_paths() {
+    let source = format!(
+        "{}/examples/native_bool_mixed_return_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let temp = temporary();
+    let output = temp.join("should-not-exist");
+    let compiled = compile("ai", Path::new(&source), &output);
+    assert!(!compiled.status.success());
+    assert!(String::from_utf8_lossy(&compiled.stderr).contains("N4004"));
+    assert!(!output.exists());
     std::fs::remove_dir_all(temp).unwrap();
 }

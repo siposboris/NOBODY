@@ -7,8 +7,9 @@
 //!
 //! Supported: signed i64 numbers, boolean conditions, checked + - *,
 //! comparisons, lexical variables, if/elif/else, while, signed for-range,
-//! break/continue, named earlier-declared i64 functions with parameters and
-//! explicit i64 returns, and print(one integer). Unsupported features fail before output.
+//! break/continue, lazy boolean and/or, earlier-declared integer-argument
+//! functions with i64/bool returns, and print(one integer or boolean).
+//! Unsupported features fail before output.
 use crate::ir::{IrExpr, IrStatement, Module, Name};
 use crate::{lower_source, Diagnostic};
 use std::collections::BTreeMap;
@@ -53,6 +54,7 @@ struct LoopTargets {
 struct FunctionInfo {
     label: usize,
     arity: usize,
+    result: Type,
 }
 
 struct NativeCompiler {
@@ -63,6 +65,7 @@ struct NativeCompiler {
     loops: Vec<LoopTargets>,
     functions: BTreeMap<String, FunctionInfo>,
     in_function: bool,
+    return_kind: Option<Type>,
 }
 
 impl NativeCompiler {
@@ -145,7 +148,7 @@ impl NativeCompiler {
                 if !args.is_empty() {
                     self.emit(&format!("    add rsp, {}", args.len() * 8))?;
                 }
-                Ok(Type::Int)
+                Ok(function.result)
             }
             IrExpr::Boolean(value) => {
                 self.emit(if *value { "    mov eax, 1" } else { "    xor eax, eax" })?;
@@ -175,6 +178,19 @@ impl NativeCompiler {
                 }
             }
             IrExpr::Binary { op, lhs, rhs } => {
+                if op == "and" || op == "or" {
+                    if self.expression(lhs, depth + 1)? != Type::Bool {
+                        return Err(unsupported("Native logical operators require boolean operands"));
+                    }
+                    let skip = self.new_label();
+                    self.emit("    test rax, rax")?;
+                    self.emit(&format!("    {} .L{skip}", if op == "and" { "jz" } else { "jnz" }))?;
+                    if self.expression(rhs, depth + 1)? != Type::Bool {
+                        return Err(unsupported("Native logical operators require boolean operands"));
+                    }
+                    self.label(skip)?;
+                    return Ok(Type::Bool);
+                }
                 let left = self.expression(lhs, depth + 1)?;
                 self.emit("    push rax")?;
                 let right = self.expression(rhs, depth + 1)?;
@@ -277,13 +293,14 @@ impl NativeCompiler {
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("print"))) =>
             {
                 if args.len() != 1 {
-                    return Err(unsupported("Native output currently supports print(one integer) only"));
+                    return Err(unsupported("Native output currently supports print(one argument) only"));
                 }
-                if self.expression(&args[0], 0)? != Type::Int {
-                    return Err(unsupported("Native print currently supports integers only"));
-                }
+                let kind = self.expression(&args[0], 0)?;
                 self.emit("    mov rdi, rax")?;
-                self.emit("    call nobody_print_i64")
+                self.emit(match kind {
+                    Type::Int => "    call nobody_print_i64",
+                    Type::Bool => "    call nobody_print_bool",
+                })
             }
             IrStatement::Expression(expression) => {
                 self.expression(expression, 0)?;
@@ -462,6 +479,7 @@ impl NativeCompiler {
                 let saved_slots = std::mem::replace(&mut self.slots, parameters.len());
                 let saved_loops = std::mem::take(&mut self.loops);
                 let saved_function = std::mem::replace(&mut self.in_function, true);
+                let saved_return = self.return_kind.take();
 
                 for index in 0..parameters.len() {
                     let offset = 16 + (parameters.len() - 1 - index) * 8;
@@ -471,6 +489,10 @@ impl NativeCompiler {
                 for statement in body {
                     self.statement(statement)?;
                 }
+                // Every path must contain a signed integer or boolean return.
+                let result_kind = self.return_kind.ok_or_else(|| unsupported(
+                    "Native functions require an explicit integer or boolean return value"
+                ))?;
                 // Defensive fallback if a future codegen change violates the
                 // conservative all-paths-return static check.
                 self.emit("    mov edi, 7")?;
@@ -484,19 +506,22 @@ impl NativeCompiler {
                 self.slots = saved_slots;
                 self.loops = saved_loops;
                 self.in_function = saved_function;
+                self.return_kind = saved_return;
                 self.label(skip)?;
                 // Adding only after compilation disallows direct/indirect
                 // recursion and forward references in this first subset.
-                self.functions.insert(name.clone(), FunctionInfo { label, arity: parameters.len() });
+                self.functions.insert(name.clone(), FunctionInfo { label, arity: parameters.len(), result: result_kind });
                 Ok(())
             }
             IrStatement::Return(expr) => {
                 if !self.in_function {
                     return Err(unsupported("Native return requires a function body"));
                 }
-                if self.expression(expr, 0)? != Type::Int {
-                    return Err(unsupported("Native function return values must be signed i64 integers"));
+                let ty = self.expression(expr, 0)?;
+                if self.return_kind.is_some_and(|kind| kind != ty) {
+                    return Err(unsupported("All native function returns must have the same integer or boolean type"));
                 }
+                self.return_kind = Some(ty);
                 self.emit("    leave")?;
                 self.emit("    ret")
             }
@@ -525,6 +550,7 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
         loops: Vec::new(),
         functions: BTreeMap::new(),
         in_function: false,
+        return_kind: None,
     };
     compiler.emit(".intel_syntax noprefix")?;
     compiler.emit(".global _start")?;
@@ -587,6 +613,25 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("    syscall")?;
     compiler.emit("    add rsp, 64")?;
     compiler.emit("    ret")?;
+    compiler.emit("nobody_print_bool:")?;
+    compiler.emit("    test rdi, rdi")?;
+    compiler.emit("    jz .Lnobody_bool_false")?;
+    compiler.emit("    lea rsi, [rip+.Lnobody_bool_true_text]")?;
+    compiler.emit("    mov edx, 5")?;
+    compiler.emit("    jmp .Lnobody_bool_write")?;
+    compiler.emit(".Lnobody_bool_false:")?;
+    compiler.emit("    lea rsi, [rip+.Lnobody_bool_false_text]")?;
+    compiler.emit("    mov edx, 6")?;
+    compiler.emit(".Lnobody_bool_write:")?;
+    compiler.emit("    mov edi, 1")?;
+    compiler.emit("    mov eax, 1")?;
+    compiler.emit("    syscall")?;
+    compiler.emit("    ret")?;
+    compiler.emit(".section .rodata")?;
+    compiler.emit(".Lnobody_bool_true_text:")?;
+    compiler.emit("    .ascii \"true\\n\"")?;
+    compiler.emit(".Lnobody_bool_false_text:")?;
+    compiler.emit("    .ascii \"false\\n\"")?;
     compiler.emit(".section .note.GNU-stack,\"\",@progbits")?;
 
     // Allocate stack storage before the first statement, but after frame setup.
@@ -738,7 +783,9 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("print(true)", "ai").unwrap_err().code,
+            compile_to_assembly("print(true, false)", "ai")
+                .unwrap_err()
+                .code,
             4004
         );
         assert_eq!(
@@ -843,9 +890,10 @@ print(combine(4, 3))";
         );
         let bool_arg = "fn twice(x) { return x * 2 }\nprint(twice(true))";
         assert_eq!(compile_to_assembly(bool_arg, "ai").unwrap_err().code, 4004);
-        let bool_return = "fn bigger(a, b) { return a > b }\nprint(bigger(4, 2))";
+        let mixed_return =
+            "fn bigger(a, b) { if a > b { return true } else { return a } }\nprint(bigger(4, 2))";
         assert_eq!(
-            compile_to_assembly(bool_return, "ai").unwrap_err().code,
+            compile_to_assembly(mixed_return, "ai").unwrap_err().code,
             4004
         );
         let global = "let global_value = 10\nfn f() { return global_value }\nprint(f())";
@@ -854,6 +902,54 @@ print(combine(4, 3))";
         assert_eq!(compile_to_assembly(nested, "ai").unwrap_err().code, 4004);
         let shadow = "fn f(x) { return x }\nlet f = 2\nprint(f(2))";
         assert_eq!(compile_to_assembly(shadow, "ai").unwrap_err().code, 4004);
+    }
+
+    #[test]
+    fn boolean_values_short_circuit_without_evaluating_overflowing_rhs() {
+        let source = "print(true)
+print(false)
+print(false and (9223372036854775807 + 1 > 0))
+print(true or (9223372036854775807 + 1 > 0))
+print(true and false)
+print(false or true)";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("nobody_print_bool:"));
+        assert!(asm.contains(".Lnobody_bool_true_text:"));
+        assert!(asm.contains(".Lnobody_bool_false_text:"));
+        assert!(asm.contains("    jz .L"));
+        assert!(asm.contains("    jnz .L"));
+    }
+
+    #[test]
+    fn native_boolean_function_returns_are_typed_and_reusable() {
+        let source = "fn positive(x) { return x > 0 }
+fn greater(a, b) {
+  if a > b { return true } else { return false }
+}
+print(positive(4))
+print(greater(3, 8))
+if positive(2) and greater(9, 2) { print(1) } else { print(0) }";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("    call .L"));
+        assert!(asm.contains("    ret"));
+    }
+
+    #[test]
+    fn invalid_logical_operators_and_mixed_returns_fail_closed() {
+        for source in [
+            "print(true and 4)",
+            "print(7 or true)",
+            "print(false or 9)",
+            "fn f(x) { if x > 0 { return true } else { return 2 } }\nprint(f(3))",
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
+        }
     }
 
     #[test]

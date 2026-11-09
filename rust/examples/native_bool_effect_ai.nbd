@@ -1,0 +1,7 @@
+fn side(x) {
+  print(x)
+  return x > 0
+}
+print(false and side(9))
+print(true or side(10))
+print(true and side(11))
