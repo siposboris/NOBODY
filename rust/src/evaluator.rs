@@ -308,6 +308,22 @@ impl Evaluator {
                 self.output.push_str(&line);
                 Ok(RuntimeValue::Null)
             }
+            IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
+            {
+                if args.len() != 1 {
+                    return Err(error(
+                        4007,
+                        format!("len expects exactly one string argument, received {}", args.len()),
+                        "Pass one UTF-8 string value to len.",
+                    ));
+                }
+                let value = self.eval(&args[0], depth + 1)?;
+                let RuntimeValue::Text(text) = value else {
+                    return Err(unsupported("len currently requires a string argument"));
+                };
+                Ok(RuntimeValue::Int(text.chars().count() as i128))
+            }
             IrExpr::Call { callee, args } => {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
                     return Err(unsupported("Only named declared functions can be called"));
@@ -593,6 +609,28 @@ pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
 }
 pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic> {
     evaluate_ir(&lower_source(source, profile)?)
+}
+
+#[cfg(test)]
+mod len_tests {
+    use super::*;
+
+    #[test]
+    fn unicode_length_counts_scalars_not_utf8_bytes() {
+        for (profile, source, expected) in [
+            ("ai", "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))", "7 0 3\n"),
+            ("sk", "vypis(dlzka(\"Život ☸\"), dlzka(\"\"), dlzka(\"👩‍💻\"))", "7 0 3\n"),
+            ("en", "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))", "7 0 3\n"),
+        ] {
+            assert_eq!(evaluate_source(source, profile).unwrap(), expected);
+        }
+    }
+    #[test]
+    fn len_invalid_arity_and_type_fail_with_numbered_diagnostics() {
+        assert_eq!(evaluate_source("print(len())", "ai").unwrap_err().code, 4007);
+        assert_eq!(evaluate_source("print(len(\"a\", \"b\"))", "ai").unwrap_err().code, 4007);
+        assert_eq!(evaluate_source("print(len(2))", "ai").unwrap_err().code, 4004);
+    }
 }
 
 #[cfg(test)]
