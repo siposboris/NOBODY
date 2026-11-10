@@ -5,13 +5,13 @@ on:
     paths:
       - 'README.md'
       - 'docs/ROADMAP.md'
-      - 'scripts/update-roadmap-progress.py'
+      - 'rust/src/bin/nobody-roadmap.rs'
       - '.github/workflows/roadmap-progress.yml'
   push:
     paths:
       - 'README.md'
       - 'docs/ROADMAP.md'
-      - 'scripts/update-roadmap-progress.py'
+      - 'rust/src/bin/nobody-roadmap.rs'
       - '.github/workflows/roadmap-progress.yml'
   workflow_dispatch:
 
@@ -23,8 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Validate README roadmap progress
-        run: python3 scripts/update-roadmap-progress.py --check
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Validate README roadmap progress with Rust
+        run: cargo run --locked --quiet --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --check

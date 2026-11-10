@@ -61,6 +61,25 @@ Stored v3 files, the VM and the separate Rust evaluator are compared for
 `ai`, `sk`, `en`. This is not a stable file ABI, full string library,
 native machine-code compiler or OS sandbox.
 
+## Python-free roadmap progress verification (Rust)
+
+The `nobody-roadmap` Rust utility has replaced the Python script as the
+regular GitHub README progress verification gate. By default and with
+`--check` it reads `docs/ROADMAP.md` and verifies the generated README
+progress section **without writing**. An explicit `--write` regenerates
+only the single bounded marker section and rejects malformed or reversed
+markers. Counts and rounding are regression-tested against the historical
+Python generator. The Python script is kept as a compatibility/reference
+tool during migration but is no longer required by this CI workflow.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --check
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write
+```
+
+The progress bar measures checklist completion, not code quality or
+compiler completeness; Python's runtime removal still depends on parity.
+
 ## Read-only Nobody formatter verification
 
 `nobody-rs format-check PROFILE FILE.nbd` checks whether source matches the

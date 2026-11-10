@@ -11,7 +11,7 @@ Experimental **open-source programming language** with configurable syntax profi
 
 This measures **completed checklist entries**, not the percentage of a working compiler, feature parity, quality, or production readiness. Some checked items are historical prototypes or partial milestones. Nobody is experimental; its Rust runtime, native compiler and self-hosting are not complete.
 
-See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `python3 scripts/update-roadmap-progress.py`.
+See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write`.
 <!-- roadmap-progress:end -->
 
 ## Current state

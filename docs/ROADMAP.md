@@ -27,6 +27,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 0 — Foundation, project hygiene and migration
 
+**Python-to-Rust roadmap tooling migration (2026-11-10; CI pending):** A new dependency-free Rust `nobody-roadmap` binary implements the old top-level checklist counting, half-up rounding, exact README marker regeneration and fail-closed marker validation. The GitHub progress check now uses the Rust tool with no Python setup. Default/`--check` mode is read-only; updates require explicit `--write`. Legacy Python script remains only for comparison/compatibility until parity is verified. This removes one Python dependency from the project's routine automation, not from all compiler/runtime features.
+
+
+
 - [x] Publish repository `siposboris/NOBODY` with source, examples, MIT license, AI disclosure, feature matrix, changelog and release guidance.
 - [x] Preserve the earlier Python bootstrap/interpreter prototypes and Nobody-authored bootstrap source in local development archives.
 - [x] Add a historical experimental Python test suite and separate GitHub frontend test workflow.

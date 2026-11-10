@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Rust-native roadmap progress tool (2026-11-10; CI pending)
+
+- Added `nobody-roadmap` Rust checker and explicit `--write` generator matching the legacy Python checklist count, round-to-nearest percent and 20-cell display.
+- Removed Python setup and invocation from the README roadmap GitHub CI job; only the Rust tool is required for routine progress verification.
+- Kept the historical Python script as a comparison baseline until accepted by CI; this does not remove Python from every other migration task.
+
+
 ## Unreleased — cross-backend UTF-8 length parity for all 40 syntax profiles (2026-11-10; CI pending)
 
 - New fully generated cross-profile differential test checks canonical IR, static typecheck, AST evaluation, VM execution, deterministic on-disk `.nbc` v3 and decoded VM output in every registered syntax profile.
