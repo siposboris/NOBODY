@@ -88,6 +88,82 @@ fn visit(
     Ok(())
 }
 
+/// A source file must not silently interpret another syntax profile's keyword
+/// as an undeclared identifier. Identifiers explicitly declared in the same
+/// file remain legitimate user names (even if they coincide with a foreign
+/// word); comments and string literals are not inspected.
+fn collect_declarations(statements: &[Statement], names: &mut BTreeSet<String>) {
+    for statement in statements {
+        match statement {
+            Statement::Let { name, .. } => {
+                names.insert(name.clone());
+            }
+            Statement::Function {
+                name,
+                parameters,
+                body,
+                ..
+            } => {
+                names.insert(name.clone());
+                names.extend(parameters.iter().cloned());
+                collect_declarations(body, names);
+            }
+            Statement::For { variable, body, .. } => {
+                names.insert(variable.clone());
+                collect_declarations(body, names);
+            }
+            Statement::While { body, .. } => collect_declarations(body, names),
+            Statement::If {
+                branches,
+                otherwise,
+            } => {
+                for (_, body) in branches {
+                    collect_declarations(body, names);
+                }
+                if let Some(body) = otherwise {
+                    collect_declarations(body, names);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn reject_foreign_keywords(
+    source: &str,
+    profile: &str,
+    parsed: &[Statement],
+) -> Result<(), Diagnostic> {
+    use crate::{TokenKind, profiles};
+    let mut declared = BTreeSet::new();
+    collect_declarations(parsed, &mut declared);
+    for token in crate::scan(source)? {
+        if token.kind != TokenKind::Name
+            || declared.contains(&token.value)
+            || profiles::semantic(profile, &token.value).is_some()
+            || (profile == "en" && token.value == "def")
+            || (profile == "sk" && token.value == "kym")
+        {
+            continue;
+        }
+        if let Some(other) = profiles::PROFILES.iter().find(|other| {
+            other.code != profile && profiles::semantic(other.code, &token.value).is_some()
+        }) {
+            return Err(Diagnostic {
+                code: 3004,
+                line: token.line,
+                column: token.column,
+                detail: format!(
+                    "Foreign syntax keyword {:?} belongs to profile {:?}, not {:?}",
+                    token.value, other.code, profile
+                ),
+                repair: "Use only the selected syntax profile's keywords in this source file, or explicitly declare a user identifier with that spelling.",
+            });
+        }
+    }
+    Ok(())
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
@@ -228,7 +304,8 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             return Err(issue("Two modules resolve to the same source file"));
         }
         let source = read_capped(&resolved, MAX_SOURCE)?;
-        parse_validated(&source, &spec.profile)?;
+        let original = parse_validated(&source, &spec.profile)?;
+        reject_foreign_keywords(&source, &spec.profile, &original.statements)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
         if !same_ir(&source, &spec.profile, &translated, "ai")? {
             return Err(issue(format!(
