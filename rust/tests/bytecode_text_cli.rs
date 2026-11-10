@@ -25,7 +25,10 @@ fn temporary() -> PathBuf {
 fn v3_utf8_programs_compile_verify_and_execute_from_disk_in_three_profiles() {
     let dir = temporary();
     for profile in ["ai", "sk", "en"] {
-        let source = format!("{}/examples/bytecode_text_{profile}.nbd", env!("CARGO_MANIFEST_DIR"));
+        let source = format!(
+            "{}/examples/bytecode_text_{profile}.nbd",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let output = dir.join(format!("code_{profile}.nbc"));
         let path = output.to_str().unwrap();
         let build = compiler(&["compile-bytecode", profile, &source, path]);
@@ -38,7 +41,11 @@ fn v3_utf8_programs_compile_verify_and_execute_from_disk_in_three_profiles() {
         assert_eq!(&data[..8], b"NOBBC001");
         assert_eq!(u16::from_le_bytes([data[8], data[9]]), 3);
         let verified = compiler(&["verify-bytecode", path]);
-        assert!(verified.status.success(), "{profile}: {:?}", verified.stderr);
+        assert!(
+            verified.status.success(),
+            "{profile}: {:?}",
+            verified.stderr
+        );
         let disk = compiler(&["run-compiled", path]);
         let vm = compiler(&["run-bytecode", profile, &source]);
         let ast = compiler(&["run", profile, &source]);
@@ -49,9 +56,18 @@ fn v3_utf8_programs_compile_verify_and_execute_from_disk_in_three_profiles() {
                 String::from_utf8_lossy(&result.stderr)
             );
         }
-        assert_eq!(disk.stdout, ast.stdout, "{profile}: stored .nbc differs from AST");
-        assert_eq!(vm.stdout, ast.stdout, "{profile}: in-memory VM differs from AST");
-        assert!(disk.stdout.windows("Život ☸".len()).any(|x| x == "Život ☸".as_bytes()));
+        assert_eq!(
+            disk.stdout, ast.stdout,
+            "{profile}: stored .nbc differs from AST"
+        );
+        assert_eq!(
+            vm.stdout, ast.stdout,
+            "{profile}: in-memory VM differs from AST"
+        );
+        assert!(disk
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
     }
     fs::remove_dir_all(dir).unwrap();
 }
@@ -59,7 +75,10 @@ fn v3_utf8_programs_compile_verify_and_execute_from_disk_in_three_profiles() {
 #[test]
 fn text_bytecode_corruption_is_rejected_instead_of_executed() {
     let dir = temporary();
-    let source = format!("{}/examples/bytecode_text_ai.nbd", env!("CARGO_MANIFEST_DIR"));
+    let source = format!(
+        "{}/examples/bytecode_text_ai.nbd",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let output = dir.join("broken.nbc");
     let target = output.to_str().unwrap();
     assert!(compiler(&["compile-bytecode", "ai", &source, target])
