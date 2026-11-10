@@ -104,6 +104,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Unicode text length (2026-11-10; CI pending):** The independent Rust AST evaluator and Linux x86-64 ELF compiler implement `len(text)` / localized `dlzka(text)`, returning a Unicode scalar count (not bytes or grapheme clusters) for literals, variables, concatenated strings and native function results. Real ELF-to-interpreter differential fixtures cover `ai`/`sk`/`en`, empty strings, non-ASCII symbols and invalid argument rejection. This is a narrow usable feature, not full Unicode string indexing or compiler parity.
+
+
+
 **Native typed string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44), [Rust CI #42766777167](https://github.com/siposboris/NOBODY/actions/runs/42766777167)):** Linux x86-64 generated programs now pass explicit UTF-8 `str` function parameters as address/length pairs and return `str` via `rax`/`rdx`. Earlier-declared functions mix `int`, `bool`, `str` positional arguments, support nested string-returning calls and concatenation, and check type mismatches at compilation. Cross-profile `ai`/`sk`/`en` fixtures compare real standalone ELF output to the separate Rust evaluator. This is an internal and incomplete ABI without recursion, closures, float, unannotated text inference or stable cross-platform compatibility. No broad roadmap checkbox closed.
 
 
