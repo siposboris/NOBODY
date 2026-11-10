@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — checked constant folding for Rust bytecode (2026-11-10; CI pending)
+
+- Reduced pure integer literal arithmetic into single `Push` instructions without altering output for supported arithmetic expressions.
+- Used checked `i128` operations and preserved runtime overflow failures; no folding of calls, variables or unsupported operators.
+- Added three-profile AST/VM/stored-bytecode parity and overflow tests. Full optimization pipeline remains open.
+
+
 ## Unreleased — Rust-native roadmap progress tool (2026-11-10; verified [PR #53](https://github.com/siposboris/NOBODY/pull/53))
 
 - Added `nobody-roadmap` Rust checker and explicit `--write` generator matching the legacy Python checklist count, round-to-nearest percent and 20-cell display.
