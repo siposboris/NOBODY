@@ -30,7 +30,11 @@ fn source(profile: &str) -> String {
 
 #[test]
 fn all_40_profiles_have_identical_unicode_length_ast_vm_and_portable_bytecode() {
-    assert_eq!(PROFILES.len(), 40, "update acceptance scope if profiles change");
+    assert_eq!(
+        PROFILES.len(),
+        40,
+        "update acceptance scope if profiles change"
+    );
     let baseline = source("ai");
     let baseline_ir = lower_source(&baseline, "ai").unwrap();
     let baseline_program = compile_source(&baseline, "ai").unwrap();
@@ -64,8 +68,18 @@ fn all_40_profiles_have_identical_unicode_length_ast_vm_and_portable_bytecode() 
             profile.code
         );
         let decoded = decode(&wire).unwrap();
-        assert_eq!(execute(&decoded).unwrap(), ast, "{}: stored v3 parity", profile.code);
-        assert_eq!(encode(&decoded).unwrap(), wire, "{}: bytecode stability", profile.code);
+        assert_eq!(
+            execute(&decoded).unwrap(),
+            ast,
+            "{}: stored v3 parity",
+            profile.code
+        );
+        assert_eq!(
+            encode(&decoded).unwrap(),
+            wire,
+            "{}: bytecode stability",
+            profile.code
+        );
     }
 }
 
@@ -82,14 +96,25 @@ fn all_40_profiles_unicode_length_matches_real_standalone_elf() {
         compile_native(&example, profile.code, &target)
             .unwrap_or_else(|err| panic!("{}: ELF build failed: {err}", profile.code));
         let data = std::fs::read(&target).unwrap();
-        assert!(data.starts_with(b"\x7fELF"), "{}: not a Linux ELF", profile.code);
+        assert!(
+            data.starts_with(b"\x7fELF"),
+            "{}: not a Linux ELF",
+            profile.code
+        );
         let output = Command::new(&target)
             .output()
             .unwrap_or_else(|err| panic!("{}: ELF did not start: {err}", profile.code));
-        assert!(output.status.success(), "{}: ELF exit {:?}", profile.code, output.status);
+        assert!(
+            output.status.success(),
+            "{}: ELF exit {:?}",
+            profile.code,
+            output.status
+        );
         assert_eq!(
             output.stdout,
-            evaluate_source(&example, profile.code).unwrap().into_bytes(),
+            evaluate_source(&example, profile.code)
+                .unwrap()
+                .into_bytes(),
             "{}: native output differs from Rust interpreter",
             profile.code
         );
