@@ -458,10 +458,15 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             return Err(issue("Two modules resolve to the same source file"));
         }
         let full_source = read_capped(&resolved, MAX_SOURCE)?;
-        let (source, imports) = source_imports(&full_source, &spec.profile, version == 2)?;
-        if version == 2 && imports != spec.dependencies.iter().cloned().collect() {
+        let (source, imports) = source_imports(&full_source, &spec.profile, version >= 2)?;
+        if version >= 2 && imports != spec.dependencies.iter().cloned().collect() {
             return Err(issue(format!("Source import declarations for module {name:?} must match its manifest dependencies exactly")));
         }
+        let (source, qualified_references) = if version == 3 {
+            crate::project_namespaces::qualify_references(&source, name, &imports)?
+        } else {
+            (source, Vec::new())
+        };
         let original = parse_validated(&source, &spec.profile)?;
         reject_foreign_keywords(&source, &spec.profile, &original.statements)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
@@ -471,6 +476,31 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             )));
         }
         let parsed = parse_validated(&translated, "ai")?;
+        if version == 3 {
+            let mut exports = BTreeSet::new();
+            for stmt in &parsed.statements {
+                let symbol = match stmt {
+                    Statement::Function { name, .. } | Statement::Let { name, .. } => Some(name),
+                    _ => None,
+                };
+                if let Some(symbol) = symbol {
+                    if !exports.insert(symbol.clone()) {
+                        return Err(issue(format!(
+                            "Duplicate top-level symbol {symbol:?} in module {name:?}"
+                        )));
+                    }
+                }
+            }
+            exported_by_module.insert(name.clone(), exports);
+            namespaced.push(NamespaceUnit {
+                name: name.clone(),
+                source: translated,
+                program: parsed,
+                imports,
+                qualified_references,
+            });
+            continue;
+        }
         if version == 2 {
             visible.push((
                 name.clone(),
