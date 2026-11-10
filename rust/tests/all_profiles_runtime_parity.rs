@@ -11,7 +11,7 @@ fn kw(profile: &str, semantic: &str) -> &'static str {
 
 fn sample(profile: &str) -> String {
     format!(
-        "{let_word} counter_value: {int_word} = 2
+        "{let_word} counter_value = 2
 {let_word} total_value = 0
 {for_word} loop_ix {in_word} {range_word}(4) {{
   {if_word} loop_ix >= 2 {{
