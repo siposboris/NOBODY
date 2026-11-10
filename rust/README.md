@@ -4,6 +4,18 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
+
+The Python-free independent stack VM now executes UTF-8 text literals,
+variables, text concatenation (`+`), equality/inequality, and typed `str`
+function arguments and returns. String-bearing programs are serialized as
+experimental `.nbc` v3 with length-checked UTF-8 payloads; old integer/bool
+programs keep their original v2 output. The decoder remains compatible with
+v1/v2 and rejects invalid UTF-8, corrupt files and unknown text tags.
+Stored v3 files, the VM and the separate Rust evaluator are compared for
+`ai`, `sk`, `en`. This is not a stable file ABI, full string library,
+native machine-code compiler or OS sandbox.
+
 ## Read-only Nobody formatter verification
 
 `nobody-rs format-check PROFILE FILE.nbd` checks whether source matches the
