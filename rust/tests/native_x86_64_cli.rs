@@ -76,6 +76,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_text_ops_ai.nbd"),
         ("sk", "native_text_ops_sk.nbd"),
         ("en", "native_text_ops_en.nbd"),
+        ("ai", "native_text_call_ai.nbd"),
+        ("sk", "native_text_call_sk.nbd"),
+        ("en", "native_text_call_en.nbd"),
         ("sk", "native_typed_signatures_sk.nbd"),
         ("en", "native_typed_signatures_en.nbd"),
     ] {
@@ -213,7 +216,7 @@ fn native_text_ops_fail_closed_when_not_supported() {
     let output = tmp.join("program");
     for program in [
         "let message = \"Ahoj\"\nmessage = 3\nprint(message)",
-        "fn f(message: str): int { return 1 }\nprint(f(\"Ahoj\"))",
+        "fn f(message: str): int { return 1 }\nprint(f(42))",
     ] {
         std::fs::write(&source, program).unwrap();
         let result = compile("ai", &source, &output);
@@ -277,6 +280,59 @@ fn real_elf_text_operations_match_interpreter_for_ai_sk_en() {
         assert!(!assembly.contains(".global malicious"));
         std::fs::remove_dir_all(temp).unwrap();
     }
+}
+
+#[test]
+fn native_text_function_abi_is_real_and_matches_rust_evaluator() {
+    for (profile, file) in [
+        ("ai", "native_text_call_ai.nbd"),
+        ("sk", "native_text_call_sk.nbd"),
+        ("en", "native_text_call_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{file}", env!("CARGO_MANIFEST_DIR"));
+        let temporary = temporary();
+        let executable = temporary.join("native-text-call");
+        let compilation = compile(profile, Path::new(&source), &executable);
+        assert!(
+            compilation.status.success(),
+            "{file}: {}",
+            String::from_utf8_lossy(&compilation.stderr)
+        );
+        assert!(std::fs::read(&executable).unwrap().starts_with(b"\x7fELF"));
+        let native = Command::new(&executable).output().unwrap();
+        let reference = nobody(&["run", profile, &source]);
+        assert!(native.status.success(), "{file}: {:?}", native.status);
+        assert!(reference.status.success(), "{file}: {:?}", reference.status);
+        assert_eq!(native.stdout, reference.stdout, "{file}: ABI parity");
+        assert!(native
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(native
+            .stdout
+            .windows("Nobody ☸".len())
+            .any(|x| x == "Nobody ☸".as_bytes()));
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
+}
+
+#[test]
+fn native_text_return_type_mismatch_fails_without_linking_binary() {
+    let temp = temporary();
+    let source = temp.join("wrong-type.nbd");
+    let target = temp.join("should-not-exist");
+    for code in [
+        "fn identity(text: str): str { return text }\nprint(identity(1))",
+        "fn identity(text: str): str { return text }\nprint(identity(true))",
+        "fn identity(text: str): int { return text }\nprint(identity(\"ok\"))",
+    ] {
+        std::fs::write(&source, code).unwrap();
+        let compiled = compile("ai", &source, &target);
+        assert!(!compiled.status.success(), "{code}");
+        assert!(!target.exists());
+        assert!(String::from_utf8_lossy(&compiled.stderr).contains("N4004"));
+    }
+    std::fs::remove_dir_all(temp).unwrap();
 }
 
 #[test]
@@ -686,7 +742,6 @@ fn native_annotated_signatures_reject_mismatches_without_writing_elf() {
         "native_typed_bad_argument_ai.nbd",
         "native_typed_bad_return_ai.nbd",
         "native_typed_bad_constraint_ai.nbd",
-        "eval_typed_string_ai.nbd",
     ] {
         let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let temp = temporary();

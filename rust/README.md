@@ -27,9 +27,29 @@ does not reject operands whose type is unknown. These checks use the existing
 IR type inference and support `ai`, `sk`, and `en`. This is an incomplete
 conservative checker, not proof of full type safety.
 
+## Native typed UTF-8 string function call ABI (experimental, PR #44)
+
+The Linux x86-64 native compiler now supports text arguments and text return values
+with explicit `str` annotations, for example `fn identity(text: str): str { return text }`
+and Slovak `funkcia identity(text: text): text { vrat text }`. Every text parameter
+is passed as **two stack words** (UTF-8 address and byte length); the callee copies
+them into its own local frame. Text results return in `rax`/`rdx`. Mixed `int`,
+`bool` and `str` parameters, nested calls, text concatenation and returns on
+both conditional paths are supported. Wrong argument/return types fail at
+compile time, with real ELF-vs-Rust-evaluator parity tests for `ai`, `sk`, `en`.
+The string ABI is internal to Nobody-generated functions, not a stable foreign
+function ABI. Text parameter inference without annotations, recursion, closures
+and cross-platform native targets remain unsupported.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_call_sk.nbd native-text-call
+./native-text-call
+```
+
 ## Native UTF-8 text operations (experimental)
 
-The standalone ELF compiler now handles `let combined = left + right`, `combined == expected`, and `combined != other` for UTF-8 text variables. A fixed 1 MiB process-lifetime arena stores joined text without libc; allocation exhaustion terminates with exit status `7`. Equality compares all bytes, not addresses. Actual ELF/evaluator parity tests cover text within loops/functions and non-ASCII text across `ai`, `sk`, and `en`. String ordering, text-native function parameters/returns, garbage collection and unrestricted memory allocation remain out of scope.
+The standalone ELF compiler now handles `let combined = left + right`, `combined == expected`, and `combined != other` for UTF-8 text variables. A fixed 1 MiB process-lifetime arena stores joined text without libc; allocation exhaustion terminates with exit status `7`. Equality compares all bytes, not addresses. Actual ELF/evaluator parity tests cover text within loops/functions and non-ASCII text across `ai`, `sk`, and `en`. String ordering, unannotated text parameter inference, garbage collection and unrestricted memory allocation remain out of scope.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
@@ -47,11 +67,11 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./text-vars
 ```
 
-Text concatenation (`+`) and bytewise equality/inequality (`==` / `!=`) now compile through a bounded 1 MiB arena and a native byte comparison routine; type changes, string parameters/returns and typed `str` declarations remain unsupported. Rust evaluator and ELF may differ outside the documented subset.
+Text concatenation (`+`) and bytewise equality/inequality (`==` / `!=`) now compile through a bounded 1 MiB arena and a native byte comparison routine; type changes and unannotated native text parameter inference remain unsupported. Rust evaluator and ELF may differ outside the documented subset.
 
 ## Real standalone UTF-8 text output in native ELF
 
-The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Native UTF-8 text variables can now be copied and reassigned, including in loops and function-local scopes. Native text concatenation and equality are now supported. Ordering and native string parameters/returns remain unsupported.
+The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Native UTF-8 text variables can now be copied and reassigned, including in loops and function-local scopes. Native text concatenation and equality are now supported. Ordering and unannotated native text parameter inference remain unsupported.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
@@ -126,7 +146,7 @@ See [the binary format specification](../docs/BYTECODE_FORMAT.md). The v2 wire f
 
 ## Explicit function signatures (experimental)
 
-Function parameters and returns may now be annotated with localized primitive types, for example `fn identity(flag: bool): bool` or Slovak `funkcia identity(flag: logicke): logicke`. The parser carries normalized `int`/`bool`/`float`/`str` annotations into canonical Rust IR. The native Linux compiler currently supports explicit `int` and `bool` signatures, including argument and return mismatch rejection; the separate Rust evaluator checks annotations at runtime. Legacy untyped functions remain supported.
+Function parameters and returns may now be annotated with localized primitive types, for example `fn identity(flag: bool): bool` or Slovak `funkcia identity(flag: logicke): logicke`. The parser carries normalized `int`/`bool`/`float`/`str` annotations into canonical Rust IR. The native Linux compiler currently supports explicit `int`, `bool` and `str` signatures, including argument and return mismatch rejection; the separate Rust evaluator checks annotations at runtime. Legacy untyped functions remain supported.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
@@ -134,7 +154,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-typed
 ```
 
-**Compatibility boundary:** the bytecode VM now supports `int`/`bool` annotated signatures through `.nbc` v2; `nobody.ast.v1` JSON export deliberately rejects them; `nobody.ast.v2` export now preserves them, with Rust-only structural JSON import and syntax-AST lowering now available; executable import and source re-emission remain planned. Source-level `str`/`float` function signatures are not yet supported by native ELF; the Rust type checker is still partial.
+**Compatibility boundary:** the bytecode VM now supports `int`/`bool` annotated signatures through `.nbc` v2; `nobody.ast.v1` JSON export deliberately rejects them; `nobody.ast.v2` export now preserves them, with Rust-only structural JSON import and syntax-AST lowering now available; executable import and source re-emission remain planned. Source-level `float` function signatures are not yet supported by native ELF; `str` works with explicit annotations; the Rust type checker is still partial.
 
 ## Native boolean function parameters (conservative subset)
 

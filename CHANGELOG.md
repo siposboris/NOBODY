@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — native typed UTF-8 string function ABI (2026-11-10, PR #44, CI pending)
+
+- Extended standalone Linux x86-64 native function calls for explicit `str` parameters and return values using two-word UTF-8 pointer/length arguments and `rax`/`rdx` return pairs.
+- Mixed `str`, `int` and `bool` parameters, nested typed calls, text concatenation inside functions and conditional string returns.
+- Real ELF-vs-Rust interpreter fixtures for `ai`/`sk`/`en`, with type-mismatch rejection. ABI is internal/experimental; unannotated text parameter inference, recursion, closures and self-hosting remain open.
+
+
 ## Unreleased — read-only Rust formatter check (2026-11-10; verified [PR #42](https://github.com/siposboris/NOBODY/pull/42))
 
 - Added `format-check PROFILE FILE.nbd`: non-mutating canonical formatting check with N5002 and nonzero exit status on drift, useful for CI.

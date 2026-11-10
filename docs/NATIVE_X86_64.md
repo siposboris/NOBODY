@@ -33,9 +33,21 @@ Expected output for the example is `8` and `-42` on separate lines. `compile-nat
 
 Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `range(start, stop, step)` use one-time source-order integer argument evaluation. Iterator variables are lexically scoped and shadow same-named outer variables without destroying them; nested `for` and `while` loops have correct `break`/`continue` handling. Zero step exits with process status **6**, while range iterator overflow ends the range without wrapping. The i64-specific range boundary is narrower than the i128 bytecode/evaluator domain; out-of-i64 literals are rejected during compilation. Tests compare actual linked Linux ELF output to the Rust evaluator for `ai`, Slovak and English. 
 
-Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, text function parameters, uninferrable boolean parameters, text return values, mixed integer/boolean return paths, floating-point numbers, string ordering and general dynamic string operations beyond concatenation and equality, lists, null literals, first-class functions, typed declarations and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, unannotated text function parameters, uninferrable boolean parameters, mixed integer/boolean return paths, floating-point numbers, string ordering and general dynamic string operations beyond concatenation and equality, lists, null literals, first-class functions, typed declarations and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
 
-## Native text concatenation and content equality (experimental; PR #41, CI pending)
+## Native text arguments and return values (experimental; PR #44, CI pending)
+
+Functions declared before use may now accept **explicitly annotated `str` parameters** and return `str` values. Each string argument occupies two stack words (address, UTF-8 byte count) whereas `int` and `bool` occupy one; the native compiler reserves the corresponding local parameter slots, computes offsets for mixed argument layouts and reclaims the exact call-frame size. String results use `rax` and `rdx`, preserving pointer/length through nested calls and text concatenation. Wrong argument types and declared return-type mismatches reject compilation.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_call_sk.nbd native-text-call
+./native-text-call
+```
+
+This is an internal ABI, **not** C interoperability, first-class functions or heap-based strings. Native recursion, closures, unknown/forward calls, implicit return `null`, and unannotated text parameter inference remain unsupported. Real ELF output is checked against the separate Rust evaluator across `ai`, Slovak and English; CI pending.
+
+## Native text concatenation and content equality (experimental; PR #41, verified)
 
 Nobody's native x86-64 backend now compiles `text = text + "!"`, `a == b`, and `a != b` for UTF-8 string values, not just text literals. Equality compares **actual UTF-8 bytes and lengths**, not memory addresses, and therefore works for distinct string allocations and empty texts. Concatenation allocates from a **fixed 1 MiB native text arena**, copies both byte slices in source order and produces an immutable (pointer, length) value. The resulting standalone ELF uses no libc or Rust runtime; a cumulative arena budget violation exits with **status 7** rather than allocating unchecked memory.
 
@@ -45,7 +57,7 @@ cargo run --locked --release --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text-ops
 ```
 
-This is a bounded arena, **not** garbage collection or an unrestricted heap; repeated concatenation consumes space until process exit. Dynamic text ordering, string arguments/return values, full Unicode collation, interpolation and general collection support remain unimplemented. Real ELF output is compared byte-for-byte with the Rust evaluator in `ai`, `sk`, `en`; all four GitHub workflows passed, including [Rust CI #42754693569](https://github.com/siposboris/NOBODY/actions/runs/42754693569) ([PR #41](https://github.com/siposboris/NOBODY/pull/41)).
+This is a bounded arena, **not** garbage collection or an unrestricted heap; repeated concatenation consumes space until process exit. Dynamic text ordering, unannotated text parameters, full Unicode collation, interpolation and general collection support remain unimplemented. Real ELF output is compared byte-for-byte with the Rust evaluator in `ai`, `sk`, `en`; all four GitHub workflows passed, including [Rust CI #42754693569](https://github.com/siposboris/NOBODY/actions/runs/42754693569) ([PR #41](https://github.com/siposboris/NOBODY/pull/41)).
 
 ## Native UTF-8 text bindings (experimental, PR #40)
 
@@ -57,7 +69,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-vars
 ```
 
-**Unsupported:** string ordering, native string parameters or returns, typed declarations, changing a variable's type and unrestricted heap-allocated strings. Operations that cannot be compiled correctly fail rather than silently performing pointer equality. New integration tests run actual ELF files and compare stdout byte-for-byte with the Rust evaluator for `ai`, `sk`, `en` (including loop, function, shadowing and copy/reassignment). All four checks passed, including [Rust CI #42753533095](https://github.com/siposboris/NOBODY/actions/runs/42753533095), merged through [PR #40](https://github.com/siposboris/NOBODY/pull/40).
+**Unsupported:** string ordering, unannotated native string parameters, typed declarations, changing a variable's type and unrestricted heap-allocated strings. Operations that cannot be compiled correctly fail rather than silently performing pointer equality. New integration tests run actual ELF files and compare stdout byte-for-byte with the Rust evaluator for `ai`, `sk`, `en` (including loop, function, shadowing and copy/reassignment). All four checks passed, including [Rust CI #42753533095](https://github.com/siposboris/NOBODY/actions/runs/42753533095), merged through [PR #40](https://github.com/siposboris/NOBODY/pull/40).
 
 ## Native UTF-8 output and mixed arguments
 
@@ -69,7 +81,7 @@ cargo run --release --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text
 ```
 
-**Limit:** string ordering and returning strings from native functions are still rejected; text variables, concatenation and equality are now supported in the native subset. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops. All four workflows passed, including [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) in [PR #39](https://github.com/siposboris/NOBODY/pull/39).
+**Limit:** string ordering and unannotated native string parameters are still rejected; text variables, concatenation and equality are now supported in the native subset. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops. All four workflows passed, including [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) in [PR #39](https://github.com/siposboris/NOBODY/pull/39).
 
 ## Independent native function call frames
 
@@ -109,7 +121,7 @@ fn choose(flag: bool, a: int, b: int): int {
 
 One source file still uses exactly one selected syntax profile. Slovak spelling is `funkcia choose(flag: logicke, a: cele, b: cele): cele`; the parser converts types to canonical names in Rust IR. Both parameter and return annotations are optional. The native backend verifies calls and return types against declared annotations, and verifies that any inferred constraints agree. Untyped functions still use conservative parameter inference. All four workflows passed, including [Rust CI #42660895804](https://github.com/siposboris/NOBODY/actions/runs/42660895804) with actual native ELF differential tests; merged in [PR #33](https://github.com/siposboris/NOBODY/pull/33). This is a partial implementation, not a completed typed-IR or self-hosting roadmap criterion.
 
-Only `int` (signed 64-bit in native ELF) and `bool` signatures compile to machine code. `float`/`str` are recognized as source-level annotations but deliberately rejected by this native subset. The separate Rust evaluator can validate supported runtime value types; typed function declarations are not yet supported by experimental bytecode or AST JSON v1 output because those paths would otherwise drop type metadata.
+Explicit `int` (signed 64-bit in native ELF), `bool` and `str` signatures compile to machine code. `str` parameters use a private two-word pointer/byte-length calling convention and string results return in `rax`/`rdx`. `float` remains rejected by this native subset. The separate Rust evaluator can validate supported runtime value types; typed function declarations are not yet supported by experimental bytecode or AST JSON v1 output because those paths would otherwise drop type metadata.
 
 ## Conservative boolean parameter inference
 
