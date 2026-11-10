@@ -94,7 +94,7 @@ impl ParameterConstraints<'_> {
         };
         match self.inferred[index] {
             Some(previous) if previous != required => Err(unsupported(format!(
-                "Conflicting native i64/bool constraints on function parameter {name:?}"
+                "Conflicting native int/bool/str constraints on function parameter {name:?}"
             ))),
             _ => {
                 self.inferred[index] = Some(required);
@@ -135,7 +135,25 @@ impl ParameterConstraints<'_> {
                     "+" | "-" | "*" | "/" | "//" | "%" | "<" | "<=" | ">" | ">=" => Some(Type::Int),
                     _ => None,
                 };
-                if matches!(op.as_str(), "==" | "!=") {
+                if op == "+" {
+                    // Addition is shared by integers and UTF-8 strings.
+                    // Text evidence overrides the old numeric-only inference.
+                    let named_text = |expr: &IrExpr| match expr {
+                        IrExpr::Name(Name::User(name)) => self.parameters
+                            .iter()
+                            .position(|parameter| parameter == name)
+                            .is_some_and(|idx| self.inferred[idx] == Some(Type::Text)),
+                        _ => false,
+                    };
+                    let text_context = required == Some(Type::Text)
+                        || matches!(lhs.as_ref(), IrExpr::String(_))
+                        || matches!(rhs.as_ref(), IrExpr::String(_))
+                        || named_text(lhs)
+                        || named_text(rhs);
+                    let kind = if text_context { Type::Text } else { Type::Int };
+                    self.expression(lhs, Some(kind), depth + 1)?;
+                    self.expression(rhs, Some(kind), depth + 1)?;
+                } else if matches!(op.as_str(), "==" | "!=") {
                     // A boolean literal provides a reliable type constraint
                     // on the other operand without requiring whole-program
                     // flow-sensitive type inference.
@@ -267,8 +285,9 @@ fn explicit_native_type(name: &str) -> Result<Type, Diagnostic> {
     match name {
         "int" => Ok(Type::Int),
         "bool" => Ok(Type::Bool),
+        "str" => Ok(Type::Text),
         _ => Err(unsupported(format!(
-            "The native x86-64 function signature currently supports int and bool, not {name:?}"
+            "The native x86-64 function signature currently supports int, bool and str, not {name:?}"
         ))),
     }
 }
@@ -397,15 +416,22 @@ impl NativeCompiler {
                 if args.len() != function.arity {
                     return Err(issue(4007, format!("Function {name:?} expects {} argument(s), received {}", function.arity, args.len())));
                 }
+                let mut pushed_words = 0usize;
                 for (argument, expected) in args.iter().zip(function.parameters.iter()) {
                     if self.expression(argument, depth + 1)? != *expected {
-                        return Err(unsupported("Native function argument type does not match its inferred i64/bool parameter type"));
+                        return Err(unsupported("Native function argument type does not match its inferred parameter type"));
                     }
                     self.emit("    push rax")?;
+                    pushed_words += 1;
+                    if *expected == Type::Text {
+                        // Text arguments carry immutable pointer + byte length.
+                        self.emit("    push rdx")?;
+                        pushed_words += 1;
+                    }
                 }
                 self.emit(&format!("    call .L{}", function.label))?;
-                if !args.is_empty() {
-                    self.emit(&format!("    add rsp, {}", args.len() * 8))?;
+                if pushed_words > 0 {
+                    self.emit(&format!("    add rsp, {}", pushed_words * 8))?;
                 }
                 Ok(function.result)
             }
@@ -783,21 +809,27 @@ impl NativeCompiler {
                     return Err(issue(4005, "The native backend supports at most 32 functions"));
                 }
                 if parameters.len() > 32 {
-                    return Err(issue(4005, "Native functions support at most 32 i64/bool parameters"));
+                    return Err(issue(4005, "Native functions support at most 32 parameters"));
                 }
                 if !Self::definitely_returns(body) {
-                    return Err(unsupported("Native functions must return an integer on every possible path; implicit null is unsupported"));
+                    return Err(unsupported("Native functions must explicitly return a value on every path; implicit null is unsupported"));
                 }
                 let parameter_types = infer_native_parameters(parameters, annotations, body, &self.functions)?;
                 let declared_result = return_type.as_deref().map(explicit_native_type).transpose()?;
                 let mut local_scope = BTreeMap::new();
+                let mut parameter_words = 0usize;
                 for (index, parameter) in parameters.iter().enumerate() {
+                    let kind = parameter_types[index];
                     if local_scope.insert(
                         parameter.clone(),
-                        Binding { slot: index, kind: parameter_types[index] },
+                        Binding { slot: parameter_words, kind },
                     ).is_some() {
                         return Err(unsupported("Duplicate native function parameter"));
                     }
+                    parameter_words += if kind == Type::Text { 2 } else { 1 };
+                }
+                if parameter_words > MAX_SLOTS {
+                    return Err(issue(4005, "Native function parameter storage exceeds stack budget"));
                 }
                 let label = self.new_label();
                 let skip = self.new_label();
@@ -811,22 +843,32 @@ impl NativeCompiler {
                 // bindings are visible inside a function. Arguments live
                 // above the saved rbp/return address on the caller stack.
                 let saved_scopes = std::mem::replace(&mut self.scopes, vec![local_scope]);
-                let saved_slots = std::mem::replace(&mut self.slots, parameters.len());
+                let saved_slots = std::mem::replace(&mut self.slots, parameter_words);
                 let saved_loops = std::mem::take(&mut self.loops);
                 let saved_function = std::mem::replace(&mut self.in_function, true);
                 let saved_return = self.return_kind.take();
 
-                for index in 0..parameters.len() {
-                    let offset = 16 + (parameters.len() - 1 - index) * 8;
-                    self.emit(&format!("    mov rax, QWORD PTR [rbp+{offset}]"))?;
-                    self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (index + 1) * 8))?;
+                let mut first_word = 0usize;
+                for (index, kind) in parameter_types.iter().take(parameters.len()).enumerate() {
+                    let width = if *kind == Type::Text { 2 } else { 1 };
+                    let destination = local_scope
+                        .get(&parameters[index])
+                        .expect("validated native function parameters")
+                        .slot;
+                    for word in 0..width {
+                        // Last-pushed argument word is closest to rbp+16.
+                        let offset = 16 + (parameter_words - 1 - first_word - word) * 8;
+                        self.emit(&format!("    mov rax, QWORD PTR [rbp+{offset}]"))?;
+                        self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (destination + word + 1) * 8))?;
+                    }
+                    first_word += width;
                 }
                 for statement in body {
                     self.statement(statement)?;
                 }
                 // Every path must contain a signed integer or boolean return.
                 let result_kind = self.return_kind.ok_or_else(|| unsupported(
-                    "Native functions require an explicit integer or boolean return value"
+                    "Native functions require an explicit int, bool or str return value"
                 ))?;
                 if declared_result.is_some_and(|kind| kind != result_kind) {
                     return Err(unsupported(format!(
@@ -861,7 +903,7 @@ impl NativeCompiler {
                 }
                 let ty = self.expression(expr, 0)?;
                 if self.return_kind.is_some_and(|kind| kind != ty) {
-                    return Err(unsupported("All native function returns must have the same integer or boolean type"));
+                    return Err(unsupported("All native function returns must have the same int, bool or str type"));
                 }
                 self.return_kind = Some(ty);
                 self.emit("    leave")?;
