@@ -243,7 +243,10 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
 }
 /// Conditions in Nobody are strictly boolean at runtime. Reject only
 /// certainly non-boolean types so unknown values remain dynamically checked.
-fn check_condition_type(condition: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(), Diagnostic> {
+fn check_condition_type(
+    condition: &IrExpr,
+    env: &BTreeMap<String, Type>,
+) -> Result<(), Diagnostic> {
     let value = infer(condition, env);
     if value != Type::Unknown && value != Type::Bool {
         return Err(diagnostic(
@@ -502,16 +505,32 @@ mod tests {
             "if len(\"str\") { print(1) }",
             "if false { print(1) } elif 7 { print(2) }",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
         }
     }
 
     #[test]
     fn correct_boolean_conditions_and_unknown_values_still_pass() {
         for (profile, valid, invalid) in [
-            ("ai", "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }", "if 2 { print(2) }"),
-            ("sk", "nech x = 2\nak x > 0 { vypis(x) }\nkym nepravda { vypis(x) }", "ak 2 { vypis(2) }"),
-            ("en", "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }", "if 2 { print(2) }"),
+            (
+                "ai",
+                "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }",
+                "if 2 { print(2) }",
+            ),
+            (
+                "sk",
+                "nech x = 2\nak x > 0 { vypis(x) }\nkym nepravda { vypis(x) }",
+                "ak 2 { vypis(2) }",
+            ),
+            (
+                "en",
+                "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }",
+                "if 2 { print(2) }",
+            ),
         ] {
             check_source(valid, profile).unwrap();
             assert_eq!(check_source(invalid, profile).unwrap_err().code, 1002);
