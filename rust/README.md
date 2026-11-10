@@ -5,6 +5,54 @@ eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
 ## Multi-file project compiler (Rust-only, experimental)
+## Namespaced multi-file projects (v3, experimental)
+
+Project **v3** adds isolated module exports. Two independently compiled
+source modules can declare the same top-level function/variable name without
+collision. Imported module symbols use explicit **module.symbol** syntax:
+
+```text
+# nobody.nbproj
+nobody.project.v3
+module main ai main.nbd math,extra
+module math sk math.nbd -
+module extra en extra.nbd -
+entry main
+
+# main.nbd
+import math
+import extra
+print(math.step(4), extra.step(4))
+```
+
+Internally, the compiler resolves the qualified syntax into collision-free
+private ASCII symbol identifiers before the existing Rust parser, typechecker,
+VM and native compiler process the assembled program. This is a deterministic
+compiler transformation, not a runtime field lookup. UTF-8 exported identifiers
+are encoded without mixing writing systems in the generated names. Unqualified
+access to symbols owned by other modules is refused; missing exports and
+undeclared imports fail **N5003**. V1 and V2 projects retain their old behavior.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  check-project rust/examples/project_namespaces_v3/nobody.nbproj
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-project-native rust/examples/project_namespaces_v3/nobody.nbproj namespaced-demo
+./namespaced-demo
+```
+
+The real end-to-end examples use two modules both exporting `step`, internal
+self-calls, and a third module calling both; the Rust evaluator, portable
+bytecode VM and standalone x86-64 ELF must produce equal results. A generated
+acceptance test checks qualified imports in all 40 syntax profiles.
+
+**Important remaining limits:** v3 lowering uses compile-time name mangling
+rather than a first-class module AST/IR and separate object files. Exports
+are currently public by default, with no visibility modifiers, re-exports,
+aliases or package loading. The source parser does not accept general object
+property access. Full lexical capture semantics, compiler parity, all platform
+backends and self-hosting are still pending.
+
 ## Source-level imports in multi-file projects (experimental)
 
 Project manifest **v2** adds real Nobody source-level import directives, localized
