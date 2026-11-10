@@ -41,7 +41,11 @@ fn sample(profile: &str) -> String {
 
 #[test]
 fn every_registered_profile_has_matching_runtime_ir_and_typed_parse() {
-    assert_eq!(PROFILES.len(), 40, "update this test for new official profiles");
+    assert_eq!(
+        PROFILES.len(),
+        40,
+        "update this test for new official profiles"
+    );
     let baseline = sample("ai");
     let expected = "15 true Život ☸\n";
     let baseline_ir = lower_source(&baseline, "ai").unwrap();
@@ -71,7 +75,10 @@ fn mixed_profile_keyword_files_do_not_silently_execute() {
     // The keywords for a file are selected by its profile. A second profile
     // must not switch the active keyword dictionary halfway through the file.
     for (profile, source) in [
-        ("sk", "nech total_value = 2\nif pravda { vypis(total_value) }"),
+        (
+            "sk",
+            "nech total_value = 2\nif pravda { vypis(total_value) }",
+        ),
         ("en", "let total_value = 2\nak true { print(total_value) }"),
         ("ai", "let total_value = 2\nak true { print(total_value) }"),
     ] {
@@ -99,7 +106,12 @@ fn all_40_profiles_produce_standalone_elf_with_identical_stdout() {
         let result = Command::new(&target)
             .output()
             .unwrap_or_else(|err| panic!("{}: ELF did not launch: {err}", profile.code));
-        assert!(result.status.success(), "{}: ELF exit {:?}", profile.code, result.status);
+        assert!(
+            result.status.success(),
+            "{}: ELF exit {:?}",
+            profile.code,
+            result.status
+        );
         assert_eq!(
             result.stdout,
             evaluate_source(&source, profile.code).unwrap().as_bytes(),
