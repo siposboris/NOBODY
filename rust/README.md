@@ -14,6 +14,19 @@ native helper counts leading UTF-8 bytes and requires no external runtime.
 Real compiled ELF examples in `ai`/`sk`/`en` must match the Rust AST
 evaluator; nontext arguments and wrong arity are explicitly rejected.
 
+## All-40-profile interpreter and native ELF acceptance
+
+A dedicated Rust acceptance suite generates the same typed Nobody program in
+**all 40 registered language profiles**, using the current official Rust
+keyword dictionaries (not manually maintained examples). It compares
+canonical language-neutral IR, parser validity, static checker acceptance and
+the independent Rust AST interpreter result; Linux x86-64 CI additionally
+compiles every profile to actual standalone ELF and checks byte-identical
+output. The program includes translated function signatures, loops,
+conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
+This does **not** establish native-speaker translation quality, full grammar
+coverage, internationalization of error messages or production-readiness.
+
 ## Read-only Nobody formatter verification
 
 `nobody-rs format-check PROFILE FILE.nbd` checks whether source matches the

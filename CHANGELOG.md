@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — all-40-profile runtime and real ELF differential regression (2026-11-10; verified [PR #48](https://github.com/siposboris/NOBODY/pull/48))
+
+- Added generated nontrivial source programs for each of 40 syntax profiles and matching canonical IR, parser, static checker and Rust evaluator checks.
+- Linux x86-64 acceptance suite compiles and runs all 40 variants as standalone native ELF, verifying stdout against the reference Rust AST interpreter.
+- Negative tests reject a mixed syntax-profile keyword file. This is a machine-verified runtime subset, not a native-speaker review or proof of complete language parity.
+
+
 ## Unreleased — Unicode scalar text length in Rust evaluator and native ELF (2026-11-10; CI pending)
 
 - Implemented localized `len(text)` / Slovak `dlzka(text)`: counts Unicode scalar values, not UTF-8 bytes or grapheme clusters.
