@@ -462,7 +462,11 @@ mod tests {
             "print(not 1)",
             "if true { print(\"a\" < \"b\") }",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
         }
     }
 
