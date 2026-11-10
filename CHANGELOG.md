@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — verified bytecode metadata inspector (2026-11-10; CI pending)
+
+- Added read-only `inspect-bytecode FILE.nbc` in the Rust CLI, reporting safe format/operation counts after full v1/v2/v3 decode and verification.
+- Never executes bytecode, prints untrusted literals or rewrites files; tests include real v2/v3 programs, corrupted/missing files and deterministic reinspection.
+- No claim of disassembly, runtime isolation or signed file authenticity.
+
+
 ## Unreleased — Rust-native roadmap progress tool (2026-11-10; verified [PR #53](https://github.com/siposboris/NOBODY/pull/53))
 
 - Added `nobody-roadmap` Rust checker and explicit `--write` generator matching the legacy Python checklist count, round-to-nearest percent and 20-cell display.
