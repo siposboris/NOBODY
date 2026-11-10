@@ -11,10 +11,7 @@ fn sandbox() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("clock")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!(
-        "nobody-project-{}-{id}",
-        std::process::id()
-    ));
+    let root = std::env::temp_dir().join(format!("nobody-project-{}-{id}", std::process::id()));
     fs::create_dir(&root).unwrap();
     root
 }
@@ -61,7 +58,10 @@ fn three_files_in_three_profiles_link_in_dependency_order_and_run_bytecode() {
     let manifest = fixture(&dir);
     let project = load_project(&manifest).unwrap();
     assert_eq!(project.modules, vec!["math", "bridge", "main"]);
-    assert_eq!(evaluate_source(&project.source, "ai").unwrap(), "13 Život ☸\n");
+    assert_eq!(
+        evaluate_source(&project.source, "ai").unwrap(),
+        "13 Život ☸\n"
+    );
     let manifest = manifest.to_str().unwrap();
     let check = cli(&["check-project", manifest]);
     assert!(
@@ -101,7 +101,11 @@ fn linked_project_compiles_to_real_standalone_linux_elf() {
         manifest.to_str().unwrap(),
         target.to_str().unwrap(),
     ]);
-    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
     assert!(fs::read(&target).unwrap().starts_with(b"\x7fELF"));
     let native = Command::new(&target).output().unwrap();
     let vm = cli(&["run-project", manifest.to_str().unwrap()]);
@@ -116,11 +120,20 @@ fn graph_errors_unsafe_files_and_cross_module_collisions_fail_closed() {
     let manifest = fixture(&dir);
     let base = fs::read_to_string(&manifest).unwrap();
     let invalid = [
-        base.replace("module bridge ai bridge.nbd math", "module bridge ai bridge.nbd main"),
-        base.replace("module bridge ai bridge.nbd math", "module bridge ai bridge.nbd missing"),
+        base.replace(
+            "module bridge ai bridge.nbd math",
+            "module bridge ai bridge.nbd main",
+        ),
+        base.replace(
+            "module bridge ai bridge.nbd math",
+            "module bridge ai bridge.nbd missing",
+        ),
         base.replace("main.nbd bridge", "../escape.nbd bridge"),
         base.replace("entry main", "entry unknown"),
-        base.replace("module bridge ai bridge.nbd math", "module bridge ai math.nbd math"),
+        base.replace(
+            "module bridge ai bridge.nbd math",
+            "module bridge ai math.nbd math",
+        ),
         format!("{base}module spare ai spare.nbd -\n"),
     ];
     for value in invalid {
@@ -131,8 +144,18 @@ fn graph_errors_unsafe_files_and_cross_module_collisions_fail_closed() {
             .status
             .success());
     }
-    fs::write(&manifest, base.replace("module bridge ai bridge.nbd math", "module bridge en bridge.nbd math")).unwrap();
-    assert!(load_project(&manifest).is_err(), "wrong syntax profile must fail");
+    fs::write(
+        &manifest,
+        base.replace(
+            "module bridge ai bridge.nbd math",
+            "module bridge en bridge.nbd math",
+        ),
+    )
+    .unwrap();
+    assert!(
+        load_project(&manifest).is_err(),
+        "wrong syntax profile must fail"
+    );
     fs::write(&manifest, &base).unwrap();
     fs::write(
         dir.join("bridge.nbd"),
@@ -140,9 +163,20 @@ fn graph_errors_unsafe_files_and_cross_module_collisions_fail_closed() {
     )
     .unwrap();
     assert_eq!(load_project(&manifest).unwrap_err().code, 5003);
-    fs::write(dir.join("bridge.nbd"), "fn next_number(n: int): int { return krat(n) + 1 }\n").unwrap();
-    fs::write(dir.join("main.nbd"), "let result = next_number(4)\nif pravda { vypis(result) }\n").unwrap();
-    assert!(load_project(&manifest).is_err(), "mixed English and Slovak source should fail");
+    fs::write(
+        dir.join("bridge.nbd"),
+        "fn next_number(n: int): int { return krat(n) + 1 }\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.join("main.nbd"),
+        "let result = next_number(4)\nif pravda { vypis(result) }\n",
+    )
+    .unwrap();
+    assert!(
+        load_project(&manifest).is_err(),
+        "mixed English and Slovak source should fail"
+    );
     fs::remove_dir_all(dir).unwrap();
 }
 
@@ -165,7 +199,11 @@ fn symlink_outside_project_root_is_forbidden() {
 fn project_size_is_bounded_and_bad_manifest_is_never_executed() {
     let dir = sandbox();
     let manifest = fixture(&dir);
-    fs::write(dir.join("main.nbd"), format!("let data = \"{}\"\n", "x".repeat(1_048_576))).unwrap();
+    fs::write(
+        dir.join("main.nbd"),
+        format!("let data = \"{}\"\n", "x".repeat(1_048_576)),
+    )
+    .unwrap();
     assert_eq!(load_project(&manifest).unwrap_err().code, 5003);
     fs::write(&manifest, "not a real project\n").unwrap();
     assert_eq!(load_project(&manifest).unwrap_err().code, 5003);
