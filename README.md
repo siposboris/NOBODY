@@ -14,6 +14,30 @@ This measures **completed checklist entries**, not the percentage of a working c
 See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write`.
 <!-- roadmap-progress:end -->
 
+## Explicit module exports (experimental, v4)
+
+Project manifests can opt into `nobody.project.v4` to keep all top-level
+module symbols **private by default**. Declare the public module API explicitly:
+
+```text
+nobody.project.v4
+module math sk math.nbd -
+module main ai main.nbd math
+export math step
+entry main
+```
+
+The source in `main.nbd` uses `import math` followed by
+`math.step(...)`; any other symbol in `math.nbd` is inaccessible to
+importers, even if it is declared and used inside `math`. The `export`
+directive belongs to the **manifest**, not to Nobody source syntax.
+Export names must match real top-level declarations. The Rust linker
+mangles both public and private top-level names to avoid collisions, while
+v1/v2/v3 manifests retain their previous semantics.
+
+This is a compile-time privacy contract, not dynamic loading, packages,
+first-class module values, full alias/re-export support or compiler self-hosting.
+
 ## Multi-file compiler (experimental)
 ## Namespaced module compiler (experimental)
 
