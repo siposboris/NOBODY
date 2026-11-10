@@ -6,7 +6,10 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn scratch() -> PathBuf {
-    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     let root = std::env::temp_dir().join(format!("nobody-v3-{}-{stamp}", std::process::id()));
     fs::create_dir_all(&root).unwrap();
     root
@@ -38,15 +41,27 @@ fn real_v3_namespaces_allow_duplicate_function_names_and_execute_stored_bytecode
     assert_eq!(evaluate_source(&project.source, "ai").unwrap(), expected);
     let name = manifest.to_str().unwrap();
     let verified = run(&["check-project", name]);
-    assert!(verified.status.success(), "{}", String::from_utf8_lossy(&verified.stderr));
+    assert!(
+        verified.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
     let live = run(&["run-project", name]);
-    assert!(live.status.success(), "{}", String::from_utf8_lossy(&live.stderr));
+    assert!(
+        live.status.success(),
+        "{}",
+        String::from_utf8_lossy(&live.stderr)
+    );
     assert_eq!(live.stdout, expected.as_bytes());
 
     let target = root.join("linked.nbc");
     let dest = target.to_str().unwrap();
     let built = run(&["compile-project-bytecode", name, dest]);
-    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     assert!(run(&["verify-bytecode", dest]).status.success());
     let stored = run(&["run-compiled", dest]);
     assert!(stored.status.success());
@@ -65,7 +80,11 @@ fn two_modules_exporting_step_compile_into_real_independent_elf() {
         manifest.to_str().unwrap(),
         target.to_str().unwrap(),
     ]);
-    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     assert!(fs::read(&target).unwrap().starts_with(b"\x7fELF"));
     let native = Command::new(&target).output().unwrap();
     let reference = run(&["run-project", manifest.to_str().unwrap()]);
@@ -111,11 +130,14 @@ fn all_40_profiles_can_import_qualified_modules_in_v3_build() {
         fs::write(root.join("main.nbd"), source).unwrap();
         fs::write(
             &manifest,
-            original.replace("module main ai main.nbd", &format!("module main {} main.nbd", profile.code)),
+            original.replace(
+                "module main ai main.nbd",
+                &format!("module main {} main.nbd", profile.code),
+            ),
         )
         .unwrap();
-        let project = load_project(&manifest)
-            .unwrap_or_else(|err| panic!("{}: {err}", profile.code));
+        let project =
+            load_project(&manifest).unwrap_or_else(|err| panic!("{}: {err}", profile.code));
         let actual = nobody::execute_bytecode_source(&project.source, "ai")
             .unwrap_or_else(|err| panic!("{}: {err}", profile.code));
         assert_eq!(actual, "6 7\n", "{}", profile.code);
@@ -129,6 +151,9 @@ fn original_v1_and_v2_compilers_remain_compatible() {
     for name in ["project_multifile", "project_imports_v2"] {
         let manifest = base.join(name).join("nobody.nbproj");
         let project = load_project(&manifest).unwrap();
-        assert_eq!(evaluate_source(&project.source, "ai").unwrap(), "13 Život ☸\n");
+        assert_eq!(
+            evaluate_source(&project.source, "ai").unwrap(),
+            "13 Život ☸\n"
+        );
     }
 }
