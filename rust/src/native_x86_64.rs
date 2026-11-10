@@ -139,7 +139,8 @@ impl ParameterConstraints<'_> {
                     // Addition is shared by integers and UTF-8 strings.
                     // Text evidence overrides the old numeric-only inference.
                     let named_text = |expr: &IrExpr| match expr {
-                        IrExpr::Name(Name::User(name)) => self.parameters
+                        IrExpr::Name(Name::User(name)) => self
+                            .parameters
                             .iter()
                             .position(|parameter| parameter == name)
                             .is_some_and(|idx| self.inferred[idx] == Some(Type::Text)),
@@ -1392,7 +1393,11 @@ print(choose(false, 3, 9))";
             "fn identity(text: str): int { return text }\nprint(identity(\"ok\"))",
             "fn bad(text: str): str { return text + true }\nprint(bad(\"ok\"))",
         ] {
-            assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
         }
     }
 
