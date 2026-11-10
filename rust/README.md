@@ -53,6 +53,15 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-sou
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-check sk clean.nbd
 ```
 
+## Conservative static typing of localized length builtin
+
+Rust `typecheck PROFILE FILE.nbd` recognizes canonical `len`
+(Slovak `dlzka`) as returning `int` when used as a built-in call.
+It diagnoses statically known non-string arguments (N1002), known
+incorrect arity (N1005), and incompatible declared result types (N1001).
+Unknown dynamic operand types remain deferred to runtime; this is not
+sound whole-program inference. Tests cover `ai`, `sk`, `en`.
+
 ## Conservative static boolean and text-operator diagnostics
 
 Rust's `typecheck PROFILE FILE.nbd` rejects **certain** incompatible operations
