@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; CI pending)
+
+- Independent Rust bytecode compiler/VM supports `str` values, UTF-8 literals, concatenation, content equality and annotated `str` parameter/return checks.
+- Experimental portable `NOBBC001` v3 adds bounded `PushText` opcode and type tag 3; v1/v2 decoding remains, and integer/bool-only files still serialize as v2.
+- Disk-file CLI tests for `ai`/`sk`/`en` compare AST and in-memory VM execution with decoded v3 execution. Invalid UTF-8/corruption rejected; stable ABI, sandboxing and self-hosting remain open.
+
+
 ## Unreleased — native typed UTF-8 string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44))
 
 - Extended standalone Linux x86-64 native function calls for explicit `str` parameters and return values using two-word UTF-8 pointer/length arguments and `rax`/`rdx` return pairs.
