@@ -79,6 +79,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_text_call_ai.nbd"),
         ("sk", "native_text_call_sk.nbd"),
         ("en", "native_text_call_en.nbd"),
+        ("ai", "native_len_ai.nbd"),
+        ("sk", "native_len_sk.nbd"),
+        ("en", "native_len_en.nbd"),
         ("sk", "native_typed_signatures_sk.nbd"),
         ("en", "native_typed_signatures_en.nbd"),
     ] {
@@ -314,6 +317,52 @@ fn native_text_function_abi_is_real_and_matches_rust_evaluator() {
             .any(|x| x == "Nobody ☸".as_bytes()));
         std::fs::remove_dir_all(temporary).unwrap();
     }
+}
+
+#[test]
+fn native_unicode_len_has_real_elf_parity_and_rejects_nontext() {
+    for (profile, file) in [
+        ("ai", "native_len_ai.nbd"),
+        ("sk", "native_len_sk.nbd"),
+        ("en", "native_len_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{file}", env!("CARGO_MANIFEST_DIR"));
+        let temporary = temporary();
+        let executable = temporary.join("native-length");
+        let compiled = compile(profile, Path::new(&source), &executable);
+        assert!(
+            compiled.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let native = Command::new(&executable).output().unwrap();
+        let reference = nobody(&["run", profile, &source]);
+        assert!(native.status.success(), "{file}: {:?}", native.status);
+        assert!(reference.status.success(), "{file}: {:?}", reference.status);
+        assert_eq!(native.stdout, reference.stdout, "{file}: scalar count mismatch");
+        assert!(native.stdout.starts_with(b"7 0 3\n"));
+        let assembler = nobody(&["native-asm", profile, &source]);
+        assert!(assembler.status.success());
+        assert!(String::from_utf8(assembler.stdout)
+            .unwrap()
+            .contains("nobody_text_length:"));
+        std::fs::remove_dir_all(temporary).unwrap();
+    }
+
+    let temporary = temporary();
+    let source = temporary.join("invalid.nbd");
+    let binary = temporary.join("should-not-build");
+    for code in [
+        "print(len(4))",
+        "print(len())",
+        "print(len(\"a\", \"b\"))",
+    ] {
+        std::fs::write(&source, code).unwrap();
+        let compiled = compile("ai", &source, &binary);
+        assert!(!compiled.status.success(), "{code}");
+        assert!(!binary.exists());
+    }
+    std::fs::remove_dir_all(temporary).unwrap();
 }
 
 #[test]
