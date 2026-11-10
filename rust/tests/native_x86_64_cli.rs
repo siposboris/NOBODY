@@ -339,7 +339,10 @@ fn native_unicode_len_has_real_elf_parity_and_rejects_nontext() {
         let reference = nobody(&["run", profile, &source]);
         assert!(native.status.success(), "{file}: {:?}", native.status);
         assert!(reference.status.success(), "{file}: {:?}", reference.status);
-        assert_eq!(native.stdout, reference.stdout, "{file}: scalar count mismatch");
+        assert_eq!(
+            native.stdout, reference.stdout,
+            "{file}: scalar count mismatch"
+        );
         assert!(native.stdout.starts_with(b"7 0 3\n"));
         let assembler = nobody(&["native-asm", profile, &source]);
         assert!(assembler.status.success());
@@ -352,11 +355,7 @@ fn native_unicode_len_has_real_elf_parity_and_rejects_nontext() {
     let temporary = temporary();
     let source = temporary.join("invalid.nbd");
     let binary = temporary.join("should-not-build");
-    for code in [
-        "print(len(4))",
-        "print(len())",
-        "print(len(\"a\", \"b\"))",
-    ] {
+    for code in ["print(len(4))", "print(len())", "print(len(\"a\", \"b\"))"] {
         std::fs::write(&source, code).unwrap();
         let compiled = compile("ai", &source, &binary);
         assert!(!compiled.status.success(), "{code}");
