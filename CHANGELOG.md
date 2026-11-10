@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — all-40-profile runtime and real ELF differential regression (2026-11-10; CI pending)
+
+- Added generated nontrivial source programs for each of 40 syntax profiles and matching canonical IR, parser, static checker and Rust evaluator checks.
+- Linux x86-64 acceptance suite compiles and runs all 40 variants as standalone native ELF, verifying stdout against the reference Rust AST interpreter.
+- Negative tests reject a mixed syntax-profile keyword file. This is a machine-verified runtime subset, not a native-speaker review or proof of complete language parity.
+
+
 ## Unreleased — native typed UTF-8 string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44))
 
 - Extended standalone Linux x86-64 native function calls for explicit `str` parameters and return values using two-word UTF-8 pointer/length arguments and `rax`/`rdx` return pairs.
