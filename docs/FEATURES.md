@@ -12,7 +12,8 @@
 | Basic inferred/explicit type checks | Prototype | Limited coverage |
 | Restricted immutable-only mode | Prototype | Limited constructs |
 | Catalog of 22 option families | Prototype | Many unimplemented |
-| Formal parser, AST/IR, modules, generics | Planned | |
+| Multi-file project compiler with explicit dependency manifests | Experimental | Rust-only bounded `nobody.project.v1` graph loader; per-file syntax profile, IR translation validation, portable bytecode and Linux x86-64 ELF builds. No source-level import syntax or module namespaces yet |
+| Formal parser, AST/IR, modules, generics | Planned | Full grammar, language-level modules, generics and formal semantics remain incomplete |
 | Rust-style ownership, GC and manual memory profiles | Planned | |
 | Linux x86-64 native ELF machine-code backend | **Verified experimental subset** | Rust IR → x86-64 assembly → GNU `as`/`ld` → standalone executable. Supports signed i64/boolean arithmetic and named functions, variables, conditions, while and for-range, plus UTF-8 text literals and mixed arguments in `print`. Dynamic text variables still unsupported. [Details](NATIVE_X86_64.md); [CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Not a full compiler |\n| ARM64, Windows, macOS and WebAssembly native targets | Planned | No native machine-code backend verified for these targets |
 | GPU/tensors, scientific math, SIMD | Planned | |

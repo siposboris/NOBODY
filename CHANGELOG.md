@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — dependency-aware multi-file compiler (2026-11-10; CI pending)
+
+- Added Rust-only `nobody.project.v1` loader with explicit module dependencies and per-file 40-profile syntax selection, canonical IR checking and bounded project source assembly.
+- Added `check-project`, `run-project`, `compile-project-bytecode` and `compile-project-native` CLI commands, building real portable VM files and native standalone Linux x86-64 ELF from multi-file sources.
+- Added mixed Slovak/`ai`/English 3-module acceptance fixture plus bytecode/native runtime parity and fail-closed cycle, traversal, symlink, duplicate-name and invalid-profile tests.
+- No source-level import keyword, namespace isolation, separately linked artifacts, complete grammar, cross-platform native backend, Python deletion or self-hosting claim.
+
+
 ## Unreleased — verified bytecode metadata inspector (2026-11-10; verified [PR #57](https://github.com/siposboris/NOBODY/pull/57))
 
 - Added read-only `inspect-bytecode FILE.nbc` in the Rust CLI, reporting safe format/operation counts after full v1/v2/v3 decode and verification.

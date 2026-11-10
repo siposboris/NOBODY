@@ -1,0 +1,6 @@
+nobody.project.v1
+# Each source file selects one syntax profile; dependencies are explicit.
+module main en main.nbd bridge
+module math sk math.nbd -
+module bridge ai bridge.nbd math
+entry main
