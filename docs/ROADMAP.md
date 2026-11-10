@@ -100,6 +100,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Native ELF text operations (2026-11-10, PR #41; CI pending):** The restricted Linux x86-64 compiler now emits real bytewise UTF-8 string equality/inequality and runtime concatenation for string literals and text variables, including nested expressions and loops. A bounded 1 MiB lifetime arena provides storage without libc; overflow exits with status 7. New compiled ELF-vs-Rust-interpreter parity tests exercise `ai`, `sk`, `en`, Unicode, empty text, reassignment, conditionals, loop/function locality, and assembler-looking user text. This extends the existing native compiler prototype, not a whole-language or self-hosting milestone. Text arguments/returns, full dynamic memory, Python removal, and self-hosting remain open.
+
+
+
 **New genuine native ELF capability (2026-11-10; verified [PR #40](https://github.com/siposboris/NOBODY/pull/40)):** Native x86-64 now handles UTF-8 text variable declarations, reassignment, copying, shadowing and function-local storage by tracking read-only string pointers plus byte lengths in separate stack slots. `print` reads those values at runtime; independent `ai`, `sk` and `en` fixtures compare the actual standalone ELF output with the Rust evaluator. Text concatenation/comparison, native text parameter/return ABI, full collections and self-hosting remain open. All four checks passed including [Rust CI #42753533095](https://github.com/siposboris/NOBODY/actions/runs/42753533095). This expands an existing partial native compiler milestone, not a newly completed broad roadmap checkbox.
 
 
