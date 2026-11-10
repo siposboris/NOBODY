@@ -4,9 +4,21 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Mutable UTF-8 text variables in real native ELF (experimental)
+
+The x86-64 compiler now allocates **two stack words per local text binding** (read-only UTF-8 data pointer plus byte length). It supports declarations, copying, reassignment, lexical shadowing and printing stored text inside loops and function-local bodies. The actual ELF must produce identical output to the Rust interpreter for the `ai`, `sk` and `en` acceptance fixtures. This feature does **not** add heap allocation: source string contents live in the ELF read-only data segment, while variables hold mutable pointer/length pairs.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_variables_sk.nbd text-vars
+./text-vars
+```
+
+Text concatenation/comparison, changing a binding's value type, text arguments/returns and typed `str` declarations remain unsupported in the restricted ELF backend. Rust evaluator and ELF may differ outside the documented subset.
+
 ## Real standalone UTF-8 text output in native ELF
 
-The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Dynamic strings, string arithmetic and native string parameters/returns remain unsupported.
+The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Native UTF-8 text variables can now be copied and reassigned, including in loops and function-local scopes. Text concatenation, comparisons and native string parameters/returns remain unsupported.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
