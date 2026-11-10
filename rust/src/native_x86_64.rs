@@ -1205,12 +1205,9 @@ mod tests {
                 .code,
             4004
         );
-        assert_eq!(
-            compile_to_assembly("print(\"a\" + \"b\")", "ai")
-                .unwrap_err()
-                .code,
-            4004
-        );
+        assert!(compile_to_assembly("print(\"a\" + \"b\")", "ai")
+            .unwrap()
+            .contains("call nobody_text_concat"));
         assert_eq!(
             compile_to_assembly("if 1 { print(2) }", "ai")
                 .unwrap_err()
@@ -1238,27 +1235,17 @@ mod tests {
     }
 
     #[test]
-    fn native_text_bindings_use_two_slots_and_reject_pointer_comparison() {
+    fn native_text_bindings_use_two_slots_and_compare_by_bytes() {
         let asm = compile_to_assembly(
-            "let greeting = \"Ahoj\"\nlet saved = greeting\ngreeting = \"Zmena\"\nprint(greeting, saved)",
+            "let greeting = \"Ahoj\"\nlet saved = greeting\ngreeting = \"Zmena\"\nprint(greeting, saved, greeting != saved)",
             "ai",
         )
         .unwrap();
         assert!(asm.contains("mov rdx, QWORD PTR [rbp-"));
         assert!(asm.contains("mov QWORD PTR [rbp-16], rdx"));
         assert!(asm.contains("call nobody_write_raw"));
-        assert_eq!(
-            compile_to_assembly("let text = \"a\"\nprint(text == \"a\")", "ai")
-                .unwrap_err()
-                .code,
-            4004
-        );
-        assert_eq!(
-            compile_to_assembly("let text = \"a\"\nprint(text + \"b\")", "ai")
-                .unwrap_err()
-                .code,
-            4004
-        );
+        assert!(asm.contains("call nobody_text_equal"));
+        assert!(asm.contains("repe cmpsb"));
     }
 
     #[test]
