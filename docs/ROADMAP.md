@@ -72,7 +72,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
-**Static boolean flow-condition diagnostics (2026-11-10; CI pending):** Rust type analysis now rejects provably non-boolean expressions in `if`, `elif`, and `while` with N1002 before execution, matching runtime semantics. Unknown/dynamic types remain allowed for runtime checking; regression tests exercise the three primary syntax profiles and text/number/null/length operands. This is not complete type inference or flow-sensitive narrowing.
+**Static boolean flow-condition diagnostics (2026-11-10; verified [PR #56](https://github.com/siposboris/NOBODY/pull/56), [Rust CI #42858026205](https://github.com/siposboris/NOBODY/actions/runs/42858026205)):** Rust type analysis now rejects provably non-boolean expressions in `if`, `elif`, and `while` with N1002 before execution, matching runtime semantics. Unknown/dynamic types remain allowed for runtime checking; regression tests exercise the three primary syntax profiles and text/number/null/length operands. This is not complete type inference or flow-sensitive narrowing.
 
 
 
@@ -124,7 +124,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
-**Checked integer constant folding (2026-11-10; CI pending):** The Rust bytecode compiler evaluates safe literal-only signed `i128` unary and `+`/`-`/`*` arithmetic at compile time. Checked overflow is explicitly not folded; runtime faults and mixed dynamic expressions remain intact. Regression tests compare AST interpreter, VM, and persisted portable bytecode behavior across `ai`, `sk`, `en`. This is a narrow compiler optimization, not general optimization pipeline completion.
+**Checked integer constant folding (2026-11-10; verified [PR #55](https://github.com/siposboris/NOBODY/pull/55), [Rust CI #42857494030](https://github.com/siposboris/NOBODY/actions/runs/42857494030)):** The Rust bytecode compiler evaluates safe literal-only signed `i128` unary and `+`/`-`/`*` arithmetic at compile time. Checked overflow is explicitly not folded; runtime faults and mixed dynamic expressions remain intact. Regression tests compare AST interpreter, VM, and persisted portable bytecode behavior across `ai`, `sk`, `en`. This is a narrow compiler optimization, not general optimization pipeline completion.
 
 
 
@@ -216,7 +216,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 9 — Tooling and developer experience
 
-**Read-only portable bytecode inspector (2026-11-10; CI pending):** New `inspect-bytecode FILE.nbc` uses the bounded Rust v1/v2/v3 validator, then reports version, size, instruction/function counts, text literal and Unicode length-opcode totals without executing the program, modifying its bytes or displaying embedded source data. Regression tests cover valid v2/v3 files, deterministic output, read-only behavior and rejection of malformed or missing files. This is metadata inspection, not debugger, disassembler or sandbox.
+**Read-only portable bytecode inspector (2026-11-10; verified [PR #57](https://github.com/siposboris/NOBODY/pull/57), [Rust CI #42858511948](https://github.com/siposboris/NOBODY/actions/runs/42858511948)):** New `inspect-bytecode FILE.nbc` uses the bounded Rust v1/v2/v3 validator, then reports version, size, instruction/function counts, text literal and Unicode length-opcode totals without executing the program, modifying its bytes or displaying embedded source data. Regression tests cover valid v2/v3 files, deterministic output, read-only behavior and rejection of malformed or missing files. This is metadata inspection, not debugger, disassembler or sandbox.
 
 
 
