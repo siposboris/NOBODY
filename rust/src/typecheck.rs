@@ -162,13 +162,18 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
                 (numeric(a) && numeric(b)) || (a == Type::Str && b == Type::Str)
             } else if matches!(op.as_str(), "-" | "*" | "/" | "//" | "%" | "**") {
                 numeric(a) && numeric(b)
+            } else if matches!(op.as_str(), "<" | "<=" | ">" | ">=") {
+                numeric(a) && numeric(b)
+            } else if matches!(op.as_str(), "and" | "or") {
+                a == Type::Bool && b == Type::Bool
             } else {
+                // Equality can compare runtime values of different types.
                 true
             };
             if known && !allowed {
                 return Err(diagnostic(1002,
                     format!("Operator {op:?} cannot combine known types {a:?} and {b:?}"),
-                    "Use compatible numeric operands for arithmetic, or two strings for text concatenation with '+'."));
+                    "Use numeric operands for arithmetic/ordering, boolean operands for and/or, or two strings for text concatenation with '+'."));
             }
             if matches!(op.as_str(), "/" | "//" | "%")
                 && (definitely_zero_literal(rhs) || exact_integer_constant(rhs) == Some(0))
@@ -189,6 +194,13 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
         IrExpr::Unary { op, value } => {
             check_binary_types(value, env)?;
             let operand = infer(value, env);
+            if op == "not" && operand != Type::Unknown && operand != Type::Bool {
+                return Err(diagnostic(
+                    1002,
+                    format!("Unary 'not' requires a boolean, found {operand:?}"),
+                    "Use a boolean value or an explicit comparison before 'not'.",
+                ));
+            }
             if matches!(op.as_str(), "+" | "-")
                 && operand != Type::Unknown
                 && !matches!(operand, Type::Int | Type::Float)
@@ -440,6 +452,47 @@ pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn known_text_ordering_and_boolean_operator_mismatches_are_diagnosed() {
+        for source in [
+            "let a = \"hello\"\nprint(a < \"world\")",
+            "print(\"hello\" >= \"world\")",
+            "let a = true\nprint(a and 2)",
+            "print(false or \"text\")",
+            "print(not 1)",
+            "if true { print(\"a\" < \"b\") }",
+        ] {
+            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+        }
+    }
+
+    #[test]
+    fn compatible_text_equality_boolean_logic_and_uncertain_values_pass() {
+        for source in [
+            "let a = \"hello\"\nprint(a == \"hello\")",
+            "print(\"hello\" != 2)",
+            "print(true and false)",
+            "print(not false)",
+            "let b = \"x\" + \"y\"\nprint(b == \"xy\")",
+            "print(mystery and true)",
+            "print(mystery < 2)",
+        ] {
+            check_source(source, "ai").unwrap();
+        }
+    }
+
+    #[test]
+    fn diagnostics_for_text_ordering_are_profile_aware() {
+        for (profile, wrong, accepted) in [
+            ("ai", "print(\"a\" < \"b\")", "print(\"a\" == \"b\")"),
+            ("sk", "vypis(\"a\" < \"b\")", "vypis(\"a\" == \"b\")"),
+            ("en", "print(\"a\" < \"b\")", "print(\"a\" == \"b\")"),
+        ] {
+            assert_eq!(check_source(wrong, profile).unwrap_err().code, 1002);
+            check_source(accepted, profile).unwrap();
+        }
+    }
+
     #[test]
     fn rejects_known_wrong_initializer() {
         let e = check_source("let n: int = \"oops\"", "ai").unwrap_err();
