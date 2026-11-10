@@ -1,0 +1,2 @@
+import math
+fn next_number(n: int): int { return krat(n) + 1 }
