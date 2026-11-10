@@ -15,6 +15,16 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 <!-- roadmap-progress:end -->
 
 ## Multi-file compiler (experimental)
+## Native source imports (experimental)
+
+The Rust project compiler now accepts localized source imports in versioned
+`nobody.project.v2` manifests. Each source file uses **one human syntax
+profile**; imports are checked against the project dependency graph before
+building verified `.nbc` or standalone Linux x86-64 ELF. See the
+[source import example](rust/examples/project_imports_v2/nobody.nbproj).
+Namespaced modules, a complete compiler and self-hosting remain open.
+
+
 
 Rust now supports a bounded `nobody.project.v1` manifest for composing
 multiple Nobody source files with explicit dependencies and **one syntax
