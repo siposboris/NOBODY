@@ -53,6 +53,11 @@ fn infer(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Type {
         IrExpr::Boolean(_) => Type::Bool,
         IrExpr::Null => Type::Null,
         IrExpr::Name(Name::User(name)) => *env.get(name).unwrap_or(&Type::Unknown),
+        IrExpr::Call { callee, .. }
+            if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
+        {
+            Type::Int
+        }
         IrExpr::Name(Name::Builtin(_)) | IrExpr::Call { .. } => Type::Unknown,
         IrExpr::Unary { op, value } => {
             let t = infer(value, env);
@@ -190,6 +195,23 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
             check_binary_types(callee, env)?;
             for arg in args {
                 check_binary_types(arg, env)?;
+            }
+            if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) {
+                if args.len() != 1 {
+                    return Err(diagnostic(
+                        1005,
+                        format!("Built-in len expects one argument, got {}", args.len()),
+                        "Pass exactly one text expression to len (or its localized spelling).",
+                    ));
+                }
+                let actual = infer(&args[0], env);
+                if actual != Type::Unknown && actual != Type::Str {
+                    return Err(diagnostic(
+                        1002,
+                        format!("Built-in len requires Str, found known type {actual:?}"),
+                        "Supply a UTF-8 string rather than a number, boolean or null.",
+                    ));
+                }
             }
         }
         IrExpr::Unary { op, value } => {
@@ -453,6 +475,41 @@ pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn len_builtin_infers_integer_result_for_localized_syntax() {
+        for (profile, source) in [
+            ("ai", "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)"),
+            ("sk", "nech text = \"Život ☸\"\nnech count: cele = dlzka(text)\nvypis(count)"),
+            ("en", "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)"),
+        ] {
+            check_source(source, profile).unwrap();
+        }
+        assert_eq!(
+            check_source("let result: str = len(\"hello\")", "ai")
+                .unwrap_err()
+                .code,
+            1001
+        );
+    }
+
+    #[test]
+    fn len_builtin_rejects_proven_wrong_arity_and_operand_types() {
+        for source in ["print(len())", "print(len(\"a\", \"b\"))"] {
+            assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
+        }
+        for source in [
+            "print(len(5))",
+            "print(len(true))",
+            "print(len(null))",
+            "print(len(\"x\" + 2))",
+            "print(len(\"x\") + \"y\")",
+        ] {
+            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+        }
+        // Dynamic names remain deferred by the conservative typechecker.
+        check_source("print(len(unknown_value))", "ai").unwrap();
+    }
+
     #[test]
     fn known_text_ordering_and_boolean_operator_mismatches_are_diagnosed() {
         for source in [
