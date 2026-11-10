@@ -62,7 +62,23 @@ Tests compare original AST output, in-memory VM and serialized bytecode
 for `ai`, `sk`, `en`, including an overflowing expression.
 This is one conservative optimization, not a full optimizing compiler.
 
-## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
+## Portable UTF-8 strings in Rust bytecode VM## Read-only bytecode metadata inspection without execution
+
+`nobody-rs inspect-bytecode FILE.nbc` loads at most 2 MiB and fully
+decodes/verifies experimental portable bytecode before printing safe,
+deterministic metadata (wire version, file size, main/function instruction
+counts, text literal and Unicode length opcode totals). It **never
+executes** the program or writes the file, and avoids echoing untrusted
+function names and string contents. Invalid/truncated files fail before
+printing metadata. This is diagnostic tooling, **not** an OS sandbox or
+cryptographic authentication.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  inspect-bytecode text.nbc
+```
+
+ and .nbc v3
 
 The Python-free independent stack VM now executes UTF-8 text literals,
 variables, text concatenation (`+`), equality/inequality, and typed `str`

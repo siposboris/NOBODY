@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -19,6 +19,7 @@ fn main() {
             | "check"
             | "direction"
             | "verify-bytecode"
+            | "inspect-bytecode"
             | "run-compiled"
             | "verify-ast-json-v2"
             | "normalize-ast-json-v2",
@@ -245,7 +246,10 @@ fn main() {
         return;
     }
     // .nbc never goes through source parsing or UTF-8 decoding.
-    if command == "run-compiled" || command == "verify-bytecode" {
+    if matches!(
+        command,
+        "run-compiled" | "verify-bytecode" | "inspect-bytecode"
+    ) {
         let filename = &arguments[2];
         let file = fs::File::open(filename).unwrap_or_else(|error| {
             eprintln!("N9001: Cannot open {:?}: {error}", filename);
@@ -261,7 +265,33 @@ fn main() {
             eprintln!("{error}");
             process::exit(1);
         });
-        if command == "verify-bytecode" {
+        if command == "inspect-bytecode" {
+            // Decode validates the wire format before we expose metrics.
+            // Never execute the program or print untrusted names/literals.
+            let functions_total: usize = program.functions.iter().map(|f| f.code.len()).sum();
+            let instructions = program
+                .code
+                .iter()
+                .chain(program.functions.iter().flat_map(|f| f.code.iter()));
+            let (mut text_literals, mut scalar_length_ops) = (0usize, 0usize);
+            for opcode in instructions {
+                match opcode {
+                    nobody::bytecode::Instruction::PushText(_) => text_literals += 1,
+                    nobody::bytecode::Instruction::TextLen => scalar_length_ops += 1,
+                    _ => {}
+                }
+            }
+            println!("format: NOBBC001");
+            println!("wire_version: {}", u16::from_le_bytes([data[8], data[9]]));
+            println!("file_bytes: {}", data.len());
+            println!("main_instructions: {}", program.code.len());
+            println!("function_count: {}", program.functions.len());
+            println!("function_instructions: {functions_total}");
+            println!("text_literals: {text_literals}");
+            println!("unicode_length_ops: {scalar_length_ops}");
+            println!("verified: true");
+            println!("executed: false");
+        } else if command == "verify-bytecode" {
             println!(
                 "Verified experimental bytecode: {} main instructions, {} functions (not a security sandbox).",
                 program.code.len(),
