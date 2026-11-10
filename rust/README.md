@@ -4,6 +4,51 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Multi-file project compiler (Rust-only, experimental)
+
+Nobody now has a real dependency-aware project build route. Each `.nbd`
+source selects **one** of the 40 syntax profiles independently. A small
+versioned `.nbproj` manifest specifies dependency order; each file is parsed
+and validated, translated into canonical `ai` with IR-preservation checks,
+and linked into one source unit. The same assembled project can be executed
+in the independent Rust VM, serialized to validated portable `.nbc`, or
+compiled to a standalone Linux x86-64 ELF (within that backend's subset).
+
+```text
+nobody.project.v1
+module main en main.nbd bridge
+module math sk math.nbd -
+module bridge ai bridge.nbd math
+entry main
+```
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  check-project rust/examples/project_multifile/nobody.nbproj
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  run-project rust/examples/project_multifile/nobody.nbproj
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-project-bytecode rust/examples/project_multifile/nobody.nbproj project.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-project-native rust/examples/project_multifile/nobody.nbproj project-elf
+./project-elf
+```
+
+The manifest allows at most 64 modules, source/manifest size caps and
+ASCII-lowercase module names. Paths must be relative `.nbd` paths inside
+the project root, with no traversal or symlink escape; cycles, missing
+dependencies, unreachable modules, duplicate file identities and duplicate
+top-level declarations fail with **N5003**. Program source is limited to
+1 MiB. Output files are never overwritten. The modules execute their
+top-level statements in dependency-first order. This is **not** a secure
+sandbox; do not run untrusted projects.
+
+**Still missing:** native `import` statements in Nobody syntax, module
+namespaces and visibility, object-file linking, full data types, advanced
+typing, stable package management, Rust/Python parity and self-hosting.
+The source translation pass is not yet a complete capture-safe compiler;
+it rejects detected canonical IR mismatches instead of silently proceeding.
+
 ## Verified UTF-8 text length bytecode opcode (experimental)
 
 The independent Rust VM now compiles `len(text)` (Slovak `dlzka`)
