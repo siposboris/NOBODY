@@ -100,6 +100,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Native typed string function ABI (2026-11-10; PR #44, CI pending):** Linux x86-64 generated programs now pass explicit UTF-8 `str` function parameters as address/length pairs and return `str` via `rax`/`rdx`. Earlier-declared functions mix `int`, `bool`, `str` positional arguments, support nested string-returning calls and concatenation, and check type mismatches at compilation. Cross-profile `ai`/`sk`/`en` fixtures compare real standalone ELF output to the separate Rust evaluator. This is an internal and incomplete ABI without recursion, closures, float, unannotated text inference or stable cross-platform compatibility. No broad roadmap checkbox closed.
+
+
+
 **Native ELF text operations (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41)):** The restricted Linux x86-64 compiler now emits real bytewise UTF-8 string equality/inequality and runtime concatenation for string literals and text variables, including nested expressions and loops. A bounded 1 MiB lifetime arena provides storage without libc; overflow exits with status 7. New compiled ELF-vs-Rust-interpreter parity tests exercise `ai`, `sk`, `en`, Unicode, empty text, reassignment, conditionals, loop/function locality, and assembler-looking user text. All four workflows passed, including [Rust CI #42754693569](https://github.com/siposboris/NOBODY/actions/runs/42754693569). This extends the existing native compiler prototype, not a whole-language or self-hosting milestone. Text arguments/returns, full dynamic memory, Python removal, and self-hosting remain open.
 
 
