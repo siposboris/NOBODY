@@ -40,7 +40,7 @@ def render() -> str:
         "self-hosting are not complete.\n\n"
         "See the [full roadmap](docs/ROADMAP.md) and "
         "[feature status](docs/FEATURES.md). "
-        "Regenerate with `python3 scripts/update-roadmap-progress.py`.\n"
+        "Regenerate with `cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write`.\n"
         f"{END}"
     )
 
@@ -59,7 +59,7 @@ def main() -> int:
     revised = data[:start] + render() + data[end + len(END):]
     if args.check:
         if data != revised:
-            print("Roadmap progress is stale. Run: python3 scripts/update-roadmap-progress.py")
+            print("Roadmap progress is stale. Run: cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write")
             return 1
         print("Roadmap progress is up to date.")
         return 0
