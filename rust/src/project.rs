@@ -2,7 +2,7 @@
 //!
 //! This is intentionally a bounded, deterministic *project build* layer,
 //! not source-level imports, name-spaced modules, or a package manager.
-use crate::syntax::Statement;
+use crate::syntax::{Program, Statement};
 use crate::{parse_validated, same_ir, translate_source, Diagnostic};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
@@ -18,6 +18,14 @@ struct ModuleSpec {
     profile: String,
     path: String,
     dependencies: Vec<String>,
+}
+
+struct NamespaceUnit {
+    name: String,
+    source: String,
+    program: Program,
+    imports: BTreeSet<String>,
+    qualified_references: Vec<(String, String)>,
 }
 
 #[derive(Clone, Debug)]
@@ -273,12 +281,41 @@ fn check_direct_import_visibility(
     Ok(())
 }
 
+/// Version 3 forbids unqualified references to exports of other modules.
+fn check_namespaced_visibility(
+    name: &str,
+    source: &str,
+    statements: &[Statement],
+    exported: &BTreeMap<String, BTreeSet<String>>,
+) -> Result<(), Diagnostic> {
+    use crate::TokenKind;
+    let mut locally_declared = BTreeSet::new();
+    collect_declarations(statements, &mut locally_declared);
+    for token in crate::scan(source)? {
+        if token.kind != TokenKind::Name
+            || locally_declared.contains(&token.value)
+            || crate::profiles::semantic("ai", &token.value).is_some()
+        {
+            continue;
+        }
+        if let Some(owner) = exported.iter().find_map(|(owner, symbols)| {
+            (owner != name && symbols.contains(&token.value)).then_some(owner)
+        }) {
+            return Err(issue(format!(
+                "Unqualified symbol {:?} in module {name:?} belongs to {owner:?}; use {owner}.{} with a direct import",
+                token.value, token.value
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
 ///
 /// Format (whitespace-separated, no spaces in file paths):
-/// nobody.project.v1
+/// nobody.project.v1 / nobody.project.v2 / nobody.project.v3
 /// module math sk math.nbd -
 /// module main en main.nbd math
 /// entry main
@@ -302,8 +339,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
                 match line {
                     "nobody.project.v1" => 1,
                     "nobody.project.v2" => 2,
+                    "nobody.project.v3" => 3,
                     _ => return Err(issue(
-                        "First manifest directive must be nobody.project.v1 or nobody.project.v2",
+                        "First manifest directive must be nobody.project.v1, v2 or v3",
                     )),
                 };
             continue;
@@ -405,6 +443,8 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut exports = BTreeMap::<String, String>::new();
     let mut canonical_paths = BTreeSet::new();
     let mut visible = Vec::new();
+    let mut namespaced = Vec::new();
+    let mut exported_by_module: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for name in &order {
         let spec = &specs[name];
         let resolved = fs::canonicalize(root.join(&spec.path))
