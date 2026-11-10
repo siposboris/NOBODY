@@ -21,7 +21,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
 
 Differential tests execute standalone ELF programs for `ai`, `sk`, `en`
 and compare their exact output with the independent Rust evaluator.
-This is not Unicode grapheme segmentation or general string indexing.
+This is not Unicode grapheme segmentation or general string indexing. All four CI workflows passed, including [Rust CI #42827458034](https://github.com/siposboris/NOBODY/actions/runs/42827458034) in [PR #46](https://github.com/siposboris/NOBODY/pull/46).
 
 ## Compile and run on Fedora
 
