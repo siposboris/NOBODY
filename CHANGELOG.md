@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — verified private-by-default v4 module exports (2026-11-10)
+
+- [PR #62](https://github.com/siposboris/NOBODY/pull/62) merged after successful [Rust CI #42899432465](https://github.com/siposboris/NOBODY/actions/runs/42899432465).
+- Added `nobody.project.v4` manifest export contracts: all top-level functions/variables are private unless explicitly exported. Hidden helpers remain callable inside their own module but cannot be accessed through imports.
+- Public and private symbols are collision-free across modules; malformed, missing, duplicate and unauthorized exports fail with N5003.
+- Acceptance covers a real three-language build, all 40 importing syntax profiles, interpreter/VM/serialized bytecode/Linux x86-64 ELF outputs and v3 backward compatibility.
+- Source-language `export`, aliases, re-exports, first-class modules, general forward calls and full compiler/self-hosting remain open.
+
 ## Unreleased — namespaced multi-file compiler v3 (2026-11-10; CI pending)
 
 - Introduced `nobody.project.v3`, resolving `module.symbol` references through a directly imported module with a verified public top-level export.
