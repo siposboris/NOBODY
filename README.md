@@ -14,6 +14,16 @@ This measures **completed checklist entries**, not the percentage of a working c
 See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write`.
 <!-- roadmap-progress:end -->
 
+## Multi-file compiler (experimental)
+
+Rust now supports a bounded `nobody.project.v1` manifest for composing
+multiple Nobody source files with explicit dependencies and **one syntax
+profile per file**. The project can run in the Rust bytecode VM or compile
+into portable `.nbc` and a real standalone Linux x86-64 ELF (supported
+subset). See the [three-file project example](rust/examples/project_multifile/nobody.nbproj)
+and [Rust compiler instructions](rust/README.md). Module namespaces,
+source-level import syntax and full compiler completeness are still open.
+
 ## Current state
 
 - **40 experimental syntax profiles** — 39 human languages plus canonical `ai`. One syntax language per source file.
