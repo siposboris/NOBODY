@@ -12,10 +12,10 @@
 | Basic inferred/explicit type checks | Prototype | Limited coverage |
 | Restricted immutable-only mode | Prototype | Limited constructs |
 | Catalog of 22 option families | Prototype | Many unimplemented |
-| Multi-file project compiler with explicit dependency manifests | Experimental |
-| Namespaced qualified module calls (v3) | Experimental | Duplicate export names allowed across modules; `module.symbol` compile-time references, import/member validation and private symbols; no reexports or aliases yet |
-| Localized source-level module imports in v2 projects | Experimental | 40 syntax profiles; mandatory manifest-direct import graph, explicit direct symbol visibility; global names remain unnamespaced |
- Rust-only bounded `nobody.project.v1` graph loader; per-file syntax profile, IR translation validation, portable bytecode and Linux x86-64 ELF builds. No source-level import syntax or module namespaces yet |
+| Multi-file project compiler with explicit dependency manifests | Experimental | Rust-only bounded v1–v4 project graph and per-file syntax profile; bytecode and Linux x86-64 ELF output |
+| Namespaced qualified module calls (v3) | Verified experimental subset | Duplicate source-level names across modules, explicit `module.symbol` references, direct import and member checks; no aliases or re-exports |
+| Private-by-default module exports (v4) | Verified experimental subset | Manifest `export module symbol1,symbol2`; unlisted top-level declarations remain private, with duplicate private names isolated. [PR #62](https://github.com/siposboris/NOBODY/pull/62), [Rust CI](https://github.com/siposboris/NOBODY/actions/runs/42899432465) |
+| Localized source-level module imports (v2–v4) | Experimental | All 40 profiles; source import declarations must match the project's explicit dependency graph |
 | Formal parser, AST/IR, modules, generics | Planned | Full grammar, language-level modules, generics and formal semantics remain incomplete |
 | Rust-style ownership, GC and manual memory profiles | Planned | |
 | Linux x86-64 native ELF machine-code backend | **Verified experimental subset** | Rust IR → x86-64 assembly → GNU `as`/`ld` → standalone executable. Supports signed i64/boolean arithmetic and named functions, variables, conditions, while and for-range, plus UTF-8 text literals and mixed arguments in `print`. Dynamic text variables still unsupported. [Details](NATIVE_X86_64.md); [CI #42638140375](https://github.com/siposboris/NOBODY/actions/runs/42638140375). Not a full compiler |\n| ARM64, Windows, macOS and WebAssembly native targets | Planned | No native machine-code backend verified for these targets |
