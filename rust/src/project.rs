@@ -164,6 +164,81 @@ fn reject_foreign_keywords(
     Ok(())
 }
 
+/// Parse actual, localized source-level import directives at file scope.
+///
+/// A v2 source starts with zero or more localized import directives,
+/// separated by comments and blank lines. These are compile-time declarations;
+/// they do not become runtime expressions. Use lexer tokens rather than
+/// naive line matching, so strings never become accidental imports.
+fn source_imports(
+    source: &str,
+    profile: &str,
+    enabled: bool,
+) -> Result<(String, BTreeSet<String>), Diagnostic> {
+    use crate::TokenKind;
+    let keyword = crate::profiles::word(profile, "import")
+        .ok_or_else(|| issue(format!("Missing import keyword in profile {profile:?}")))?;
+    let tokens = crate::scan(source)?;
+    let mut by_line: BTreeMap<usize, Vec<&crate::Token>> = BTreeMap::new();
+    for token in &tokens {
+        by_line.entry(token.line).or_default().push(token);
+    }
+    let mut output = String::with_capacity(source.len());
+    let mut imports = BTreeSet::new();
+    let mut started_body = false;
+    for (index, line) in source.split_inclusive('\n').enumerate() {
+        let line_tokens = by_line.get(&(index + 1));
+        let meaningful = line_tokens.and_then(|tokens| tokens.first());
+        let is_import = meaningful.is_some_and(|token| {
+            token.kind == TokenKind::Name && token.value == keyword
+        });
+        if !is_import {
+            if meaningful.is_some_and(|token| token.kind != TokenKind::Comment) {
+                started_body = true;
+            }
+            output.push_str(line);
+            continue;
+        }
+        if !enabled {
+            return Err(issue("Language-level imports require nobody.project.v2 (not v1)"));
+        }
+        if started_body {
+            return Err(issue(format!(
+                "Import directive must precede all executable code (line {})",
+                index + 1
+            )));
+        }
+        let tokens = line_tokens.expect("a source import token exists");
+        let valid_shape = matches!(
+            tokens.as_slice(),
+            [_, module]
+                if module.kind == TokenKind::Name
+        ) || matches!(
+            tokens.as_slice(),
+            [_, module, comment]
+                if module.kind == TokenKind::Name && comment.kind == TokenKind::Comment
+        );
+        if !valid_shape {
+            return Err(issue(format!("Invalid import directive on line {}", index + 1)));
+        }
+        let module = &tokens[1].value;
+        if !valid_name(module) || crate::profiles::is_reserved(profile, module) {
+            return Err(issue(format!(
+                "Invalid or reserved imported module name {module:?} on line {}",
+                index + 1
+            )));
+        }
+        if !imports.insert(module.clone()) {
+            return Err(issue(format!("Duplicate source import {module:?}")));
+        }
+        // Preserve line numbering in downstream parser diagnostics.
+        if line.ends_with('\n') {
+            output.push('\n');
+        }
+    }
+    Ok((output, imports))
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
@@ -182,17 +257,18 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let text = read_capped(&manifest, MAX_MANIFEST)?;
     let mut specs = BTreeMap::<String, ModuleSpec>::new();
     let mut entry = None;
-    let mut version = false;
+    let mut version = 0u8;
     for (line_number, raw_line) in text.lines().enumerate() {
         let line = raw_line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if !version {
-            if line != "nobody.project.v1" {
-                return Err(issue("First manifest directive must be nobody.project.v1"));
-            }
-            version = true;
+        if version == 0 {
+            version = match line {
+                "nobody.project.v1" => 1,
+                "nobody.project.v2" => 2,
+                _ => return Err(issue("First manifest directive must be nobody.project.v1 or nobody.project.v2")),
+            };
             continue;
         }
         let parts: Vec<_> = line.split_whitespace().collect();
@@ -267,7 +343,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             }
         }
     }
-    if !version {
+    if version == 0 {
         return Err(issue("Project manifest has no version header"));
     }
     let entry = entry.ok_or_else(|| issue("Project requires exactly one entry module"))?;
@@ -303,7 +379,11 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         if !canonical_paths.insert(resolved.clone()) {
             return Err(issue("Two modules resolve to the same source file"));
         }
-        let source = read_capped(&resolved, MAX_SOURCE)?;
+        let full_source = read_capped(&resolved, MAX_SOURCE)?;
+        let (source, imports) = source_imports(&full_source, &spec.profile, version == 2)?;
+        if version == 2 && imports != spec.dependencies.iter().cloned().collect() {
+            return Err(issue(format!("Source import declarations for module {name:?} must match its manifest dependencies exactly")));
+        }
         let original = parse_validated(&source, &spec.profile)?;
         reject_foreign_keywords(&source, &spec.profile, &original.statements)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
