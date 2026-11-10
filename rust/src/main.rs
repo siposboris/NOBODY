@@ -28,7 +28,8 @@ fn main() {
         }
         Some(
             "parse" | "validate" | "ir" | "typecheck" | "run" | "ast-json" | "ast-json-v2"
-            | "bytecode" | "native-asm" | "run-bytecode" | "emit-ast-v2" | "format-source" | "format-check",
+            | "bytecode" | "native-asm" | "run-bytecode" | "emit-ast-v2" | "format-source"
+            | "format-check",
         ) if arguments.len() == 4 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
         Some("list-languages" | "languages" | "info" | "audit-languages")
