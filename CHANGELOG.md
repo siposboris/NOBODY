@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — native typed UTF-8 string function ABI (2026-11-10, PR #44, CI pending)
+## Unreleased — native typed UTF-8 string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44))
 
 - Extended standalone Linux x86-64 native function calls for explicit `str` parameters and return values using two-word UTF-8 pointer/length arguments and `rax`/`rdx` return pairs.
 - Mixed `str`, `int` and `bool` parameters, nested typed calls, text concatenation inside functions and conditional string returns.
-- Real ELF-vs-Rust interpreter fixtures for `ai`/`sk`/`en`, with type-mismatch rejection. ABI is internal/experimental; unannotated text parameter inference, recursion, closures and self-hosting remain open.
+- Real ELF-vs-Rust interpreter fixtures for `ai`/`sk`/`en`, with type-mismatch rejection. [Rust CI #42766777167](https://github.com/siposboris/NOBODY/actions/runs/42766777167) passed. ABI is internal/experimental; unannotated text parameter inference, recursion, closures and self-hosting remain open.
 
 
 ## Unreleased — read-only Rust formatter check (2026-11-10; verified [PR #42](https://github.com/siposboris/NOBODY/pull/42))
@@ -14,11 +14,11 @@
 - All four CI workflows passed including [Rust CI #42765224570](https://github.com/siposboris/NOBODY/actions/runs/42765224570). This does not preserve original comments, implement LSP, or finish the whole formatter milestone.
 
 
-## Unreleased — static text and boolean operator checks (2026-11-10; CI pending)
+## Unreleased — static text and boolean operator checks (2026-11-10; verified [PR #43](https://github.com/siposboris/NOBODY/pull/43))
 
 - Rust `typecheck` now rejects statically known text ordering and non-boolean logical `and`, `or`, `not` (N1002).
 - Unknown types remain deferred to runtime rather than creating false-positive diagnostics; Unicode text equality and concatenation still pass.
-- Rust tests cover primary syntax profiles and nested expressions. Full soundness and type inference remain open.
+- All four workflows passed including [Rust CI #42766343202](https://github.com/siposboris/NOBODY/actions/runs/42766343202). Rust tests cover primary syntax profiles and nested expressions; full soundness and type inference remain open.
 
 
 ## Unreleased — native UTF-8 concatenation and equality (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41))
