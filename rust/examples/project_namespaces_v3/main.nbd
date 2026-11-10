@@ -1,0 +1,6 @@
+import math
+import extra
+let first = math.step(4)
+let second = extra.step(4)
+let third = math.doubled(2)
+print(first, second, third, "Život ☸")
