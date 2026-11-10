@@ -160,9 +160,9 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
             let numeric = |t: Type| matches!(t, Type::Int | Type::Float);
             let allowed = if op == "+" {
                 (numeric(a) && numeric(b)) || (a == Type::Str && b == Type::Str)
-            } else if matches!(op.as_str(), "-" | "*" | "/" | "//" | "%" | "**") {
-                numeric(a) && numeric(b)
-            } else if matches!(op.as_str(), "<" | "<=" | ">" | ">=") {
+            } else if matches!(
+                op.as_str(), "-" | "*" | "/" | "//" | "%" | "**" | "<" | "<=" | ">" | ">="
+            ) {
                 numeric(a) && numeric(b)
             } else if matches!(op.as_str(), "and" | "or") {
                 a == Type::Bool && b == Type::Bool
