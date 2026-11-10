@@ -1,0 +1,13 @@
+funkcia combine(left: text, right: text): text { vrat left + right }
+funkcia echo(value: text): text { vrat value }
+nech title = "Život"
+nech suffix = " ☸"
+nech result = combine(title, suffix)
+vypis(result, result == "Život ☸", title != result)
+vypis(echo(""), echo("quoted \"text\""), "👩‍💻")
+nech current = ""
+pre loop_ix v rozsah(3) {
+    current = current + "!"
+    vypis(loop_ix, current)
+}
+vypis(combine(current, result))
