@@ -60,6 +60,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
+**Known-operand logic/ordering safety (2026-11-10; pending CI):** Rust's conservative checker rejects provably invalid text ordering and non-boolean `and`/`or`/`not` with existing N1002, while preserving dynamic unknown expressions for runtime evaluation. Text `==`/`!=` and text concatenation remain accepted. Tests exercise nested expressions and the `ai`, `sk`, and `en` profiles. This is not sound whole-program type inference and closes no broad criterion.
+
+
+
 - [x] Prototype lexical scopes, captured closures and basic runtime type annotations in Python.
 - [x] Prototype static primitive type checks, lexical-scope diagnostics, conditional path joins and known-function arity checks in Python.
 - [x] Prototype conservative function return-type inference, including unknown results when branches or dynamic calls cannot be proved, in Python.
