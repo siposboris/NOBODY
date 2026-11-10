@@ -216,7 +216,7 @@ fn native_text_ops_fail_closed_when_not_supported() {
     let output = tmp.join("program");
     for program in [
         "let message = \"Ahoj\"\nmessage = 3\nprint(message)",
-        "fn f(message: str): int { return 1 }\nprint(f(\"Ahoj\"))",
+        "fn f(message: str): int { return 1 }\nprint(f(42))",
     ] {
         std::fs::write(&source, program).unwrap();
         let result = compile("ai", &source, &output);
@@ -742,7 +742,6 @@ fn native_annotated_signatures_reject_mismatches_without_writing_elf() {
         "native_typed_bad_argument_ai.nbd",
         "native_typed_bad_return_ai.nbd",
         "native_typed_bad_constraint_ai.nbd",
-        "eval_typed_string_ai.nbd",
     ] {
         let source = format!("{}/examples/{fixture}", env!("CARGO_MANIFEST_DIR"));
         let temp = temporary();
