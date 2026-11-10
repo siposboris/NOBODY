@@ -108,11 +108,11 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
-**Portable bytecode UTF-8 strings (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47) (final integrated CI required)):** The Python-free Rust bytecode VM now executes string literals, mutable text values, `+` joins, content equality, and typed `str` function calls and returns. Files carrying text are encoded with bounded, verified `NOBBC001` v3 text payload and `str` type tag; v1/v2 decoding remains supported, and integer/bool-only new files remain v2. Tests run stored `.nbc` v3 from disk and compare output against Rust AST interpretation in `ai`/`sk`/`en`, rejecting corrupted payloads. This is not a stable ABI or full self-hosting.
+**Portable bytecode UTF-8 strings (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47), [Rust CI #42829747456](https://github.com/siposboris/NOBODY/actions/runs/42829747456)):** The Python-free Rust bytecode VM now executes string literals, mutable text values, `+` joins, content equality, and typed `str` function calls and returns. Files carrying text are encoded with bounded, verified `NOBBC001` v3 text payload and `str` type tag; v1/v2 decoding remains supported, and integer/bool-only new files remain v2. Tests run stored `.nbc` v3 from disk and compare output against Rust AST interpretation in `ai`/`sk`/`en`, rejecting corrupted payloads. This is not a stable ABI or full self-hosting.
 
 
 
-**Unicode text length (2026-11-10; CI pending):** The independent Rust AST evaluator and Linux x86-64 ELF compiler implement `len(text)` / localized `dlzka(text)`, returning a Unicode scalar count (not bytes or grapheme clusters) for literals, variables, concatenated strings and native function results. Real ELF-to-interpreter differential fixtures cover `ai`/`sk`/`en`, empty strings, non-ASCII symbols and invalid argument rejection. This is a narrow usable feature, not full Unicode string indexing or compiler parity.
+**Unicode text length (2026-11-10; verified [PR #46](https://github.com/siposboris/NOBODY/pull/46), [Rust CI #42827458034](https://github.com/siposboris/NOBODY/actions/runs/42827458034)):** The independent Rust AST evaluator and Linux x86-64 ELF compiler implement `len(text)` / localized `dlzka(text)`, returning a Unicode scalar count (not bytes or grapheme clusters) for literals, variables, concatenated strings and native function results. Real ELF-to-interpreter differential fixtures cover `ai`/`sk`/`en`, empty strings, non-ASCII symbols and invalid argument rejection. This is a narrow usable feature, not full Unicode string indexing or compiler parity.
 
 
 
