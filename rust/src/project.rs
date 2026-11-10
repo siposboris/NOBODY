@@ -336,15 +336,16 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             continue;
         }
         if version == 0 {
-            version =
-                match line {
-                    "nobody.project.v1" => 1,
-                    "nobody.project.v2" => 2,
-                    "nobody.project.v3" => 3,
-                    _ => return Err(issue(
+            version = match line {
+                "nobody.project.v1" => 1,
+                "nobody.project.v2" => 2,
+                "nobody.project.v3" => 3,
+                _ => {
+                    return Err(issue(
                         "First manifest directive must be nobody.project.v1, v2 or v3",
-                    )),
-                };
+                    ))
+                }
+            };
             continue;
         }
         let parts: Vec<_> = line.split_whitespace().collect();
