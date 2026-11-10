@@ -1,7 +1,7 @@
 //! Experimental multi-file Nobody project linker: one syntax language per file.
 //!
-//! Version 1 links globally, version 2 adds localized imports, and version 3
-//! isolates module exports with explicit qualified member calls. This remains
+//! Version 1 links globally, version 2 adds localized imports, version 3
+//! isolates modules, and version 4 adds explicit public export contracts. This remains
 //! a bounded project build layer, not a package manager or dynamic linker.
 use crate::syntax::{Program, Statement};
 use crate::{parse_validated, same_ir, translate_source, Diagnostic};
@@ -43,7 +43,7 @@ fn issue(detail: impl Into<String>) -> Diagnostic {
         line: 0,
         column: 0,
         detail: detail.into(),
-        repair: "Use a valid nobody.project.v1 manifest with acyclic, local module paths, unique names and explicit dependencies.",
+        repair: "Use a valid versioned nobody.project manifest with acyclic local modules, unique names, valid exports and explicit dependencies.",
     }
 }
 
@@ -316,7 +316,7 @@ fn check_namespaced_visibility(
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
 ///
 /// Format (whitespace-separated, no spaces in file paths):
-/// nobody.project.v1 / nobody.project.v2 / nobody.project.v3
+/// nobody.project.v1 / nobody.project.v2 / nobody.project.v3 / nobody.project.v4
 /// module math sk math.nbd -
 /// module main en main.nbd math
 /// entry main
@@ -330,6 +330,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut specs = BTreeMap::<String, ModuleSpec>::new();
     let mut entry = None;
     let mut version = 0u8;
+    let mut export_contracts = BTreeMap::<String, BTreeSet<String>>::new();
     for (line_number, raw_line) in text.lines().enumerate() {
         let line = raw_line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -340,9 +341,10 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
                 "nobody.project.v1" => 1,
                 "nobody.project.v2" => 2,
                 "nobody.project.v3" => 3,
+                "nobody.project.v4" => 4,
                 _ => {
                     return Err(issue(
-                        "First manifest directive must be nobody.project.v1, v2 or v3",
+                        "First manifest directive must be nobody.project.v1, v2, v3 or v4",
                     ))
                 }
             };
@@ -409,6 +411,32 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
                     return Err(issue(format!("Duplicate module name {name:?}")));
                 }
             }
+            ["export", module, symbols] if version == 4 && valid_name(module) => {
+                // v4 exports are explicit: any top-level declaration not listed
+                // stays private. Repeated contracts, empty names and invalid
+                // source identifiers fail closed instead of widening access.
+                let mut public = BTreeSet::new();
+                for symbol in symbols.split(',') {
+                    let tokens = crate::scan(symbol)?;
+                    if symbol.len() > 128
+                        || symbol.starts_with("nobody_ns_")
+                        || tokens.len() != 1
+                        || tokens[0].kind != crate::TokenKind::Name
+                        || tokens[0].value != symbol
+                        || !public.insert(symbol.to_owned())
+                    {
+                        return Err(issue(format!(
+                            "Invalid or duplicate exported symbol {symbol:?} on line {}",
+                            line_number + 1
+                        )));
+                    }
+                }
+                if export_contracts.insert((*module).to_owned(), public).is_some() {
+                    return Err(issue(format!(
+                        "Duplicate export contract for module {module:?}"
+                    )));
+                }
+            }
             ["entry", name] if entry.is_none() && valid_name(name) => {
                 entry = Some((*name).to_owned());
             }
@@ -426,6 +454,13 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let entry = entry.ok_or_else(|| issue("Project requires exactly one entry module"))?;
     if specs.is_empty() {
         return Err(issue("Project has no modules"));
+    }
+    if version == 4 {
+        for name in export_contracts.keys() {
+            if !specs.contains_key(name) {
+                return Err(issue(format!("Export contract names undeclared module {name:?}")));
+            }
+        }
     }
     let mut order = Vec::new();
     visit(
@@ -447,6 +482,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut visible = Vec::new();
     let mut namespaced = Vec::new();
     let mut exported_by_module: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut declared_by_module: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for name in &order {
         let spec = &specs[name];
         let resolved = fs::canonicalize(root.join(&spec.path))
@@ -464,7 +500,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         if version >= 2 && imports != spec.dependencies.iter().cloned().collect() {
             return Err(issue(format!("Source import declarations for module {name:?} must match its manifest dependencies exactly")));
         }
-        let (source, qualified_references) = if version == 3 {
+        let (source, qualified_references) = if version >= 3 {
             crate::project_namespaces::qualify_references(&source, name, &imports)?
         } else {
             (source, Vec::new())
@@ -478,22 +514,36 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             )));
         }
         let parsed = parse_validated(&translated, "ai")?;
-        if version == 3 {
-            let mut exports = BTreeSet::new();
+        if version >= 3 {
+            let mut declarations = BTreeSet::new();
             for stmt in &parsed.statements {
                 let symbol = match stmt {
                     Statement::Function { name, .. } | Statement::Let { name, .. } => Some(name),
                     _ => None,
                 };
                 if let Some(symbol) = symbol {
-                    if !exports.insert(symbol.clone()) {
+                    if !declarations.insert(symbol.clone()) {
                         return Err(issue(format!(
                             "Duplicate top-level symbol {symbol:?} in module {name:?}"
                         )));
                     }
                 }
             }
-            exported_by_module.insert(name.clone(), exports);
+            let public = if version == 4 {
+                let contract = export_contracts.get(name).cloned().unwrap_or_default();
+                for symbol in &contract {
+                    if !declarations.contains(symbol) {
+                        return Err(issue(format!(
+                            "Export contract for {name:?} names missing top-level declaration {symbol:?}"
+                        )));
+                    }
+                }
+                contract
+            } else {
+                declarations.clone()
+            };
+            declared_by_module.insert(name.clone(), declarations);
+            exported_by_module.insert(name.clone(), public);
             namespaced.push(NamespaceUnit {
                 name: name.clone(),
                 source: translated,
@@ -535,13 +585,13 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             check_direct_import_visibility(module, source, statements, imports, &exports)?;
         }
     }
-    if version == 3 {
+    if version >= 3 {
         for unit in &namespaced {
             check_namespaced_visibility(
                 &unit.name,
                 &unit.source,
                 &unit.program.statements,
-                &exported_by_module,
+                &declared_by_module,
             )?;
             for (owner, symbol) in &unit.qualified_references {
                 if !unit.imports.contains(owner)
@@ -557,11 +607,13 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             }
         }
         for mut unit in namespaced {
-            let exports = &exported_by_module[&unit.name];
+            // Private declarations also need name isolation to avoid collisions
+            // and to retain correct self-references inside their own module.
+            let declarations = &declared_by_module[&unit.name];
             let source = crate::project_namespaces::assemble_namespaced_module(
                 &mut unit.program,
                 &unit.name,
-                exports,
+                declarations,
             )?;
             if merged.len().saturating_add(source.len() + 1) > MAX_SOURCE {
                 return Err(issue("Namespaced project source exceeds 1 MiB"));
