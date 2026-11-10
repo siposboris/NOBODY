@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — cross-backend UTF-8 length parity for all 40 syntax profiles (2026-11-10; CI pending)
+
+- New fully generated cross-profile differential test checks canonical IR, static typecheck, AST evaluation, VM execution, deterministic on-disk `.nbc` v3 and decoded VM output in every registered syntax profile.
+- Linux x86-64 CI also compiles and executes 40 standalone ELF programs, comparing Unicode scalar-length stdout against the independent Rust evaluator.
+- Test scope is deliberately narrow; no claim of complete compiler equivalence, full Unicode segmentation or human review.
+
+
 ## Unreleased — Unicode string length in portable bytecode (2026-11-10; CI pending)
 
 - Added `TextLen` experimental v3 bytecode opcode 27, matching Rust AST and Linux ELF `len(text)` Unicode scalar semantics.
