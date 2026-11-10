@@ -1,7 +1,8 @@
 //! Experimental multi-file Nobody project linker: one syntax language per file.
 //!
-//! This is intentionally a bounded, deterministic *project build* layer,
-//! not source-level imports, name-spaced modules, or a package manager.
+//! Version 1 links globally, version 2 adds localized imports, and version 3
+//! isolates module exports with explicit qualified member calls. This remains
+//! a bounded project build layer, not a package manager or dynamic linker.
 use crate::syntax::{Program, Statement};
 use crate::{parse_validated, same_ir, translate_source, Diagnostic};
 use std::collections::{BTreeMap, BTreeSet};
