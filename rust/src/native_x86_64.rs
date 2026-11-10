@@ -404,6 +404,21 @@ impl NativeCompiler {
                 self.emit(&format!("    mov rax, {value}"))?;
                 Ok(Type::Int)
             }
+            IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
+            {
+                if args.len() != 1 {
+                    return Err(issue(
+                        4007,
+                        format!("len expects one UTF-8 string argument, received {}", args.len()),
+                    ));
+                }
+                if self.expression(&args[0], depth + 1)? != Type::Text {
+                    return Err(unsupported("Native len requires a text argument"));
+                }
+                self.emit("    call nobody_text_length")?;
+                Ok(Type::Int)
+            }
             IrExpr::Call { callee, args } => {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
                     return Err(unsupported("Native calls require a previously declared named function"));
@@ -1016,6 +1031,28 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     // Raw writes are shared by text literals, separators and newlines.
     // Helpers use a bounded, fixed-size UTF-8 arena in the output ELF.
     // No libc, Rust allocator, or Nobody VM is required at runtime.
+    // Count UTF-8 Unicode scalar values: non-continuation bytes start a scalar.
+    // Validity of the UTF-8 input is established by the lexer, evaluator
+    // decoding and bounded concat routines; this is not grapheme-cluster count.
+    compiler.emit("nobody_text_length:")?;
+    compiler.emit("    mov rsi, rax")?;
+    compiler.emit("    mov rcx, rdx")?;
+    compiler.emit("    xor eax, eax")?;
+    compiler.emit(".Lnobody_text_length_loop:")?;
+    compiler.emit("    test rcx, rcx")?;
+    compiler.emit("    jz .Lnobody_text_length_done")?;
+    compiler.emit("    movzx r8d, BYTE PTR [rsi]")?;
+    compiler.emit("    and r8d, 192")?;
+    compiler.emit("    cmp r8d, 128")?;
+    compiler.emit("    sete r8b")?;
+    compiler.emit("    xor r8b, 1")?;
+    compiler.emit("    movzx r8d, r8b")?;
+    compiler.emit("    add rax, r8")?;
+    compiler.emit("    inc rsi")?;
+    compiler.emit("    dec rcx")?;
+    compiler.emit("    jmp .Lnobody_text_length_loop")?;
+    compiler.emit(".Lnobody_text_length_done:")?;
+    compiler.emit("    ret")?;
     compiler.emit("nobody_text_equal:")?;
     compiler.emit("    cmp rsi, rcx")?;
     compiler.emit("    jne .Lnobody_text_not_equal")?;
@@ -1286,6 +1323,25 @@ mod tests {
         assert!(asm.contains("call nobody_write_raw"));
         assert!(asm.contains("call nobody_text_equal"));
         assert!(asm.contains("repe cmpsb"));
+    }
+
+    #[test]
+    fn native_utf8_len_uses_scalar_byte_boundaries() {
+        let asm = compile_to_assembly(
+            "let t = \"Život ☸\"\nprint(len(t), len(\"\"), len(t + \"!\"))",
+            "ai",
+        )
+        .unwrap();
+        assert!(asm.contains("call nobody_text_length"));
+        assert!(asm.contains("and r8d, 192"));
+        assert_eq!(
+            compile_to_assembly("print(len(3))", "ai").unwrap_err().code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("print(len())", "ai").unwrap_err().code,
+            4007
+        );
     }
 
     #[test]

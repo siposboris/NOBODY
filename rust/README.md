@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## UTF-8 Unicode scalar length in standalone ELF (experimental)
+
+`len("Život ☸")` (Slovak `dlzka`) returns 7: Unicode scalar count,
+not byte count or grapheme count. The Rust evaluator and direct Linux
+x86-64 machine-code backend now implement it for text literals, text
+variables, concatenation results and typed string-function results. The
+native helper counts leading UTF-8 bytes and requires no external runtime.
+Real compiled ELF examples in `ai`/`sk`/`en` must match the Rust AST
+evaluator; nontext arguments and wrong arity are explicitly rejected.
+
 ## All-40-profile interpreter and native ELF acceptance
 
 A dedicated Rust acceptance suite generates the same typed Nobody program in
