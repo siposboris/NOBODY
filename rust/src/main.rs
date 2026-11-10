@@ -103,29 +103,29 @@ fn main() {
         command,
         "check-project" | "run-project" | "compile-project-bytecode" | "compile-project-native"
     ) {
-        let project = nobody::load_project(std::path::Path::new(&arguments[2]))
-            .unwrap_or_else(|error| {
+        let project =
+            nobody::load_project(std::path::Path::new(&arguments[2])).unwrap_or_else(|error| {
                 eprintln!("{error}");
                 process::exit(1);
             });
         if command == "compile-project-native" {
             let target = std::path::Path::new(&arguments[3]);
-            nobody::native_x86_64::compile_native(&project.source, "ai", target)
-                .unwrap_or_else(|error| {
+            nobody::native_x86_64::compile_native(&project.source, "ai", target).unwrap_or_else(
+                |error| {
                     eprintln!("{error}");
                     process::exit(1);
-                });
+                },
+            );
             println!(
                 "Built native ELF from {} Nobody modules (restricted Linux x86-64 subset)",
                 project.modules.len()
             );
             return;
         }
-        let compiled = compile_bytecode_source(&project.source, "ai")
-            .unwrap_or_else(|error| {
-                eprintln!("{error}");
-                process::exit(1);
-            });
+        let compiled = compile_bytecode_source(&project.source, "ai").unwrap_or_else(|error| {
+            eprintln!("{error}");
+            process::exit(1);
+        });
         if command == "check-project" {
             println!(
                 "Validated project graph and bytecode compiler for {} modules (module namespaces and full imports not yet implemented).",
