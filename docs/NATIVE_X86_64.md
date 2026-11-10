@@ -45,7 +45,7 @@ cargo run --locked --release --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text-ops
 ```
 
-This is a bounded arena, **not** garbage collection or an unrestricted heap; repeated concatenation consumes space until process exit. Dynamic text ordering, string arguments/return values, full Unicode collation, interpolation and general collection support remain unimplemented. Real ELF output is compared byte-for-byte with the Rust evaluator in `ai`, `sk`, `en`; CI pending.
+This is a bounded arena, **not** garbage collection or an unrestricted heap; repeated concatenation consumes space until process exit. Dynamic text ordering, string arguments/return values, full Unicode collation, interpolation and general collection support remain unimplemented. Real ELF output is compared byte-for-byte with the Rust evaluator in `ai`, `sk`, `en`; all four GitHub workflows passed, including [Rust CI #42754693569](https://github.com/siposboris/NOBODY/actions/runs/42754693569) ([PR #41](https://github.com/siposboris/NOBODY/pull/41)).
 
 ## Native UTF-8 text bindings (experimental, PR #40)
 
