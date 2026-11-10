@@ -7,6 +7,12 @@
 - Does not imply grapheme counting, safe execution of untrusted bytecode or complete runtime parity.
 
 
+## Unreleased — localized length builtin static type contracts (2026-11-10; CI pending)
+
+- Static Rust checker infers `len(text)` result type `Int` and validates arity (N1005), known primitive operand types (N1002) and incompatible typed assignments (N1001).
+- Unknown dynamic values remain accepted for runtime checking; tests cover `ai`, `sk`, `en`. No claim of complete type safety.
+
+
 ## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47), [Rust CI #42829747456](https://github.com/siposboris/NOBODY/actions/runs/42829747456))
 
 - Independent Rust bytecode compiler/VM supports `str` values, UTF-8 literals, concatenation, content equality and annotated `str` parameter/return checks.

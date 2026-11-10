@@ -64,6 +64,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
+**Localized text length builtin contracts (2026-11-10; CI pending):** Conservative Rust typechecker now infers that `len(text)`/`dlzka(text)` returns an integer; it rejects certainly non-text arguments with N1002, wrong arity N1005 and assigning the result to incompatible typed declarations N1001. Unknown operands defer safely. Nested operations and three primary syntax profiles are covered by Rust tests. General polymorphic builtins and complete type inference remain open.
+
+
+
 **Known-operand logic/ordering safety (2026-11-10; verified [PR #43](https://github.com/siposboris/NOBODY/pull/43), [Rust CI #42766343202](https://github.com/siposboris/NOBODY/actions/runs/42766343202)):** Rust's conservative checker rejects provably invalid text ordering and non-boolean `and`/`or`/`not` with existing N1002, while preserving dynamic unknown expressions for runtime evaluation. Text `==`/`!=` and text concatenation remain accepted. Tests exercise nested expressions and the `ai`, `sk`, and `en` profiles. This is not sound whole-program type inference and closes no broad criterion.
 
 

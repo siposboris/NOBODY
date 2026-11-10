@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Verified UTF-8 text length bytecode opcode (experimental)
+
+The independent Rust VM now compiles `len(text)` (Slovak `dlzka`)
+into a dedicated stack instruction, serialized as experimental `.nbc`
+**v3 opcode 27**. It counts Unicode scalar values, not bytes or grapheme
+clusters; malformed argument types produce N4004 and arity errors N4007.
+The verifier rejects stack underflow and earlier file versions cannot carry
+the v3-only opcode. Disk-backed test fixtures verify byte-for-byte output
+agreement with the independent Rust AST interpreter in `ai`/`sk`/`en`.
+
 ## UTF-8 Unicode scalar length in standalone ELF (experimental)
 
 `len("Život ☸")` (Slovak `dlzka`) returns 7: Unicode scalar count,
@@ -26,16 +36,6 @@ output. The program includes translated function signatures, loops,
 conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
 This does **not** establish native-speaker translation quality, full grammar
 coverage, internationalization of error messages or production-readiness.
-
-## Verified UTF-8 text length bytecode opcode (experimental)
-
-The independent Rust VM now compiles `len(text)` (Slovak `dlzka`)
-into a dedicated stack instruction, serialized as experimental `.nbc`
-**v3 opcode 27**. It counts Unicode scalar values, not bytes or grapheme
-clusters; malformed argument types produce N4004 and arity errors N4007.
-The verifier rejects stack underflow and earlier file versions cannot carry
-the v3-only opcode. Disk-backed test fixtures verify byte-for-byte output
-agreement with the independent Rust AST interpreter in `ai`/`sk`/`en`.
 
 ## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
 
@@ -62,6 +62,15 @@ not preserved, so review generated code before overwriting anything.
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-source sk rust/examples/native_text_ops_sk.nbd > clean.nbd
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-check sk clean.nbd
 ```
+
+## Conservative static typing of localized length builtin
+
+Rust `typecheck PROFILE FILE.nbd` recognizes canonical `len`
+(Slovak `dlzka`) as returning `int` when used as a built-in call.
+It diagnoses statically known non-string arguments (N1002), known
+incorrect arity (N1005), and incompatible declared result types (N1001).
+Unknown dynamic operand types remain deferred to runtime; this is not
+sound whole-program inference. Tests cover `ai`, `sk`, `en`.
 
 ## Conservative static boolean and text-operator diagnostics
 
