@@ -482,8 +482,8 @@ mod tests {
         let original = compile_source("print(\"ab\")", "ai").unwrap();
         let mut bytes = encode(&original).unwrap();
         // Header is 24 bytes, then push-text opcode(26), size(4), payload.
-        let first = bytes.iter().position(|value| *value == 26).unwrap();
-        let payload_start = first + 5;
+        assert_eq!(bytes[24], 26, "first root instruction must be PushText");
+        let payload_start = 24 + 1 + 4;
         bytes[payload_start] = 0xff;
         refresh_checksum(&mut bytes);
         assert_eq!(decode(&bytes).unwrap_err().code, 4004);
