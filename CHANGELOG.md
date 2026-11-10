@@ -1,27 +1,27 @@
 # Changelog
 
-## Unreleased — Rust-native roadmap progress tool (2026-11-10; CI pending)
+## Unreleased — Rust-native roadmap progress tool (2026-11-10; verified [PR #53](https://github.com/siposboris/NOBODY/pull/53))
 
 - Added `nobody-roadmap` Rust checker and explicit `--write` generator matching the legacy Python checklist count, round-to-nearest percent and 20-cell display.
 - Removed Python setup and invocation from the README roadmap GitHub CI job; only the Rust tool is required for routine progress verification.
 - Kept the historical Python script as a comparison baseline until accepted by CI; this does not remove Python from every other migration task.
 
 
-## Unreleased — cross-backend UTF-8 length parity for all 40 syntax profiles (2026-11-10; CI pending)
+## Unreleased — cross-backend UTF-8 length parity for all 40 syntax profiles (2026-11-10; verified [PR #52](https://github.com/siposboris/NOBODY/pull/52))
 
 - New fully generated cross-profile differential test checks canonical IR, static typecheck, AST evaluation, VM execution, deterministic on-disk `.nbc` v3 and decoded VM output in every registered syntax profile.
 - Linux x86-64 CI also compiles and executes 40 standalone ELF programs, comparing Unicode scalar-length stdout against the independent Rust evaluator.
 - Test scope is deliberately narrow; no claim of complete compiler equivalence, full Unicode segmentation or human review.
 
 
-## Unreleased — Unicode string length in portable bytecode (2026-11-10; CI pending)
+## Unreleased — Unicode string length in portable bytecode (2026-11-10; verified [PR #50](https://github.com/siposboris/NOBODY/pull/50))
 
 - Added `TextLen` experimental v3 bytecode opcode 27, matching Rust AST and Linux ELF `len(text)` Unicode scalar semantics.
 - Verified stack underflow, type and arity failures, and older-version opcode rejection; added stored-file `.nbc` vs AST/VM parity for `ai`, `sk`, `en`.
 - Does not imply grapheme counting, safe execution of untrusted bytecode or complete runtime parity.
 
 
-## Unreleased — localized length builtin static type contracts (2026-11-10; CI pending)
+## Unreleased — localized length builtin static type contracts (2026-11-10; verified [PR #51](https://github.com/siposboris/NOBODY/pull/51))
 
 - Static Rust checker infers `len(text)` result type `Int` and validates arity (N1005), known primitive operand types (N1002) and incompatible typed assignments (N1001).
 - Unknown dynamic values remain accepted for runtime checking; tests cover `ai`, `sk`, `en`. No claim of complete type safety.

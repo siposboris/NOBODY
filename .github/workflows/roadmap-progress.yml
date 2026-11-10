@@ -6,12 +6,16 @@ on:
       - 'README.md'
       - 'docs/ROADMAP.md'
       - 'rust/src/bin/nobody-roadmap.rs'
+      - 'rust/Cargo.toml'
+      - 'rust/Cargo.lock'
       - '.github/workflows/roadmap-progress.yml'
   push:
     paths:
       - 'README.md'
       - 'docs/ROADMAP.md'
       - 'rust/src/bin/nobody-roadmap.rs'
+      - 'rust/Cargo.toml'
+      - 'rust/Cargo.lock'
       - '.github/workflows/roadmap-progress.yml'
   workflow_dispatch:
 
