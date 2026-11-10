@@ -609,6 +609,7 @@ mod tests {
         let mut reader = Reader {
             bytes: &bytes[..split],
             position: 0,
+            version: WIRE_VERSION,
         };
         reader.take(8).unwrap();
         reader.u16().unwrap();
