@@ -49,6 +49,19 @@ conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
 This does **not** establish native-speaker translation quality, full grammar
 coverage, internationalization of error messages or production-readiness.
 
+## Checked integer constant folding in Rust bytecode (experimental)
+
+The Python-independent bytecode compiler now folds pure integer literal
+`+`/`-`/`*` and unary `+`/`-` subexpressions at compile time.
+Folded bytecode contains one `Push` instead of redundant arithmetic
+instructions. All arithmetic is checked `i128`: overflow is **never**
+folded away and remains a runtime error, preserving AST interpreter
+behavior. The pass never folds variables, function calls, strings,
+logical expressions, division, or code with possible side effects.
+Tests compare original AST output, in-memory VM and serialized bytecode
+for `ai`, `sk`, `en`, including an overflowing expression.
+This is one conservative optimization, not a full optimizing compiler.
+
 ## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
 
 The Python-free independent stack VM now executes UTF-8 text literals,
@@ -103,7 +116,7 @@ incorrect arity (N1005), and incompatible declared result types (N1001).
 Unknown dynamic operand types remain deferred to runtime; this is not
 sound whole-program inference. Tests cover `ai`, `sk`, `en`.
 
-## Static boolean requirements for if/elif/while (experimental)
+## Conservative static boolean and text-operator diagnostics## Static boolean requirements for if/elif/while (experimental)
 
 The Rust conservative typechecker now rejects `if`, `elif` and
 `while` conditions whose inferred primitive type is certainly not
@@ -114,7 +127,7 @@ Unit tests cover `ai`, `sk`, `en`, numeric/text/null/length
 conditions, valid comparisons and unknown names. Full flow-sensitive
 typing and optional-value narrowing remain out of scope.
 
-## Conservative static boolean and text-operator diagnostics
+
 
 Rust's `typecheck PROFILE FILE.nbd` rejects **certain** incompatible operations
 before execution: text ordering with `<`/`>=`, mixed-type `and`/`or` and

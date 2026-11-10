@@ -124,6 +124,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Checked integer constant folding (2026-11-10; CI pending):** The Rust bytecode compiler evaluates safe literal-only signed `i128` unary and `+`/`-`/`*` arithmetic at compile time. Checked overflow is explicitly not folded; runtime faults and mixed dynamic expressions remain intact. Regression tests compare AST interpreter, VM, and persisted portable bytecode behavior across `ai`, `sk`, `en`. This is a narrow compiler optimization, not general optimization pipeline completion.
+
+
+
 **UTF-8 scalar length in portable bytecode (2026-11-10; verified [PR #50](https://github.com/siposboris/NOBODY/pull/50), [Rust CI #42836576430](https://github.com/siposboris/NOBODY/actions/runs/42836576430)):** Rust's Python-free VM now compiles localized `len(text)` into v3 opcode 27 (`TextLen`) with exact stack verification, runtime text-type check, Unicode scalar count, and v1/v2 wire-version rejection. Integration tests load stored `.nbc` in Slovak, English and `ai`, verifying output against the Rust AST interpreter. This closes a discrepancy among backends, not full VM or general string API parity.
 
 
