@@ -77,11 +77,18 @@ fn stored_v3_unicode_length_matches_ast_vm_and_native_semantics() {
     let dir = temporary();
     for profile in ["ai", "sk", "en"] {
         // These fixtures are also exercised as real standalone ELF programs.
-        let source = format!("{}/examples/native_len_{profile}.nbd", env!("CARGO_MANIFEST_DIR"));
+        let source = format!(
+            "{}/examples/native_len_{profile}.nbd",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let target = dir.join(format!("len-{profile}.nbc"));
         let path = target.to_str().unwrap();
         let compilation = compiler(&["compile-bytecode", profile, &source, path]);
-        assert!(compilation.status.success(), "{profile}: {}", String::from_utf8_lossy(&compilation.stderr));
+        assert!(
+            compilation.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&compilation.stderr)
+        );
         let bytes = fs::read(&target).unwrap();
         assert_eq!(u16::from_le_bytes([bytes[8], bytes[9]]), 3);
         let verify = compiler(&["verify-bytecode", path]);
@@ -90,7 +97,11 @@ fn stored_v3_unicode_length_matches_ast_vm_and_native_semantics() {
         let vm = compiler(&["run-bytecode", profile, &source]);
         let reference = compiler(&["run", profile, &source]);
         for result in [&stored, &vm, &reference] {
-            assert!(result.status.success(), "{profile}: {}", String::from_utf8_lossy(&result.stderr));
+            assert!(
+                result.status.success(),
+                "{profile}: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
         }
         assert_eq!(stored.stdout, reference.stdout, "{profile}: v3 disk parity");
         assert_eq!(vm.stdout, reference.stdout, "{profile}: live VM parity");
