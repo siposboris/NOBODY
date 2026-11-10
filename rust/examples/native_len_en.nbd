@@ -1,0 +1,9 @@
+function identity(s: str): str { return s }
+function count(s: str): int { return len(s) }
+let text_value = "Život ☸"
+print(len(text_value), len(""), len("👩‍💻"))
+print(len(text_value + "!"), len(identity(text_value)), count(text_value))
+let copy = text_value
+copy = copy + "✨"
+print(copy, len(copy), count(copy))
+for n in range(3) { print("step", n, len(copy)) }
