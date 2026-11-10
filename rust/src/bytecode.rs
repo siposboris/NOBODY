@@ -124,7 +124,10 @@ fn folded_integer(expr: &IrExpr, depth: usize) -> Option<i128> {
     }
     match expr {
         IrExpr::Number(value) => {
-            if !value.bytes().all(|byte| byte.is_ascii_digit() || byte == b'_') {
+            if !value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || byte == b'_')
+            {
                 return None;
             }
             value.replace('_', "").parse::<i128>().ok()
@@ -1228,9 +1231,18 @@ mod tests {
     #[test]
     fn constant_folding_emits_one_push_without_changing_runtime_results() {
         for (profile, source) in [
-            ("ai", "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))"),
-            ("sk", "nech value = (2 + 3) * (7 - 4)\nvypis(value, -((8 + 1) * 2))"),
-            ("en", "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))"),
+            (
+                "ai",
+                "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))",
+            ),
+            (
+                "sk",
+                "nech value = (2 + 3) * (7 - 4)\nvypis(value, -((8 + 1) * 2))",
+            ),
+            (
+                "en",
+                "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))",
+            ),
         ] {
             let compiled = compile_source(source, profile).unwrap();
             assert!(compiled.code.contains(&Instruction::Push(15)));
@@ -1238,10 +1250,16 @@ mod tests {
             assert!(!compiled.code.contains(&Instruction::Add));
             assert!(!compiled.code.contains(&Instruction::Sub));
             assert!(!compiled.code.contains(&Instruction::Mul));
-            assert_eq!(execute(&compiled).unwrap(), crate::evaluate_source(source, profile).unwrap());
+            assert_eq!(
+                execute(&compiled).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
             let encoded = crate::bytecode_format::encode(&compiled).unwrap();
             let loaded = crate::bytecode_format::decode(&encoded).unwrap();
-            assert_eq!(execute(&loaded).unwrap(), crate::evaluate_source(source, profile).unwrap());
+            assert_eq!(
+                execute(&loaded).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
             assert_eq!(u16::from_le_bytes([encoded[8], encoded[9]]), 2);
         }
     }
@@ -1260,7 +1278,10 @@ mod tests {
         let bytecode = compile_source(mixed, "ai").unwrap();
         assert!(bytecode.code.contains(&Instruction::Mul));
         assert!(bytecode.code.contains(&Instruction::Push(8)));
-        assert_eq!(execute(&bytecode).unwrap(), crate::evaluate_source(mixed, "ai").unwrap());
+        assert_eq!(
+            execute(&bytecode).unwrap(),
+            crate::evaluate_source(mixed, "ai").unwrap()
+        );
     }
 
     #[test]
