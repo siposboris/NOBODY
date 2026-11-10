@@ -60,6 +60,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
+**Known-operand logic/ordering safety (2026-11-10; pending CI):** Rust's conservative checker rejects provably invalid text ordering and non-boolean `and`/`or`/`not` with existing N1002, while preserving dynamic unknown expressions for runtime evaluation. Text `==`/`!=` and text concatenation remain accepted. Tests exercise nested expressions and the `ai`, `sk`, and `en` profiles. This is not sound whole-program type inference and closes no broad criterion.
+
+
+
 - [x] Prototype lexical scopes, captured closures and basic runtime type annotations in Python.
 - [x] Prototype static primitive type checks, lexical-scope diagnostics, conditional path joins and known-function arity checks in Python.
 - [x] Prototype conservative function return-type inference, including unknown results when branches or dynamic calls cannot be proved, in Python.
@@ -175,6 +179,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 - [ ] Introduce safe query/collection DSLs and composable language extensions.
 
 ## Phase 9 — Tooling and developer experience
+
+**Read-only formatter verification (2026-11-10, verified [PR #42](https://github.com/siposboris/NOBODY/pull/42)):** The Rust `format-check PROFILE FILE.nbd` detects noncanonical source formatting with N5002 and exit code 1, without touching the original. Tests cover `ai`, `sk`, `en` and formatter idempotence. Original comments and whitespace are not preserved by the AST emitter; full source-preserving formatting and editor integration remain open. All four workflows passed including [Rust CI #42765224570](https://github.com/siposboris/NOBODY/actions/runs/42765224570). No broad checklist item is closed.
+
+
 
 - [ ] Build a configurator where each feature is labeled implemented, experimental or planned, without fake switches.
 - [ ] Implement module-level profile negotiation and consistency checks.

@@ -4,6 +4,29 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Read-only Nobody formatter verification
+
+`nobody-rs format-check PROFILE FILE.nbd` checks whether source matches the
+canonical Rust `format-source` output, returning success on exact match or
+diagnostic N5002 with a nonzero exit status on drift. It never modifies files.
+It operates on one selected syntax profile at a time and is useful in CI.
+The formatter emits AST-based source: original comments and whitespace are
+not preserved, so review generated code before overwriting anything.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-source sk rust/examples/native_text_ops_sk.nbd > clean.nbd
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-check sk clean.nbd
+```
+
+## Conservative static boolean and text-operator diagnostics
+
+Rust's `typecheck PROFILE FILE.nbd` rejects **certain** incompatible operations
+before execution: text ordering with `<`/`>=`, mixed-type `and`/`or` and
+non-boolean `not`, using N1002. It accepts text `+` and `==`/`!=` and
+does not reject operands whose type is unknown. These checks use the existing
+IR type inference and support `ai`, `sk`, and `en`. This is an incomplete
+conservative checker, not proof of full type safety.
+
 ## Native typed UTF-8 string function call ABI (experimental, PR #44)
 
 The Linux x86-64 native compiler now supports text arguments and text return values

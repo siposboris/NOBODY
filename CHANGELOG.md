@@ -7,6 +7,20 @@
 - Real ELF-vs-Rust interpreter fixtures for `ai`/`sk`/`en`, with type-mismatch rejection. ABI is internal/experimental; unannotated text parameter inference, recursion, closures and self-hosting remain open.
 
 
+## Unreleased — read-only Rust formatter check (2026-11-10; verified [PR #42](https://github.com/siposboris/NOBODY/pull/42))
+
+- Added `format-check PROFILE FILE.nbd`: non-mutating canonical formatting check with N5002 and nonzero exit status on drift, useful for CI.
+- Added `ai`, `sk`, `en` CLI regression tests for success, failure and idempotence.
+- All four CI workflows passed including [Rust CI #42765224570](https://github.com/siposboris/NOBODY/actions/runs/42765224570). This does not preserve original comments, implement LSP, or finish the whole formatter milestone.
+
+
+## Unreleased — static text and boolean operator checks (2026-11-10; CI pending)
+
+- Rust `typecheck` now rejects statically known text ordering and non-boolean logical `and`, `or`, `not` (N1002).
+- Unknown types remain deferred to runtime rather than creating false-positive diagnostics; Unicode text equality and concatenation still pass.
+- Rust tests cover primary syntax profiles and nested expressions. Full soundness and type inference remain open.
+
+
 ## Unreleased — native UTF-8 concatenation and equality (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41))
 
 - Standalone Linux x86-64 ELF now performs `+`, `==` and `!=` on UTF-8 text literals and mutable text variables. Equality compares contents rather than pointers.
