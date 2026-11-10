@@ -74,7 +74,7 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
             out.push(26);
             write_u32(out, value.len())?;
             out.extend_from_slice(value.as_bytes());
-        },
+        }
         Load(slot) => {
             out.push(3);
             write_u32(out, *slot)?;
@@ -176,13 +176,23 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
     out.extend_from_slice(MAGIC);
     // Keep existing v2 bytes stable for integer/boolean-only programs.
     // Text opcodes and typed string signatures require experimental v3.
-    let text_program = program.code.iter().any(|op| matches!(op, Instruction::PushText(_)))
+    let text_program = program
+        .code
+        .iter()
+        .any(|op| matches!(op, Instruction::PushText(_)))
         || program.functions.iter().any(|function| {
-            function.code.iter().any(|op| matches!(op, Instruction::PushText(_)))
+            function
+                .code
+                .iter()
+                .any(|op| matches!(op, Instruction::PushText(_)))
                 || function.return_type == Some(ValueType::Str)
                 || function.parameter_types.contains(&Some(ValueType::Str))
         });
-    let version = if text_program { TEXT_WIRE_VERSION } else { WIRE_VERSION };
+    let version = if text_program {
+        TEXT_WIRE_VERSION
+    } else {
+        WIRE_VERSION
+    };
     write_u16(&mut out, version);
     write_u16(&mut out, 0); // reserved flags: reject unknown flags on read
     write_u32(&mut out, program.slots)?;
@@ -319,7 +329,7 @@ impl<'a> Reader<'a> {
                 let value = std::str::from_utf8(bytes)
                     .map_err(|_| invalid("Bytecode text payload is not valid UTF-8"))?;
                 Ok(PushText(value.to_owned()))
-            },
+            }
             unknown => Err(invalid(format!("Unknown bytecode opcode {unknown}"))),
         }
     }
@@ -454,11 +464,17 @@ mod tests {
         assert_eq!(u16::from_le_bytes([bytes[8], bytes[9]]), TEXT_WIRE_VERSION);
         let decoded = decode(&bytes).unwrap();
         assert_eq!(original, decoded);
-        assert_eq!(execute(&decoded).unwrap(), crate::evaluate_source(example, "ai").unwrap());
+        assert_eq!(
+            execute(&decoded).unwrap(),
+            crate::evaluate_source(example, "ai").unwrap()
+        );
         assert_eq!(encode(&decoded).unwrap(), bytes);
         let old = compile_source("print(2 + 3)", "ai").unwrap();
         let old_bytes = encode(&old).unwrap();
-        assert_eq!(u16::from_le_bytes([old_bytes[8], old_bytes[9]]), WIRE_VERSION);
+        assert_eq!(
+            u16::from_le_bytes([old_bytes[8], old_bytes[9]]),
+            WIRE_VERSION
+        );
     }
 
     #[test]
