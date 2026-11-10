@@ -128,7 +128,7 @@ fn main() {
         });
         if command == "check-project" {
             println!(
-                "Validated project graph and bytecode compiler for {} modules (module namespaces and full imports not yet implemented).",
+                "Validated project graph, import contracts, namespace isolation and supported bytecode for {} Nobody modules (experimental compiler).",
                 project.modules.len()
             );
             return;

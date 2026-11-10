@@ -38,7 +38,7 @@
 | **N4004** | `RUN_CALL` | Neplatné volanie |
 | **N5001** | `AST_SCHEMA` | Neplatný AST dokument |
 | **N5002** | `FORMAT_DRIFT` | Súbor Nobody sa líši od kanonického formátu; spusti `format-source` a skontroluj výsledok |
-| **N5003** | `PROJECT_GRAPH` | Neplatný manifest projektu, nebezpečná cesta, cyklická závislosť alebo konflikt globálnych názvov |
+| **N5003** | `PROJECT_GRAPH` | Neplatný manifest projektu, nebezpečná cesta, cyklická závislosť, chybný import/export alebo konflikt názvov modulov |
 | **N9001** | `CLI_INPUT` | Neplatný vstup alebo konfigurácia |
 | **N9999** | `UNCLASSIFIED` | Doteraz nezaradená chyba |
 
