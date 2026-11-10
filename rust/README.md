@@ -103,6 +103,17 @@ incorrect arity (N1005), and incompatible declared result types (N1001).
 Unknown dynamic operand types remain deferred to runtime; this is not
 sound whole-program inference. Tests cover `ai`, `sk`, `en`.
 
+## Static boolean requirements for if/elif/while (experimental)
+
+The Rust conservative typechecker now rejects `if`, `elif` and
+`while` conditions whose inferred primitive type is certainly not
+`bool` (diagnostic N1002). This matches the independent AST interpreter
+and VM runtime requirement for boolean conditions. Unknown types still
+pass the checker and are checked at runtime, avoiding false positives.
+Unit tests cover `ai`, `sk`, `en`, numeric/text/null/length
+conditions, valid comparisons and unknown names. Full flow-sensitive
+typing and optional-value narrowing remain out of scope.
+
 ## Conservative static boolean and text-operator diagnostics
 
 Rust's `typecheck PROFILE FILE.nbd` rejects **certain** incompatible operations
