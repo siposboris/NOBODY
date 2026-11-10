@@ -478,9 +478,18 @@ mod tests {
     #[test]
     fn len_builtin_infers_integer_result_for_localized_syntax() {
         for (profile, source) in [
-            ("ai", "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)"),
-            ("sk", "nech text = \"Život ☸\"\nnech count: cele = dlzka(text)\nvypis(count)"),
-            ("en", "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)"),
+            (
+                "ai",
+                "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)",
+            ),
+            (
+                "sk",
+                "nech text = \"Život ☸\"\nnech count: cele = dlzka(text)\nvypis(count)",
+            ),
+            (
+                "en",
+                "let text = \"Život ☸\"\nlet count: int = len(text)\nprint(count)",
+            ),
         ] {
             check_source(source, profile).unwrap();
         }
@@ -504,7 +513,11 @@ mod tests {
             "print(len(\"x\" + 2))",
             "print(len(\"x\") + \"y\")",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
         }
         // Dynamic names remain deferred by the conservative typechecker.
         check_source("print(len(unknown_value))", "ai").unwrap();
