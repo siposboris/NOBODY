@@ -16,7 +16,10 @@ fn inspector_reports_v2_v3_metadata_without_executing_or_editing() {
     let dir = std::env::temp_dir().join(format!(
         "nobody-inspect-{}-{}",
         std::process::id(),
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
     ));
     fs::create_dir(&dir).unwrap();
     for (profile, filename, version) in [
@@ -36,7 +39,11 @@ fn inspector_reports_v2_v3_metadata_without_executing_or_editing() {
         let original = fs::read(&target).unwrap();
         assert_eq!(u16::from_le_bytes([original[8], original[9]]), version);
         let inspected = cli(&["inspect-bytecode", path]);
-        assert!(inspected.status.success(), "{}", String::from_utf8_lossy(&inspected.stderr));
+        assert!(
+            inspected.status.success(),
+            "{}",
+            String::from_utf8_lossy(&inspected.stderr)
+        );
         let output = String::from_utf8(inspected.stdout).unwrap();
         assert!(output.contains("format: NOBBC001\n"));
         assert!(output.contains(&format!("wire_version: {version}\n")));
@@ -46,7 +53,11 @@ fn inspector_reports_v2_v3_metadata_without_executing_or_editing() {
         assert!(output.contains("function_count: "));
         assert!(output.contains("function_instructions: "));
         assert!(output.contains("unicode_length_ops: "));
-        assert_eq!(fs::read(&target).unwrap(), original, "inspector changed bytecode");
+        assert_eq!(
+            fs::read(&target).unwrap(),
+            original,
+            "inspector changed bytecode"
+        );
         // Repeated inspection is deterministic and doesn't run the bytecode.
         assert_eq!(cli(&["inspect-bytecode", path]).stdout, output.as_bytes());
         if filename.contains("native_len") {
@@ -61,7 +72,10 @@ fn inspector_rejects_corrupt_or_missing_files_and_never_executes_them() {
     let dir = std::env::temp_dir().join(format!(
         "nobody-inspect-corrupt-{}-{}",
         std::process::id(),
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
     ));
     fs::create_dir(&dir).unwrap();
     let invalid = dir.join("corrupt.nbc");
