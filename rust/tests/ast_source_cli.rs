@@ -74,3 +74,53 @@ fn malformed_import_fails_instead_of_producing_source() {
     assert!(output.stdout.is_empty());
     assert!(String::from_utf8_lossy(&output.stderr).contains("N5001"));
 }
+
+#[test]
+fn format_check_is_read_only_canonical_and_profile_aware() {
+    for (profile, original) in [
+        ("ai", "let greeting = \"Nobody\"\nprint(greeting)\n"),
+        ("sk", "nech greeting = \"Nobody\"\nvypis(greeting)\n"),
+        ("en", "let greeting = \"Nobody\"\nprint(greeting)\n"),
+    ] {
+        let path = std::env::temp_dir().join(format!(
+            "nobody_format_check_{}_{}.nbd",
+            std::process::id(),
+            profile
+        ));
+        fs::write(&path, original).unwrap();
+        let original_bytes = fs::read(&path).unwrap();
+        let args = ["format-check", profile, path.to_str().unwrap()];
+        let unformatted = run(&args);
+        assert!(!unformatted.status.success(), "{profile}: source not canonical");
+        assert!(unformatted.stdout.is_empty());
+        assert!(String::from_utf8_lossy(&unformatted.stderr).contains("N5002"));
+        assert_eq!(fs::read(&path).unwrap(), original_bytes);
+
+        let formatted = run(&["format-source", profile, path.to_str().unwrap()]);
+        assert!(formatted.status.success(), "{profile}");
+        fs::write(&path, &formatted.stdout).unwrap();
+        let checked = run(&args);
+        assert!(
+            checked.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&checked.stderr)
+        );
+        assert_eq!(fs::read(&path).unwrap(), formatted.stdout);
+        let rerun = run(&["format-source", profile, path.to_str().unwrap()]);
+        assert_eq!(rerun.stdout, formatted.stdout, "{profile}: idempotence");
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn format_check_rejects_invalid_syntax_without_editing() {
+    let path = std::env::temp_dir().join(format!(
+        "nobody_format_check_bad_{}.nbd",
+        std::process::id()
+    ));
+    fs::write(&path, "let x = ???").unwrap();
+    let result = run(&["format-check", "ai", path.to_str().unwrap()]);
+    assert!(!result.status.success());
+    assert_eq!(fs::read(&path).unwrap(), b"let x = ???");
+    fs::remove_file(path).unwrap();
+}
