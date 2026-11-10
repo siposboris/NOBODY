@@ -18,6 +18,7 @@ const MAX_EXPR_DEPTH: usize = 64;
 pub enum Instruction {
     Push(i128),
     PushBool(bool),
+    PushText(String),
     PushNull,
     Load(usize),
     Define(usize),
@@ -63,6 +64,7 @@ pub enum Instruction {
 pub enum ValueType {
     Int,
     Bool,
+    Str,
 }
 
 impl ValueType {
@@ -70,8 +72,9 @@ impl ValueType {
         match value {
             "int" => Ok(Self::Int),
             "bool" => Ok(Self::Bool),
+            "str" => Ok(Self::Str),
             _ => Err(unsupported(format!(
-                "Bytecode functions currently support int/bool annotations, not {value:?}"
+                "Bytecode functions currently support int/bool/str annotations, not {value:?}"
             ))),
         }
     }
@@ -206,6 +209,13 @@ impl Compiler {
                 self.emit(Instruction::Push(value))
             }
             IrExpr::Boolean(value) => self.emit(Instruction::PushBool(*value)),
+            IrExpr::String(text) => {
+                let decoded = crate::evaluator::literal_text(text)?;
+                if decoded.len() > MAX_OUTPUT {
+                    return Err(diagnostic(4005, "Bytecode text literal exceeds 1 MiB"));
+                }
+                self.emit(Instruction::PushText(decoded))
+            },
             IrExpr::Call { callee, args } => {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
                     return Err(unsupported("Bytecode only calls declared named functions"));
@@ -688,7 +698,7 @@ fn verify_unit(
         let instruction = &code[pc];
         let mut successors = Vec::with_capacity(2);
         match instruction {
-            Instruction::Push(_) | Instruction::PushBool(_) | Instruction::PushNull => {
+            Instruction::Push(_) | Instruction::PushBool(_) | Instruction::PushText(_) | Instruction::PushNull => {
                 state.depth += 1
             }
             Instruction::Load(slot) => {
@@ -858,6 +868,7 @@ fn verify_unit(
 enum Value {
     Int(i128),
     Bool(bool),
+    Text(String),
     Null,
 }
 
@@ -865,7 +876,9 @@ impl Value {
     fn matches_type(&self, expected: ValueType) -> bool {
         matches!(
             (self, expected),
-            (Self::Int(_), ValueType::Int) | (Self::Bool(_), ValueType::Bool)
+            (Self::Int(_), ValueType::Int)
+                | (Self::Bool(_), ValueType::Bool)
+                | (Self::Text(_), ValueType::Str)
         )
     }
 
@@ -873,6 +886,7 @@ impl Value {
         match self {
             Value::Int(value) => value.to_string(),
             Value::Bool(value) => value.to_string(),
+            Value::Text(value) => value.clone(),
             Value::Null => "null".to_owned(),
         }
     }
@@ -910,6 +924,7 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
         match instruction {
             Instruction::Push(value) => stack.push(Value::Int(*value)),
             Instruction::PushBool(value) => stack.push(Value::Bool(*value)),
+            Instruction::PushText(value) => stack.push(Value::Text(value.clone())),
             Instruction::PushNull => stack.push(Value::Null),
             Instruction::Load(slot) => {
                 let value = variables[*slot]
@@ -927,16 +942,24 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 let left = stack
                     .pop()
                     .ok_or_else(|| unsupported("VM stack underflow"))?;
-                let (Value::Int(left), Value::Int(right)) = (left, right) else {
-                    return Err(unsupported("Arithmetic requires integer values"));
-                };
-                let value = match instruction {
-                    Instruction::Add => left.checked_add(right),
-                    Instruction::Sub => left.checked_sub(right),
-                    _ => left.checked_mul(right),
+                match (left, right, instruction) {
+                    (Value::Text(a), Value::Text(b), Instruction::Add) => {
+                        if a.len().saturating_add(b.len()) > MAX_OUTPUT {
+                            return Err(diagnostic(4005, "Bytecode text concatenation exceeds 1 MiB"));
+                        }
+                        stack.push(Value::Text(a + &b));
+                    }
+                    (Value::Int(a), Value::Int(b), op) => {
+                        let result = match op {
+                            Instruction::Add => a.checked_add(b),
+                            Instruction::Sub => a.checked_sub(b),
+                            _ => a.checked_mul(b),
+                        }
+                        .ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
+                        stack.push(Value::Int(result));
+                    }
+                    _ => return Err(unsupported("Arithmetic accepts integers, or two strings for '+'")),
                 }
-                .ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
-                stack.push(Value::Int(value));
             }
             Instruction::Neg => {
                 let Some(Value::Int(value)) = stack.pop() else {
@@ -1221,9 +1244,22 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_string_values_remain_explicitly_rejected() {
-        let err = compile_source("print(\"not yet supported\")", "ai").unwrap_err();
-        assert_eq!(err.code, 4004);
+    fn strings_and_typed_string_functions_match_rust_ast_evaluator() {
+        for (profile, source) in [
+            ("ai", "let a = \"Život\"\nlet b = a + \" ☸\"\nprint(a, b, b == \"Život ☸\", a != b)\nfn identity(s: str): str { return s }\nprint(identity(b))"),
+            ("sk", "nech a = \"Život\"\nnech b = a + \" ☸\"\nvypis(a, b, b == \"Život ☸\", a != b)\nfunkcia identity(s: text): text { vrat s }\nvypis(identity(b))"),
+            ("en", "let a = \"Život\"\nlet b = a + \" ☸\"\nprint(a, b, b == \"Život ☸\", a != b)\nfunction identity(s: str): str { return s }\nprint(identity(b))"),
+        ] {
+            let actual = execute_source(source, profile).unwrap();
+            assert_eq!(actual, crate::evaluate_source(source, profile).unwrap());
+        }
+    }
+
+    #[test]
+    fn string_operations_have_bounded_runtime_behavior() {
+        let source = "let text = \"x\"\nfor i in range(22) { text = text + text }\nprint(text)";
+        assert_eq!(execute_source(source, "ai").unwrap_err().code, 4005);
+        assert_eq!(execute_source("print(\"a\" - \"b\")", "ai").unwrap_err().code, 4004);
     }
 
     #[test]
