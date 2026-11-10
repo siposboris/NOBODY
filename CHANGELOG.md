@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — read-only Rust formatter check (2026-11-10; CI pending)
+## Unreleased — read-only Rust formatter check (2026-11-10; verified [PR #42](https://github.com/siposboris/NOBODY/pull/42))
 
 - Added `format-check PROFILE FILE.nbd`: non-mutating canonical formatting check with N5002 and nonzero exit status on drift, useful for CI.
 - Added `ai`, `sk`, `en` CLI regression tests for success, failure and idempotence.
-- This does not preserve original comments, implement LSP, or finish the whole formatter milestone.
+- All four CI workflows passed including [Rust CI #42765224570](https://github.com/siposboris/NOBODY/actions/runs/42765224570). This does not preserve original comments, implement LSP, or finish the whole formatter milestone.
 
 
 ## Unreleased — native UTF-8 concatenation and equality (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41))
