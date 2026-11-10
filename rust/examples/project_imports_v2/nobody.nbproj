@@ -1,0 +1,6 @@
+nobody.project.v2
+# Imports are real Nobody source directives, not implicit manifest-only edges.
+module main en main.nbd bridge
+module math sk math.nbd -
+module bridge ai bridge.nbd math
+entry main
