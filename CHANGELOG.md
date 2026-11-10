@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — static boolean checks for if/elif/while (2026-11-10; CI pending)
+
+- Rust `typecheck` rejects known non-boolean branch/loop conditions with N1002; previously the independent evaluator rejected them only during execution.
+- Preserved unknown dynamic-condition deferral; tests include `ai`, `sk`, `en` and `len(text)` expressions.
+- Full flow-sensitive type analysis remains open.
+
+
 ## Unreleased — Rust-native roadmap progress tool (2026-11-10; verified [PR #53](https://github.com/siposboris/NOBODY/pull/53))
 
 - Added `nobody-roadmap` Rust checker and explicit `--write` generator matching the legacy Python checklist count, round-to-nearest percent and 20-cell display.
