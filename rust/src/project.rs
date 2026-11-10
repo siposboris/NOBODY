@@ -189,9 +189,8 @@ fn source_imports(
     for (index, line) in source.split_inclusive('\n').enumerate() {
         let line_tokens = by_line.get(&(index + 1));
         let meaningful = line_tokens.and_then(|tokens| tokens.first());
-        let is_import = meaningful.is_some_and(|token| {
-            token.kind == TokenKind::Name && token.value == keyword
-        });
+        let is_import =
+            meaningful.is_some_and(|token| token.kind == TokenKind::Name && token.value == keyword);
         if !is_import {
             if meaningful.is_some_and(|token| token.kind != TokenKind::Comment) {
                 started_body = true;
@@ -200,7 +199,9 @@ fn source_imports(
             continue;
         }
         if !enabled {
-            return Err(issue("Language-level imports require nobody.project.v2 (not v1)"));
+            return Err(issue(
+                "Language-level imports require nobody.project.v2 (not v1)",
+            ));
         }
         if started_body {
             return Err(issue(format!(
@@ -219,7 +220,10 @@ fn source_imports(
                 if module.kind == TokenKind::Name && comment.kind == TokenKind::Comment
         );
         if !valid_shape {
-            return Err(issue(format!("Invalid import directive on line {}", index + 1)));
+            return Err(issue(format!(
+                "Invalid import directive on line {}",
+                index + 1
+            )));
         }
         let module = &tokens[1].value;
         if !valid_name(module) || crate::profiles::is_reserved(profile, module) {
@@ -294,11 +298,14 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             continue;
         }
         if version == 0 {
-            version = match line {
-                "nobody.project.v1" => 1,
-                "nobody.project.v2" => 2,
-                _ => return Err(issue("First manifest directive must be nobody.project.v1 or nobody.project.v2")),
-            };
+            version =
+                match line {
+                    "nobody.project.v1" => 1,
+                    "nobody.project.v2" => 2,
+                    _ => return Err(issue(
+                        "First manifest directive must be nobody.project.v1 or nobody.project.v2",
+                    )),
+                };
             continue;
         }
         let parts: Vec<_> = line.split_whitespace().collect();
@@ -425,7 +432,12 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         }
         let parsed = parse_validated(&translated, "ai")?;
         if version == 2 {
-            visible.push((name.clone(), translated.clone(), parsed.statements.clone(), imports));
+            visible.push((
+                name.clone(),
+                translated.clone(),
+                parsed.statements.clone(),
+                imports,
+            ));
         }
         for stmt in &parsed.statements {
             let symbol = match stmt {
