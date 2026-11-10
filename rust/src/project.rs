@@ -45,7 +45,9 @@ fn read_capped(path: &Path, limit: usize) -> Result<String, Diagnostic> {
         .read_to_end(&mut bytes)
         .map_err(|error| issue(format!("Cannot read {path:?}: {error}")))?;
     if bytes.len() > limit {
-        return Err(issue(format!("Project input exceeds its {limit}-byte limit")));
+        return Err(issue(format!(
+            "Project input exceeds its {limit}-byte limit"
+        )));
     }
     String::from_utf8(bytes).map_err(|_| issue("Project manifest or source is not UTF-8"))
 }
@@ -73,7 +75,9 @@ fn visit(
         .get(name)
         .ok_or_else(|| issue(format!("Dependency {name:?} is not declared")))?;
     if !visiting.insert(name.to_owned()) {
-        return Err(issue(format!("Cyclic project dependency involving {name:?}")));
+        return Err(issue(format!(
+            "Cyclic project dependency involving {name:?}"
+        )));
     }
     for dependency in &spec.dependencies {
         visit(dependency, specs, visiting, visited, order)?;
@@ -122,43 +126,69 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
                     return Err(issue("Project exceeds the 64-module limit"));
                 }
                 if !valid_name(name) {
-                    return Err(issue(format!("Invalid lowercase module name on line {}", line_number + 1)));
+                    return Err(issue(format!(
+                        "Invalid lowercase module name on line {}",
+                        line_number + 1
+                    )));
                 }
                 if crate::profiles::profile(profile).is_none() {
-                    return Err(issue(format!("Unknown syntax profile {profile:?} on line {}", line_number + 1)));
+                    return Err(issue(format!(
+                        "Unknown syntax profile {profile:?} on line {}",
+                        line_number + 1
+                    )));
                 }
                 let relative = Path::new(filename);
                 if relative.extension().is_none_or(|ext| ext != "nbd")
-                    || !relative.components().all(|part| matches!(part, Component::Normal(_)))
+                    || !relative
+                        .components()
+                        .all(|part| matches!(part, Component::Normal(_)))
                 {
-                    return Err(issue(format!("Unsafe or non-.nbd module path on line {}", line_number + 1)));
+                    return Err(issue(format!(
+                        "Unsafe or non-.nbd module path on line {}",
+                        line_number + 1
+                    )));
                 }
                 let dependencies = if *dependencies == "-" {
                     Vec::new()
                 } else {
-                    dependencies.split(',').map(str::to_owned).collect::<Vec<_>>()
+                    dependencies
+                        .split(',')
+                        .map(str::to_owned)
+                        .collect::<Vec<_>>()
                 };
                 let mut unique = BTreeSet::new();
-                if dependencies.iter().any(|dependency| {
-                    !valid_name(dependency) || !unique.insert(dependency.clone())
-                }) {
-                    return Err(issue(format!("Invalid or duplicate dependency on line {}", line_number + 1)));
+                if dependencies
+                    .iter()
+                    .any(|dependency| !valid_name(dependency) || !unique.insert(dependency.clone()))
+                {
+                    return Err(issue(format!(
+                        "Invalid or duplicate dependency on line {}",
+                        line_number + 1
+                    )));
                 }
-                if specs.insert(
-                    (*name).to_owned(),
-                    ModuleSpec {
-                        profile: (*profile).to_owned(),
-                        path: (*filename).to_owned(),
-                        dependencies,
-                    },
-                ).is_some() {
+                if specs
+                    .insert(
+                        (*name).to_owned(),
+                        ModuleSpec {
+                            profile: (*profile).to_owned(),
+                            path: (*filename).to_owned(),
+                            dependencies,
+                        },
+                    )
+                    .is_some()
+                {
                     return Err(issue(format!("Duplicate module name {name:?}")));
                 }
             }
             ["entry", name] if entry.is_none() && valid_name(name) => {
                 entry = Some((*name).to_owned());
             }
-            _ => return Err(issue(format!("Invalid project directive on line {}", line_number + 1))),
+            _ => {
+                return Err(issue(format!(
+                    "Invalid project directive on line {}",
+                    line_number + 1
+                )))
+            }
         }
     }
     if !version {
@@ -177,7 +207,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         &mut order,
     )?;
     if order.len() != specs.len() {
-        return Err(issue("Project declares unreachable modules; connect them through explicit dependencies"));
+        return Err(issue(
+            "Project declares unreachable modules; connect them through explicit dependencies",
+        ));
     }
 
     let mut merged = String::new();
@@ -188,7 +220,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         let resolved = fs::canonicalize(root.join(&spec.path))
             .map_err(|error| issue(format!("Cannot resolve module {name:?}: {error}")))?;
         if !resolved.starts_with(root) || !resolved.is_file() {
-            return Err(issue(format!("Module {name:?} resolves outside the project root or is not a file")));
+            return Err(issue(format!(
+                "Module {name:?} resolves outside the project root or is not a file"
+            )));
         }
         if !canonical_paths.insert(resolved.clone()) {
             return Err(issue("Two modules resolve to the same source file"));
@@ -197,7 +231,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         parse_validated(&source, &spec.profile)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
         if !same_ir(&source, &spec.profile, &translated, "ai")? {
-            return Err(issue(format!("Module {name:?} changes its canonical IR during profile translation")));
+            return Err(issue(format!(
+                "Module {name:?} changes its canonical IR during profile translation"
+            )));
         }
         let parsed = parse_validated(&translated, "ai")?;
         for stmt in &parsed.statements {
@@ -242,16 +278,46 @@ mod tests {
     #[test]
     fn dependency_cycles_and_undeclared_nodes_are_rejected() {
         let mut specs = BTreeMap::new();
-        specs.insert("one".into(), ModuleSpec {
-            profile: "ai".into(), path: "one.nbd".into(), dependencies: vec!["two".into()],
-        });
-        specs.insert("two".into(), ModuleSpec {
-            profile: "ai".into(), path: "two.nbd".into(), dependencies: vec!["one".into()],
-        });
-        assert_eq!(visit("one", &specs, &mut BTreeSet::new(),
-            &mut BTreeSet::new(), &mut Vec::new()).unwrap_err().code, 5003);
+        specs.insert(
+            "one".into(),
+            ModuleSpec {
+                profile: "ai".into(),
+                path: "one.nbd".into(),
+                dependencies: vec!["two".into()],
+            },
+        );
+        specs.insert(
+            "two".into(),
+            ModuleSpec {
+                profile: "ai".into(),
+                path: "two.nbd".into(),
+                dependencies: vec!["one".into()],
+            },
+        );
+        assert_eq!(
+            visit(
+                "one",
+                &specs,
+                &mut BTreeSet::new(),
+                &mut BTreeSet::new(),
+                &mut Vec::new()
+            )
+            .unwrap_err()
+            .code,
+            5003
+        );
         specs.get_mut("two").unwrap().dependencies = vec!["missing".into()];
-        assert_eq!(visit("one", &specs, &mut BTreeSet::new(),
-            &mut BTreeSet::new(), &mut Vec::new()).unwrap_err().code, 5003);
+        assert_eq!(
+            visit(
+                "one",
+                &specs,
+                &mut BTreeSet::new(),
+                &mut BTreeSet::new(),
+                &mut Vec::new()
+            )
+            .unwrap_err()
+            .code,
+            5003
+        );
     }
 }
