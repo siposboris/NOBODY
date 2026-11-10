@@ -45,7 +45,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-vars
 ```
 
-**Unsupported:** string concatenation/comparisons, native string parameters or returns, typed declarations, changing a variable's type and general heap-allocated strings. Operations that cannot be compiled correctly fail rather than silently performing pointer equality. New integration tests run actual ELF files and compare stdout byte-for-byte with the Rust evaluator for `ai`, `sk`, `en` (including loop, function, shadowing and copy/reassignment). Verification pending.
+**Unsupported:** string concatenation/comparisons, native string parameters or returns, typed declarations, changing a variable's type and general heap-allocated strings. Operations that cannot be compiled correctly fail rather than silently performing pointer equality. New integration tests run actual ELF files and compare stdout byte-for-byte with the Rust evaluator for `ai`, `sk`, `en` (including loop, function, shadowing and copy/reassignment). All four checks passed, including [Rust CI #42753533095](https://github.com/siposboris/NOBODY/actions/runs/42753533095), merged through [PR #40](https://github.com/siposboris/NOBODY/pull/40).
 
 ## Native UTF-8 output and mixed arguments
 
