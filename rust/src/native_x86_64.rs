@@ -849,12 +849,9 @@ impl NativeCompiler {
                 let saved_return = self.return_kind.take();
 
                 let mut first_word = 0usize;
-                for (index, kind) in parameter_types.iter().take(parameters.len()).enumerate() {
+                for kind in parameter_types.iter().take(parameters.len()) {
                     let width = if *kind == Type::Text { 2 } else { 1 };
-                    let destination = local_scope
-                        .get(&parameters[index])
-                        .expect("validated native function parameters")
-                        .slot;
+                    let destination = first_word;
                     for word in 0..width {
                         // Last-pushed argument word is closest to rbp+16.
                         let offset = 16 + (parameter_words - 1 - first_word - word) * 8;
