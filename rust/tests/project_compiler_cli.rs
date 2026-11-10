@@ -60,7 +60,7 @@ fn three_files_in_three_profiles_link_in_dependency_order_and_run_bytecode() {
     let dir = sandbox();
     let manifest = fixture(&dir);
     let project = load_project(&manifest).unwrap();
-    assert_eq!(project.modules, ["math", "bridge", "main"]);
+    assert_eq!(project.modules, vec!["math", "bridge", "main"]);
     assert_eq!(evaluate_source(&project.source, "ai").unwrap(), "13 Život ☸\n");
     let manifest = manifest.to_str().unwrap();
     let check = cli(&["check-project", manifest]);
@@ -119,7 +119,6 @@ fn graph_errors_unsafe_files_and_cross_module_collisions_fail_closed() {
         base.replace("module bridge ai bridge.nbd math", "module bridge ai bridge.nbd main"),
         base.replace("module bridge ai bridge.nbd math", "module bridge ai bridge.nbd missing"),
         base.replace("main.nbd bridge", "../escape.nbd bridge"),
-        base.replace("module bridge ai bridge.nbd math", "module bridge en bridge.nbd math"),
         base.replace("entry main", "entry unknown"),
         base.replace("module bridge ai bridge.nbd math", "module bridge ai math.nbd math"),
         format!("{base}module spare ai spare.nbd -\n"),
@@ -132,6 +131,8 @@ fn graph_errors_unsafe_files_and_cross_module_collisions_fail_closed() {
             .status
             .success());
     }
+    fs::write(&manifest, base.replace("module bridge ai bridge.nbd math", "module bridge en bridge.nbd math")).unwrap();
+    assert!(load_project(&manifest).is_err(), "wrong syntax profile must fail");
     fs::write(&manifest, &base).unwrap();
     fs::write(
         dir.join("bridge.nbd"),
