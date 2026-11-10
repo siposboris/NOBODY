@@ -66,7 +66,9 @@ pub(crate) fn qualify_references(
                 )));
             }
             if symbol.len() > MAX_SYMBOL_BYTES {
-                return Err(invalid("Qualified module export identifier exceeds 128 UTF-8 bytes"));
+                return Err(invalid(
+                    "Qualified module export identifier exceeds 128 UTF-8 bytes",
+                ));
             }
             let generated = private_name(target_module, symbol);
             result.push_str(&source[at..tokens[index].start]);
@@ -82,7 +84,12 @@ pub(crate) fn qualify_references(
     Ok((result, refs))
 }
 
-fn rename_expr(expr: &mut Expr, module: &str, exports: &BTreeSet<String>, locals: &BTreeSet<String>) {
+fn rename_expr(
+    expr: &mut Expr,
+    module: &str,
+    exports: &BTreeSet<String>,
+    locals: &BTreeSet<String>,
+) {
     match expr {
         Expr::Name(name) => {
             if !locals.contains(name) && exports.contains(name) {
@@ -127,7 +134,12 @@ fn rename_block(
                     *name = private_name(module, name);
                 }
             }
-            Statement::Function { name, parameters, body, .. } => {
+            Statement::Function {
+                name,
+                parameters,
+                body,
+                ..
+            } => {
                 let mut inside = locals.clone();
                 inside.extend(parameters.iter().cloned());
                 if top_level && exports.contains(name) {
@@ -138,7 +150,10 @@ fn rename_block(
                 }
                 rename_block(body, module, exports, &mut inside, false);
             }
-            Statement::If { branches, otherwise } => {
+            Statement::If {
+                branches,
+                otherwise,
+            } => {
                 for (condition, body) in branches {
                     rename_expr(condition, module, exports, locals);
                     rename_block(body, module, exports, &mut locals.clone(), false);
@@ -151,7 +166,11 @@ fn rename_block(
                 rename_expr(condition, module, exports, locals);
                 rename_block(body, module, exports, &mut locals.clone(), false);
             }
-            Statement::For { variable, iterable, body } => {
+            Statement::For {
+                variable,
+                iterable,
+                body,
+            } => {
                 rename_expr(iterable, module, exports, locals);
                 let mut scoped = locals.clone();
                 scoped.insert(variable.clone());
@@ -172,7 +191,13 @@ pub(crate) fn assemble_namespaced_module(
     module: &str,
     exports: &BTreeSet<String>,
 ) -> Result<String, Diagnostic> {
-    rename_block(&mut program.statements, module, exports, &mut BTreeSet::new(), true);
+    rename_block(
+        &mut program.statements,
+        module,
+        exports,
+        &mut BTreeSet::new(),
+        true,
+    );
     crate::emit_program(program, "ai")
 }
 
@@ -185,7 +210,9 @@ mod tests {
         assert_ne!(private_name("math", "step"), private_name("extra", "step"));
         assert_ne!(private_name("math", "a"), private_name("math", "b"));
         let encoded = private_name("math", "živý");
-        assert!(encoded.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'));
+        assert!(encoded
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'));
         assert!(encoded.starts_with("nobody_ns_math_x"));
     }
 
@@ -198,10 +225,18 @@ mod tests {
         assert!(rewritten.contains("\"math.step\""));
         assert!(rewritten.contains("# math.step"));
         assert!(rewritten.contains(&private_name("math", "step")));
-        assert_eq!(qualify_references("print(unknown.step(1))", "main", &imports)
-            .unwrap_err().code, 5003);
-        assert_eq!(qualify_references("print(nobody_ns_fake(1))", "main", &imports)
-            .unwrap_err().code, 5003);
+        assert_eq!(
+            qualify_references("print(unknown.step(1))", "main", &imports)
+                .unwrap_err()
+                .code,
+            5003
+        );
+        assert_eq!(
+            qualify_references("print(nobody_ns_fake(1))", "main", &imports)
+                .unwrap_err()
+                .code,
+            5003
+        );
     }
 
     #[test]
