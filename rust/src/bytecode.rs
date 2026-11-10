@@ -1290,7 +1290,10 @@ mod tests {
         for source in ["print(len())", "print(len(\"a\", \"b\"))"] {
             assert_eq!(compile_source(source, "ai").unwrap_err().code, 4007);
         }
-        assert_eq!(execute_source("print(len(42))", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            execute_source("print(len(42))", "ai").unwrap_err().code,
+            4004
+        );
         let invalid = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
