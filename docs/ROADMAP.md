@@ -27,7 +27,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 0 — Foundation, project hygiene and migration
 
-**Python-to-Rust roadmap tooling migration (2026-11-10; CI pending):** A new dependency-free Rust `nobody-roadmap` binary implements the old top-level checklist counting, half-up rounding, exact README marker regeneration and fail-closed marker validation. The GitHub progress check now uses the Rust tool with no Python setup. Default/`--check` mode is read-only; updates require explicit `--write`. Legacy Python script remains only for comparison/compatibility until parity is verified. This removes one Python dependency from the project's routine automation, not from all compiler/runtime features.
+**Python-to-Rust roadmap tooling migration (2026-11-10; verified [PR #53](https://github.com/siposboris/NOBODY/pull/53), [Rust CI #42838450448](https://github.com/siposboris/NOBODY/actions/runs/42838450448)):** A new dependency-free Rust `nobody-roadmap` binary implements the old top-level checklist counting, half-up rounding, exact README marker regeneration and fail-closed marker validation. The GitHub progress check now uses the Rust tool with no Python setup. Default/`--check` mode is read-only; updates require explicit `--write`. Legacy Python script remains only for comparison/compatibility until parity is verified. This removes one Python dependency from the project's routine automation, not from all compiler/runtime features.
 
 
 
@@ -43,7 +43,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 1 — Lexer, syntax, parser, AST and translation
 
-**All-40-profile text-length backend equivalence (2026-11-10; CI pending):** The native Rust integration suite generates a localized typed UTF-8 length program for each of 40 registered syntax profiles, then compares normalized IR, conservative typechecker, AST evaluator, in-memory bytecode VM, serialized `.nbc` v3 exact bytes and disk-decoded VM output. Linux x86-64 CI additionally runs all 40 *real standalone ELF* programs and requires identical stdout. Unicode scalar counting includes combining/joiner scenarios; this is a carefully scoped subset test, not a native-speaker audit or whole-language equivalence proof.
+**All-40-profile text-length backend equivalence (2026-11-10; verified [PR #52](https://github.com/siposboris/NOBODY/pull/52), [Rust CI #42837267986](https://github.com/siposboris/NOBODY/actions/runs/42837267986)):** The native Rust integration suite generates a localized typed UTF-8 length program for each of 40 registered syntax profiles, then compares normalized IR, conservative typechecker, AST evaluator, in-memory bytecode VM, serialized `.nbc` v3 exact bytes and disk-decoded VM output. Linux x86-64 CI additionally runs all 40 *real standalone ELF* programs and requires identical stdout. Unicode scalar counting includes combining/joiner scenarios; this is a carefully scoped subset test, not a native-speaker audit or whole-language equivalence proof.
 
 
 
@@ -72,7 +72,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
-**Localized text length builtin contracts (2026-11-10; CI pending):** Conservative Rust typechecker now infers that `len(text)`/`dlzka(text)` returns an integer; it rejects certainly non-text arguments with N1002, wrong arity N1005 and assigning the result to incompatible typed declarations N1001. Unknown operands defer safely. Nested operations and three primary syntax profiles are covered by Rust tests. General polymorphic builtins and complete type inference remain open.
+**Localized text length builtin contracts (2026-11-10; verified [PR #51](https://github.com/siposboris/NOBODY/pull/51), [Rust CI #42836145109](https://github.com/siposboris/NOBODY/actions/runs/42836145109)):** Conservative Rust typechecker now infers that `len(text)`/`dlzka(text)` returns an integer; it rejects certainly non-text arguments with N1002, wrong arity N1005 and assigning the result to incompatible typed declarations N1001. Unknown operands defer safely. Nested operations and three primary syntax profiles are covered by Rust tests. General polymorphic builtins and complete type inference remain open.
 
 
 
@@ -120,7 +120,7 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
-**UTF-8 scalar length in portable bytecode (2026-11-10; CI pending):** Rust's Python-free VM now compiles localized `len(text)` into v3 opcode 27 (`TextLen`) with exact stack verification, runtime text-type check, Unicode scalar count, and v1/v2 wire-version rejection. Integration tests load stored `.nbc` in Slovak, English and `ai`, verifying output against the Rust AST interpreter. This closes a discrepancy among backends, not full VM or general string API parity.
+**UTF-8 scalar length in portable bytecode (2026-11-10; verified [PR #50](https://github.com/siposboris/NOBODY/pull/50), [Rust CI #42836576430](https://github.com/siposboris/NOBODY/actions/runs/42836576430)):** Rust's Python-free VM now compiles localized `len(text)` into v3 opcode 27 (`TextLen`) with exact stack verification, runtime text-type check, Unicode scalar count, and v1/v2 wire-version rejection. Integration tests load stored `.nbc` in Slovak, English and `ai`, verifying output against the Rust AST interpreter. This closes a discrepancy among backends, not full VM or general string API parity.
 
 
 
