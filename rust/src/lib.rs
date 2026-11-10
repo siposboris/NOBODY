@@ -27,6 +27,8 @@ pub mod evaluator;
 pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
 pub mod ir;
 pub mod profiles;
+pub mod project;
+pub use project::{load_project, Project};
 pub mod typecheck;
 pub use ir::{
     lower_source, same_ir, IrExpr, IrStatement, Module as IrModule, Name as IrName, IR_VERSION,
