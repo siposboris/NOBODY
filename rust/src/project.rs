@@ -239,6 +239,36 @@ fn source_imports(
     Ok((output, imports))
 }
 
+/// In a v2 project, a symbol exported by another file can be referenced
+/// only through a directly declared import of that file's module name.
+/// This is an intentionally conservative whole-file lexical check; full
+/// scope-aware namespaces and object-file linking are future work.
+fn check_direct_import_visibility(
+    module: &str,
+    source: &str,
+    statements: &[Statement],
+    imported: &BTreeSet<String>,
+    owners: &BTreeMap<String, String>,
+) -> Result<(), Diagnostic> {
+    use crate::TokenKind;
+    let mut locally_declared = BTreeSet::new();
+    collect_declarations(statements, &mut locally_declared);
+    for token in crate::scan(source)? {
+        if token.kind != TokenKind::Name || locally_declared.contains(&token.value) {
+            continue;
+        }
+        if let Some(owner) = owners.get(&token.value) {
+            if owner != module && !imported.contains(owner) {
+                return Err(issue(format!(
+                    "Module {module:?} uses symbol {:?} from {owner:?} without a direct import",
+                    token.value
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
@@ -367,6 +397,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut merged = String::new();
     let mut exports = BTreeMap::<String, String>::new();
     let mut canonical_paths = BTreeSet::new();
+    let mut visible = Vec::new();
     for name in &order {
         let spec = &specs[name];
         let resolved = fs::canonicalize(root.join(&spec.path))
@@ -393,6 +424,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             )));
         }
         let parsed = parse_validated(&translated, "ai")?;
+        if version == 2 {
+            visible.push((name.clone(), translated.clone(), parsed.statements.clone(), imports));
+        }
         for stmt in &parsed.statements {
             let symbol = match stmt {
                 Statement::Function { name, .. } | Statement::Let { name, .. } => Some(name),
@@ -411,6 +445,11 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         }
         merged.push_str(&translated);
         merged.push('\n');
+    }
+    if version == 2 {
+        for (module, source, statements, imports) in &visible {
+            check_direct_import_visibility(module, source, statements, imports, &exports)?;
+        }
     }
     parse_validated(&merged, "ai")?;
     Ok(Project {
