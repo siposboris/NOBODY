@@ -1,5 +1,15 @@
 # Changelog
 
+
+## Unreleased — localized source imports for multi-file compiler (2026-11-10; CI pending)
+
+- Add import keyword translations to all 40 Nobody syntax profiles, rejecting standalone import expressions outside project builds.
+- Add versioned `nobody.project.v2`: source-level `import module` directives must match the manifest graph exactly, must precede code, and must directly import any external module whose symbols are referenced.
+- Keep `nobody.project.v1` backward compatibility; check malformed directives, bad import order, strings/comments, duplicate/undeclared imports and transitive dependency violations.
+- CLI integration compiles three-file mixed Slovak/`ai`/English project to portable bytecode and actual standalone ELF, checking exact runtime outputs.
+- No claim of isolated namespaces, a package manager, cross-platform native compiler or self-hosting.
+
+
 ## Unreleased — dependency-aware multi-file compiler (2026-11-10; CI pending)
 
 - Added Rust-only `nobody.project.v1` loader with explicit module dependencies and per-file 40-profile syntax selection, canonical IR checking and bounded project source assembly.
