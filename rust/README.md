@@ -18,6 +18,15 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-sou
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-check sk clean.nbd
 ```
 
+## Conservative static boolean and text-operator diagnostics
+
+Rust's `typecheck PROFILE FILE.nbd` rejects **certain** incompatible operations
+before execution: text ordering with `<`/`>=`, mixed-type `and`/`or` and
+non-boolean `not`, using N1002. It accepts text `+` and `==`/`!=` and
+does not reject operands whose type is unknown. These checks use the existing
+IR type inference and support `ai`, `sk`, and `en`. This is an incomplete
+conservative checker, not proof of full type safety.
+
 ## Native UTF-8 text operations (experimental)
 
 The standalone ELF compiler now handles `let combined = left + right`, `combined == expected`, and `combined != other` for UTF-8 text variables. A fixed 1 MiB process-lifetime arena stores joined text without libc; allocation exhaustion terminates with exit status `7`. Equality compares all bytes, not addresses. Actual ELF/evaluator parity tests cover text within loops/functions and non-ASCII text across `ai`, `sk`, and `en`. String ordering, text-native function parameters/returns, garbage collection and unrestricted memory allocation remain out of scope.
