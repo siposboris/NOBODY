@@ -28,12 +28,24 @@ Expected output for the example is `8` and `-42` on separate lines. `compile-nat
 - Signed **64-bit** decimal integer literals, strict boolean literals and lexical variables.
 - Checked `+`, `-`, `*`, unary `+`/`-`, and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Equality of booleans and logical `not` are supported.
 - `let`/localized declaration, assignment with unchanged value type, `if`/`elif`/`else`, `while`, `for` over signed `range(...)`, `break`, `continue`.
-- **`print(...)`** accepts zero or more positional arguments: signed integer or boolean expressions and **direct UTF-8 string literals**. Values are separated by one space and terminated with a newline; `print()` outputs a blank line. Escapes `\\n`, `\\t`, `\\"`, `\\'` and `\\\\` follow the Rust evaluator. Numeric, boolean, text, separator and newline output uses Linux `write(1, ...)`, with literal bytes stored in `.rodata` as numeric `.byte` directives.
+- **`print(...)`** accepts zero or more positional arguments: signed integer or boolean expressions, **UTF-8 string literals and string-valued variables**. Values are separated by one space and terminated with a newline; `print()` outputs a blank line. Escapes `\\n`, `\\t`, `\\"`, `\\'` and `\\\\` follow the Rust evaluator. Numeric, boolean, text, separator and newline output uses Linux `write(1, ...)`, with literal bytes stored in `.rodata` as numeric `.byte` directives.
 - **Top-level named functions defined before use**, accepting up to 32 positional signed i64 **or boolean** arguments (inferred conservatively from typed uses) and returning an explicit signed i64 **or boolean** value on every control-flow path. Chained calls to earlier functions, function-local integer/boolean variables, if/else, while and for-range inside functions, and expression-level calls are compiled directly to native x86-64 machine code. A maximum of 32 functions is supported.
 
 Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `range(start, stop, step)` use one-time source-order integer argument evaluation. Iterator variables are lexically scoped and shadow same-named outer variables without destroying them; nested `for` and `while` loops have correct `break`/`continue` handling. Zero step exits with process status **6**, while range iterator overflow ends the range without wrapping. The i64-specific range boundary is narrower than the i128 bytecode/evaluator domain; out-of-i64 literals are rejected during compilation. Tests compare actual linked Linux ELF output to the Rust evaluator for `ai`, Slovak and English. 
 
-Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, text function parameters, uninferrable boolean parameters, text return values, mixed integer/boolean return paths, floating-point numbers, dynamic string variables/operations, lists, null literals, first-class functions, typed declarations and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, text function parameters, uninferrable boolean parameters, text return values, mixed integer/boolean return paths, floating-point numbers, text concatenation/comparison and general dynamic string operations, lists, null literals, first-class functions, typed declarations and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
+
+## Native UTF-8 text bindings (experimental, PR #40)
+
+The standalone ELF backend now supports `let text = "Hello"`, `let copy = text`, `text = "New"`, `print(text, copy)` and lexically shadowed text bindings in nested loops, conditionals and function-local bodies. A string expression provides **(UTF-8 data pointer, byte length)** using x86-64 registers; the compiler stores both values in two adjacent stack words. All source text remains immutable in ELF `.rodata`, so reassignment changes the pointer/length only. UTF-8 byte lengths (not character counts) are passed directly to Linux `write`; empty and Unicode text remain correct.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_variables_sk.nbd native-vars
+./native-vars
+```
+
+**Unsupported:** string concatenation/comparisons, native string parameters or returns, typed declarations, changing a variable's type and general heap-allocated strings. Operations that cannot be compiled correctly fail rather than silently performing pointer equality. New integration tests run actual ELF files and compare stdout byte-for-byte with the Rust evaluator for `ai`, `sk`, `en` (including loop, function, shadowing and copy/reassignment). Verification pending.
 
 ## Native UTF-8 output and mixed arguments
 
@@ -45,7 +57,7 @@ cargo run --release --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text
 ```
 
-**Limit:** string-valued variables, text concatenation and returning strings from native functions are still rejected. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops. All four workflows passed, including [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) in [PR #39](https://github.com/siposboris/NOBODY/pull/39).
+**Limit:** text concatenation/comparison and returning strings from native functions are still rejected; simple text variables and reassignment are available in PR #40. This is an output feature, not a complete native string type. The new ELF output is checked against the independent Rust evaluator for `ai`, `sk` and `en`, including Unicode, escaped literals, blank lines, mixed types and loops. All four workflows passed, including [Rust CI #42697321428](https://github.com/siposboris/NOBODY/actions/runs/42697321428) in [PR #39](https://github.com/siposboris/NOBODY/pull/39).
 
 ## Independent native function call frames
 
