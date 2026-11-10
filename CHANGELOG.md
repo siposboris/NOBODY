@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Unicode scalar text length in Rust evaluator and native ELF (2026-11-10; CI pending)
+
+- Implemented localized `len(text)` / Slovak `dlzka(text)`: counts Unicode scalar values, not UTF-8 bytes or grapheme clusters.
+- Standalone ELF uses a native bounded byte-loop; output parity tests cover `ai`, `sk`, `en`, UTF-8, empty literals, text variables, and text function arguments/returns.
+- Invalid arity or nontext argument produces numbered errors. This does not implement Unicode grapheme segmentation, FFI or full text indexing.
+
+
 ## Unreleased — native typed UTF-8 string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44))
 
 - Extended standalone Linux x86-64 native function calls for explicit `str` parameters and return values using two-word UTF-8 pointer/length arguments and `rax`/`rdx` return pairs.
