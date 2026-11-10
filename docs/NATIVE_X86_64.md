@@ -35,7 +35,7 @@ Supported **native signed `for ... in range(stop)`**, `range(start, stop)` and `
 
 Unsupported features are rejected at compile time: arbitrary iterables, recursive or forward calls, functions reading global bindings, closures and nested function definitions, implicit `null` returns, unannotated text function parameters, uninferrable boolean parameters, mixed integer/boolean return paths, floating-point numbers, string ordering and general dynamic string operations beyond concatenation and equality, lists, null literals, first-class functions, typed declarations and mutable variable type changes. Do not infer the complete language is native-compiled from this milestone.
 
-## Native text arguments and return values (experimental; PR #44, CI pending)
+## Native text arguments and return values (experimental; verified PR #44)
 
 Functions declared before use may now accept **explicitly annotated `str` parameters** and return `str` values. Each string argument occupies two stack words (address, UTF-8 byte count) whereas `int` and `bool` occupy one; the native compiler reserves the corresponding local parameter slots, computes offsets for mixed argument layouts and reclaims the exact call-frame size. String results use `rax` and `rdx`, preserving pointer/length through nested calls and text concatenation. Wrong argument types and declared return-type mismatches reject compilation.
 
@@ -45,7 +45,7 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./native-text-call
 ```
 
-This is an internal ABI, **not** C interoperability, first-class functions or heap-based strings. Native recursion, closures, unknown/forward calls, implicit return `null`, and unannotated text parameter inference remain unsupported. Real ELF output is checked against the separate Rust evaluator across `ai`, Slovak and English; CI pending.
+This is an internal ABI, **not** C interoperability, first-class functions or heap-based strings. Native recursion, closures, unknown/forward calls, implicit return `null`, and unannotated text parameter inference remain unsupported. Real ELF output is checked against the separate Rust evaluator across `ai`, Slovak and English. All four GitHub workflows passed including [Rust CI #42766777167](https://github.com/siposboris/NOBODY/actions/runs/42766777167) in [PR #44](https://github.com/siposboris/NOBODY/pull/44).
 
 ## Native text concatenation and content equality (experimental; PR #41, verified)
 
