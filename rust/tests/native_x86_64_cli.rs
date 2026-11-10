@@ -73,6 +73,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_text_variables_ai.nbd"),
         ("sk", "native_text_variables_sk.nbd"),
         ("en", "native_text_variables_en.nbd"),
+        ("ai", "native_text_ops_ai.nbd"),
+        ("sk", "native_text_ops_sk.nbd"),
+        ("en", "native_text_ops_en.nbd"),
         ("sk", "native_typed_signatures_sk.nbd"),
         ("en", "native_typed_signatures_en.nbd"),
     ] {
@@ -210,8 +213,6 @@ fn native_text_ops_fail_closed_when_not_supported() {
     let output = tmp.join("program");
     for program in [
         "let message = \"Ahoj\"\nmessage = 3\nprint(message)",
-        "let message = \"Ahoj\"\nprint(message + \"!\")",
-        "let message = \"Ahoj\"\nprint(message == \"Ahoj\")",
         "fn f(message: str): int { return 1 }\nprint(f(\"Ahoj\"))",
     ] {
         std::fs::write(&source, program).unwrap();
@@ -224,6 +225,80 @@ fn native_text_ops_fail_closed_when_not_supported() {
         assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
     }
     std::fs::remove_dir_all(tmp).unwrap();
+}
+
+#[test]
+fn real_elf_text_operations_match_interpreter_for_ai_sk_en() {
+    for (profile, filename) in [
+        ("ai", "native_text_ops_ai.nbd"),
+        ("sk", "native_text_ops_sk.nbd"),
+        ("en", "native_text_ops_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{filename}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let compiled_file = temp.join("text-operations");
+        let compilation = compile(profile, Path::new(&source), &compiled_file);
+        assert!(
+            compilation.status.success(),
+            "{filename}: {}",
+            String::from_utf8_lossy(&compilation.stderr)
+        );
+        let elf = std::fs::read(&compiled_file).unwrap();
+        assert!(elf.starts_with(b"\x7fELF"));
+        let machine = Command::new(&compiled_file).output().unwrap();
+        let reference = nobody(&["run", profile, &source]);
+        assert!(machine.status.success(), "{filename}: {:?}", machine.status);
+        assert!(
+            reference.status.success(),
+            "{filename}: {}",
+            String::from_utf8_lossy(&reference.stderr)
+        );
+        assert_eq!(
+            machine.stdout, reference.stdout,
+            "{filename}: stdout parity"
+        );
+        assert!(machine
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(machine
+            .stdout
+            .windows("true false".len())
+            .any(|x| x == b"true false"));
+        assert!(machine
+            .stdout
+            .windows(".global malicious".len())
+            .any(|x| x == b".global malicious"));
+        let generated = nobody(&["native-asm", profile, &source]);
+        assert!(generated.status.success());
+        let assembly = String::from_utf8(generated.stdout).unwrap();
+        assert!(assembly.contains("call nobody_text_concat"));
+        assert!(assembly.contains("call nobody_text_equal"));
+        assert!(!assembly.contains(".global malicious"));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn native_text_arena_exhaustion_has_finite_nonzero_exit() {
+    let temp = temporary();
+    let source = temp.join("text-arena.nbd");
+    let binary = temp.join("text-arena");
+    std::fs::write(
+        &source,
+        "let message = \"x\"\nfor n in range(22) { message = message + message }\nprint(message)",
+    )
+    .unwrap();
+    let compiled = compile("ai", &source, &binary);
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let output = Command::new(&binary).output().unwrap();
+    assert_eq!(output.status.code(), Some(7));
+    assert!(output.stderr.is_empty());
+    std::fs::remove_dir_all(temp).unwrap();
 }
 
 #[test]

@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Native UTF-8 text operations (experimental)
+
+The standalone ELF compiler now handles `let combined = left + right`, `combined == expected`, and `combined != other` for UTF-8 text variables. A fixed 1 MiB process-lifetime arena stores joined text without libc; allocation exhaustion terminates with exit status `7`. Equality compares all bytes, not addresses. Actual ELF/evaluator parity tests cover text within loops/functions and non-ASCII text across `ai`, `sk`, and `en`. String ordering, text-native function parameters/returns, garbage collection and unrestricted memory allocation remain out of scope.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
+  compile-native sk rust/examples/native_text_ops_sk.nbd native-text-ops
+./native-text-ops
+```
+
 ## Mutable UTF-8 text variables in real native ELF (experimental)
 
 The x86-64 compiler now allocates **two stack words per local text binding** (read-only UTF-8 data pointer plus byte length). It supports declarations, copying, reassignment, lexical shadowing and printing stored text inside loops and function-local bodies. The actual ELF must produce identical output to the Rust interpreter for the `ai`, `sk` and `en` acceptance fixtures. This feature does **not** add heap allocation: source string contents live in the ELF read-only data segment, while variables hold mutable pointer/length pairs.
@@ -14,11 +24,11 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 ./text-vars
 ```
 
-Text concatenation/comparison, changing a binding's value type, text arguments/returns and typed `str` declarations remain unsupported in the restricted ELF backend. Rust evaluator and ELF may differ outside the documented subset.
+Text concatenation (`+`) and bytewise equality/inequality (`==` / `!=`) now compile through a bounded 1 MiB arena and a native byte comparison routine; type changes, string parameters/returns and typed `str` declarations remain unsupported. Rust evaluator and ELF may differ outside the documented subset.
 
 ## Real standalone UTF-8 text output in native ELF
 
-The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Native UTF-8 text variables can now be copied and reassigned, including in loops and function-local scopes. Text concatenation, comparisons and native string parameters/returns remain unsupported.
+The Rust x86-64 backend now compiles `print("Hello, Nobody!", 42, true)` to direct Linux syscall output in a standalone ELF. Unicode, escaped text, blank lines and mixed arguments are verified against the Rust evaluator in `ai`, `sk` and `en`. The compiler embeds sanitized numeric string bytes in read-only data. Native UTF-8 text variables can now be copied and reassigned, including in loops and function-local scopes. Native text concatenation and equality are now supported. Ordering and native string parameters/returns remain unsupported.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
@@ -117,7 +127,7 @@ Actual ELF differential tests cover `ai`, `sk` and `en`, nested loops/calls and 
 
 ## Native lazy booleans and boolean-returning functions (experimental)
 
-The Linux ELF backend now supports true lazy boolean `and`/`or` with compile-time type checking. The right operand is skipped when the left decides the result; differential ELF fixtures verify this with arithmetic-overflow and function-side-effect cases. Native `print` now accepts zero or more signed i64/boolean expressions or direct UTF-8 string literals, joining them with spaces and a newline. String-valued variables and concatenation are still unsupported in native ELF. Functions accept i64 arguments and may explicitly return an i64 or bool, but all return paths must agree.
+The Linux ELF backend now supports true lazy boolean `and`/`or` with compile-time type checking. The right operand is skipped when the left decides the result; differential ELF fixtures verify this with arithmetic-overflow and function-side-effect cases. Native `print` now accepts zero or more signed i64/boolean expressions or direct UTF-8 string literals, joining them with spaces and a newline. String-valued variables, concatenation and equality are now supported in a bounded native ELF subset. Functions accept i64 arguments and may explicitly return an i64 or bool, but all return paths must agree.
 
 ```bash
 cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \

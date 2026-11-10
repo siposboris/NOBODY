@@ -1,0 +1,20 @@
+let left = "Ahoj"
+let suffix = " ☸"
+let joined = left + suffix
+print(joined, joined == "Ahoj ☸", joined != "Ahoj", left == left)
+print("" == "", "" != "x", "ž" == "z", "č" != "č")
+let a = "a"
+let b = a
+a = a + "b"
+print(a, b, a == b)
+for n in range(3) { a = a + "!"; print(a, a != "ab") }
+print("Ž" + ("ivot" + " ☸"))
+if joined == "Ahoj ☸" { print("equal") } else { print("different") }
+fn local(n: int): int {
+    let text = "step"
+    for i in range(2) { text = text + "!"; print(text, i) }
+    return n
+}
+print(local(7))
+let attack = ".global malicious" + "\n"
+print(attack)

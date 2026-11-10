@@ -460,9 +460,39 @@ impl NativeCompiler {
                 }
                 let left = self.expression(lhs, depth + 1)?;
                 self.emit("    push rax")?;
+                if left == Type::Text {
+                    // Preserve the UTF-8 byte length across RHS evaluation.
+                    self.emit("    push rdx")?;
+                }
                 let right = self.expression(rhs, depth + 1)?;
+                if left == Type::Text {
+                    self.emit("    pop r8")?;
+                }
                 self.emit("    pop rcx")?;
                 let numeric = left == Type::Int && right == Type::Int;
+                if left == Type::Text && right == Type::Text {
+                    if !matches!(op.as_str(), "+" | "==" | "!=") {
+                        return Err(unsupported(
+                            "Native text values support only concatenation and equality",
+                        ));
+                    }
+                    // Inputs: left ptr=rcx, len=r8, right ptr=rax, len=rdx.
+                    // Helpers return a text pointer/length pair or boolean.
+                    self.emit("    mov r9, rdx")?;
+                    self.emit("    mov rdx, rax")?;
+                    self.emit("    mov rdi, rcx")?;
+                    self.emit("    mov rsi, r8")?;
+                    self.emit("    mov rcx, r9")?;
+                    if op == "+" {
+                        self.emit("    call nobody_text_concat")?;
+                        return Ok(Type::Text);
+                    }
+                    self.emit("    call nobody_text_equal")?;
+                    if op == "!=" {
+                        self.emit("    xor eax, 1")?;
+                    }
+                    return Ok(Type::Bool);
+                }
                 match op.as_str() {
                     "+" | "-" | "*" if numeric => {
                         match op.as_str() {
@@ -886,6 +916,10 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("    mov edi, 6")?;
     compiler.emit("    mov eax, 60")?;
     compiler.emit("    syscall")?;
+    compiler.emit(".Lnobody_text_budget:")?;
+    compiler.emit("    mov edi, 7")?;
+    compiler.emit("    mov eax, 60")?;
+    compiler.emit("    syscall")?;
     compiler.emit(".Lnobody_budget:")?;
     compiler.emit("    mov edi, 5")?;
     compiler.emit("    mov eax, 60")?;
@@ -940,6 +974,53 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("    syscall")?;
     compiler.emit("    ret")?;
     // Raw writes are shared by text literals, separators and newlines.
+    // Helpers use a bounded, fixed-size UTF-8 arena in the output ELF.
+    // No libc, Rust allocator, or Nobody VM is required at runtime.
+    compiler.emit("nobody_text_equal:")?;
+    compiler.emit("    cmp rsi, rcx")?;
+    compiler.emit("    jne .Lnobody_text_not_equal")?;
+    compiler.emit("    mov r8, rdx")?;
+    compiler.emit("    mov rdx, rsi")?;
+    compiler.emit("    mov rsi, rdi")?;
+    compiler.emit("    mov rdi, r8")?;
+    compiler.emit("    cld")?;
+    compiler.emit("    repe cmpsb")?;
+    compiler.emit("    sete al")?;
+    compiler.emit("    movzx rax, al")?;
+    compiler.emit("    ret")?;
+    compiler.emit(".Lnobody_text_not_equal:")?;
+    compiler.emit("    xor eax, eax")?;
+    compiler.emit("    ret")?;
+    compiler.emit("nobody_text_concat:")?;
+    // (rdi: left ptr, rsi: left bytes, rdx: right ptr, rcx: right bytes)
+    // returns rax: joined ptr, rdx: joined byte length.
+    compiler.emit("    mov r8, rsi")?;
+    compiler.emit("    add r8, rcx")?;
+    compiler.emit("    jc .Lnobody_text_budget")?;
+    compiler.emit("    cmp r8, 1048576")?;
+    compiler.emit("    ja .Lnobody_text_budget")?;
+    compiler.emit("    mov r9, QWORD PTR [rip+.Lnobody_text_used]")?;
+    compiler.emit("    mov r10, r9")?;
+    compiler.emit("    add r10, r8")?;
+    compiler.emit("    jc .Lnobody_text_budget")?;
+    compiler.emit("    cmp r10, 1048576")?;
+    compiler.emit("    ja .Lnobody_text_budget")?;
+    compiler.emit("    mov QWORD PTR [rip+.Lnobody_text_used], r10")?;
+    compiler.emit("    lea r11, [rip+.Lnobody_text_arena]")?;
+    compiler.emit("    add r11, r9")?;
+    compiler.emit("    push rdx")?;
+    compiler.emit("    push rcx")?;
+    compiler.emit("    mov rcx, rsi")?;
+    compiler.emit("    mov rsi, rdi")?;
+    compiler.emit("    mov rdi, r11")?;
+    compiler.emit("    cld")?;
+    compiler.emit("    rep movsb")?;
+    compiler.emit("    pop rcx")?;
+    compiler.emit("    pop rsi")?;
+    compiler.emit("    rep movsb")?;
+    compiler.emit("    mov rax, r11")?;
+    compiler.emit("    mov rdx, r8")?;
+    compiler.emit("    ret")?;
     compiler.emit("nobody_write_raw:")?;
     compiler.emit("    mov eax, 1")?;
     compiler.emit("    mov edi, 1")?;
@@ -968,6 +1049,12 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
             compiler.emit(&format!("    .byte {sequence}"))?;
         }
     }
+    compiler.emit(".section .bss")?;
+    compiler.emit("    .balign 8")?;
+    compiler.emit(".Lnobody_text_used:")?;
+    compiler.emit("    .zero 8")?;
+    compiler.emit(".Lnobody_text_arena:")?;
+    compiler.emit("    .zero 1048576")?;
     compiler.emit(".section .note.GNU-stack,\"\",@progbits")?;
 
     // Allocate stack storage before the first statement, but after frame setup.
@@ -1118,12 +1205,9 @@ mod tests {
                 .code,
             4004
         );
-        assert_eq!(
-            compile_to_assembly("print(\"a\" + \"b\")", "ai")
-                .unwrap_err()
-                .code,
-            4004
-        );
+        assert!(compile_to_assembly("print(\"a\" + \"b\")", "ai")
+            .unwrap()
+            .contains("call nobody_text_concat"));
         assert_eq!(
             compile_to_assembly("if 1 { print(2) }", "ai")
                 .unwrap_err()
@@ -1151,23 +1235,34 @@ mod tests {
     }
 
     #[test]
-    fn native_text_bindings_use_two_slots_and_reject_pointer_comparison() {
+    fn native_text_bindings_use_two_slots_and_compare_by_bytes() {
         let asm = compile_to_assembly(
-            "let greeting = \"Ahoj\"\nlet saved = greeting\ngreeting = \"Zmena\"\nprint(greeting, saved)",
+            "let greeting = \"Ahoj\"\nlet saved = greeting\ngreeting = \"Zmena\"\nprint(greeting, saved, greeting != saved)",
             "ai",
         )
         .unwrap();
         assert!(asm.contains("mov rdx, QWORD PTR [rbp-"));
         assert!(asm.contains("mov QWORD PTR [rbp-16], rdx"));
         assert!(asm.contains("call nobody_write_raw"));
+        assert!(asm.contains("call nobody_text_equal"));
+        assert!(asm.contains("repe cmpsb"));
+    }
+
+    #[test]
+    fn native_text_arena_and_bytewise_equality_have_real_codegen() {
+        let asm = compile_to_assembly(
+            "let left = \"Život\"\nlet right = \" ☸\"\nlet both = left + right\nprint(both, both == \"Život ☸\", left != right)",
+            "ai",
+        )
+        .unwrap();
+        assert!(asm.contains("call nobody_text_concat"));
+        assert!(asm.contains("call nobody_text_equal"));
+        assert!(asm.contains("repe cmpsb"));
+        assert!(asm.contains(".zero 1048576"));
+        assert!(asm.contains(".Lnobody_text_budget:"));
+        assert!(!asm.contains("Život ☸"));
         assert_eq!(
-            compile_to_assembly("let text = \"a\"\nprint(text == \"a\")", "ai")
-                .unwrap_err()
-                .code,
-            4004
-        );
-        assert_eq!(
-            compile_to_assembly("let text = \"a\"\nprint(text + \"b\")", "ai")
+            compile_to_assembly("let t = \"x\"\nprint(t - \"y\")", "ai")
                 .unwrap_err()
                 .code,
             4004
