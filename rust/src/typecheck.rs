@@ -241,6 +241,23 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
     }
     Ok(())
 }
+/// Conditions in Nobody are strictly boolean at runtime. Reject only
+/// certainly non-boolean types so unknown values remain dynamically checked.
+fn check_condition_type(
+    condition: &IrExpr,
+    env: &BTreeMap<String, Type>,
+) -> Result<(), Diagnostic> {
+    let value = infer(condition, env);
+    if value != Type::Unknown && value != Type::Bool {
+        return Err(diagnostic(
+            1002,
+            format!("Control-flow condition must be bool, found {value:?}"),
+            "Use a comparison such as 'value > 0', or a boolean expression in if/while.",
+        ));
+    }
+    Ok(())
+}
+
 /// Verify calls to statically known user-defined functions only.
 /// Unknown and dynamic callees remain deferred.
 fn check_calls(expr: &IrExpr, functions: &BTreeMap<String, usize>) -> Result<(), Diagnostic> {
@@ -385,6 +402,7 @@ fn block(
                 for (condition, body) in branches {
                     check_calls(condition, functions)?;
                     check_binary_types(condition, env)?;
+                    check_condition_type(condition, env)?;
                     let mut local = env.clone();
                     let mut local_functions = functions.clone();
                     block(body, &mut local, &mut local_functions)?;
@@ -400,6 +418,7 @@ fn block(
             IrStatement::While { condition, body } => {
                 check_calls(condition, functions)?;
                 check_binary_types(condition, env)?;
+                check_condition_type(condition, env)?;
                 let mut local = env.clone();
                 let mut local_functions = functions.clone();
                 block(body, &mut local, &mut local_functions)?;
@@ -475,6 +494,50 @@ pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn certainly_nonboolean_if_and_while_conditions_are_rejected() {
+        for source in [
+            "if 1 { print(1) }",
+            "while 2 { print(1) }",
+            "if \"hello\" { print(1) }",
+            "if null { print(1) }",
+            "let value = 42\nwhile value { print(value) }",
+            "if len(\"str\") { print(1) }",
+            "if false { print(1) } elif 7 { print(2) }",
+        ] {
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn correct_boolean_conditions_and_unknown_values_still_pass() {
+        for (profile, valid, invalid) in [
+            (
+                "ai",
+                "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }",
+                "if 2 { print(2) }",
+            ),
+            (
+                "sk",
+                "nech x = 2\nak x > 0 { vypis(x) }\nkym nepravda { vypis(x) }",
+                "ak 2 { vypis(2) }",
+            ),
+            (
+                "en",
+                "let x = 2\nif x > 0 { print(x) }\nwhile false { print(x) }",
+                "if 2 { print(2) }",
+            ),
+        ] {
+            check_source(valid, profile).unwrap();
+            assert_eq!(check_source(invalid, profile).unwrap_err().code, 1002);
+        }
+        check_source("if uncertain { print(1) }\nwhile uncertain { break }", "ai").unwrap();
+    }
+
     #[test]
     fn len_builtin_infers_integer_result_for_localized_syntax() {
         for (profile, source) in [

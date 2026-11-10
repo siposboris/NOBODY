@@ -72,6 +72,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
+**Static boolean flow-condition diagnostics (2026-11-10; CI pending):** Rust type analysis now rejects provably non-boolean expressions in `if`, `elif`, and `while` with N1002 before execution, matching runtime semantics. Unknown/dynamic types remain allowed for runtime checking; regression tests exercise the three primary syntax profiles and text/number/null/length operands. This is not complete type inference or flow-sensitive narrowing.
+
+
+
 **Localized text length builtin contracts (2026-11-10; verified [PR #51](https://github.com/siposboris/NOBODY/pull/51), [Rust CI #42836145109](https://github.com/siposboris/NOBODY/actions/runs/42836145109)):** Conservative Rust typechecker now infers that `len(text)`/`dlzka(text)` returns an integer; it rejects certainly non-text arguments with N1002, wrong arity N1005 and assigning the result to incompatible typed declarations N1001. Unknown operands defer safely. Nested operations and three primary syntax profiles are covered by Rust tests. General polymorphic builtins and complete type inference remain open.
 
 
@@ -119,6 +123,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 **Explicit localized function signatures (2026-11-09; verified):** New backward-compatible source syntax `fn choose(flag: bool, a: int): int { ... }` and corresponding localized forms, e.g. `funkcia choose(flag: logicke, a: cele): cele { ... }`, record optional positional parameter annotations and return type in the shared canonical Rust IR. The evaluator checks declared argument and return types at runtime; the native x86-64 ELF backend uses explicit `int`/`bool` annotations to override conservative inference, checks typed calls and returns, and rejects unsupported `str`/`float` signatures. Existing untyped functions continue to run. Experimental `nobody.ast.v1` JSON export and bytecode VM **explicitly reject** typed signatures until their schemas and execution guards are extended; they never silently discard annotation metadata. The partial Rust type checker still does not prove whole-program signature soundness. Actual ELF/evaluator parity fixtures cover AI, English and Slovak; the broad Phase 4 checklist and percentage are unchanged. All four workflows passed, including [Rust CI #42660895804](https://github.com/siposboris/NOBODY/actions/runs/42660895804) with actual native ELF differential tests; merged in [PR #33](https://github.com/siposboris/NOBODY/pull/33). This is a partial implementation, not a completed typed-IR or self-hosting roadmap criterion.
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
+
+**Checked integer constant folding (2026-11-10; CI pending):** The Rust bytecode compiler evaluates safe literal-only signed `i128` unary and `+`/`-`/`*` arithmetic at compile time. Checked overflow is explicitly not folded; runtime faults and mixed dynamic expressions remain intact. Regression tests compare AST interpreter, VM, and persisted portable bytecode behavior across `ai`, `sk`, `en`. This is a narrow compiler optimization, not general optimization pipeline completion.
+
+
 
 **UTF-8 scalar length in portable bytecode (2026-11-10; verified [PR #50](https://github.com/siposboris/NOBODY/pull/50), [Rust CI #42836576430](https://github.com/siposboris/NOBODY/actions/runs/42836576430)):** Rust's Python-free VM now compiles localized `len(text)` into v3 opcode 27 (`TextLen`) with exact stack verification, runtime text-type check, Unicode scalar count, and v1/v2 wire-version rejection. Integration tests load stored `.nbc` in Slovak, English and `ai`, verifying output against the Rust AST interpreter. This closes a discrepancy among backends, not full VM or general string API parity.
 

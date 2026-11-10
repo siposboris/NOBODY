@@ -115,6 +115,45 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     diagnostic(4004, detail)
 }
 
+/// Fold only side-effect-free integer literals using checked arithmetic.
+/// Returning None retains normal bytecode execution (and its overflow error).
+/// No variables, calls, floats, text, booleans or division are optimized.
+fn folded_integer(expr: &IrExpr, depth: usize) -> Option<i128> {
+    if depth > MAX_EXPR_DEPTH {
+        return None;
+    }
+    match expr {
+        IrExpr::Number(value) => {
+            if !value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || byte == b'_')
+            {
+                return None;
+            }
+            value.replace('_', "").parse::<i128>().ok()
+        }
+        IrExpr::Unary { op, value } => {
+            let number = folded_integer(value, depth + 1)?;
+            match op.as_str() {
+                "+" => Some(number),
+                "-" => number.checked_neg(),
+                _ => None,
+            }
+        }
+        IrExpr::Binary { op, lhs, rhs } => {
+            let left = folded_integer(lhs, depth + 1)?;
+            let right = folded_integer(rhs, depth + 1)?;
+            match op.as_str() {
+                "+" => left.checked_add(right),
+                "-" => left.checked_sub(right),
+                "*" => left.checked_mul(right),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
 struct Compiler {
     code: Vec<Instruction>,
     // Lexical scope maps prevent a branch-local name from leaking after the
@@ -195,6 +234,11 @@ impl Compiler {
     fn expression(&mut self, expression: &IrExpr, depth: usize) -> Result<(), Diagnostic> {
         if depth > MAX_EXPR_DEPTH {
             return Err(diagnostic(4005, "Bytecode expression depth exceeded"));
+        }
+        if matches!(expression, IrExpr::Binary { .. } | IrExpr::Unary { .. }) {
+            if let Some(value) = folded_integer(expression, depth) {
+                return self.emit(Instruction::Push(value));
+            }
         }
         match expression {
             IrExpr::Number(text) => {
@@ -1183,6 +1227,62 @@ pub fn execute_source(source: &str, language: &str) -> Result<String, Diagnostic
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn constant_folding_emits_one_push_without_changing_runtime_results() {
+        for (profile, source) in [
+            (
+                "ai",
+                "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))",
+            ),
+            (
+                "sk",
+                "nech value = (2 + 3) * (7 - 4)\nvypis(value, -((8 + 1) * 2))",
+            ),
+            (
+                "en",
+                "let value = (2 + 3) * (7 - 4)\nprint(value, -((8 + 1) * 2))",
+            ),
+        ] {
+            let compiled = compile_source(source, profile).unwrap();
+            assert!(compiled.code.contains(&Instruction::Push(15)));
+            assert!(compiled.code.contains(&Instruction::Push(-18)));
+            assert!(!compiled.code.contains(&Instruction::Add));
+            assert!(!compiled.code.contains(&Instruction::Sub));
+            assert!(!compiled.code.contains(&Instruction::Mul));
+            assert_eq!(
+                execute(&compiled).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
+            let encoded = crate::bytecode_format::encode(&compiled).unwrap();
+            let loaded = crate::bytecode_format::decode(&encoded).unwrap();
+            assert_eq!(
+                execute(&loaded).unwrap(),
+                crate::evaluate_source(source, profile).unwrap()
+            );
+            assert_eq!(u16::from_le_bytes([encoded[8], encoded[9]]), 2);
+        }
+    }
+
+    #[test]
+    fn folding_never_masks_i128_overflow_or_proof_of_runtime_error() {
+        let overflow = "print(170141183460469231731687303715884105727 + 1 - 1)";
+        assert_eq!(
+            execute_source(overflow, "ai").unwrap_err().code,
+            crate::evaluate_source(overflow, "ai").unwrap_err().code
+        );
+        let compiled = compile_source(overflow, "ai").unwrap();
+        assert!(compiled.code.contains(&Instruction::Add));
+        assert!(compiled.code.contains(&Instruction::Sub));
+        let mixed = "let x = 4\nprint(x * (3 + 5))";
+        let bytecode = compile_source(mixed, "ai").unwrap();
+        assert!(bytecode.code.contains(&Instruction::Mul));
+        assert!(bytecode.code.contains(&Instruction::Push(8)));
+        assert_eq!(
+            execute(&bytecode).unwrap(),
+            crate::evaluate_source(mixed, "ai").unwrap()
+        );
+    }
 
     #[test]
     fn bytecode_matches_interpreter_on_ai_and_slovak() {
