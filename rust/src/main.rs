@@ -246,7 +246,10 @@ fn main() {
         return;
     }
     // .nbc never goes through source parsing or UTF-8 decoding.
-    if matches!(command, "run-compiled" | "verify-bytecode" | "inspect-bytecode") {
+    if matches!(
+        command,
+        "run-compiled" | "verify-bytecode" | "inspect-bytecode"
+    ) {
         let filename = &arguments[2];
         let file = fs::File::open(filename).unwrap_or_else(|error| {
             eprintln!("N9001: Cannot open {:?}: {error}", filename);
