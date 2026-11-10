@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47) (final integrated CI required))
+## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47), [Rust CI #42829747456](https://github.com/siposboris/NOBODY/actions/runs/42829747456))
 
 - Independent Rust bytecode compiler/VM supports `str` values, UTF-8 literals, concatenation, content equality and annotated `str` parameter/return checks.
 - Experimental portable `NOBBC001` v3 adds bounded `PushText` opcode and type tag 3; v1/v2 decoding remains, and integer/bool-only files still serialize as v2.
@@ -14,7 +14,7 @@
 - Negative tests reject a mixed syntax-profile keyword file. This is a machine-verified runtime subset, not a native-speaker review or proof of complete language parity.
 
 
-## Unreleased — Unicode scalar text length in Rust evaluator and native ELF (2026-11-10; CI pending)
+## Unreleased — Unicode scalar text length in Rust evaluator and native ELF (2026-11-10; verified [PR #46](https://github.com/siposboris/NOBODY/pull/46))
 
 - Implemented localized `len(text)` / Slovak `dlzka(text)`: counts Unicode scalar values, not UTF-8 bytes or grapheme clusters.
 - Standalone ELF uses a native bounded byte-loop; output parity tests cover `ai`, `sk`, `en`, UTF-8, empty literals, text variables, and text function arguments/returns.
