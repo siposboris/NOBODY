@@ -432,7 +432,10 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
                         )));
                     }
                 }
-                if export_contracts.insert((*module).to_owned(), public).is_some() {
+                if export_contracts
+                    .insert((*module).to_owned(), public)
+                    .is_some()
+                {
                     return Err(issue(format!(
                         "Duplicate export contract for module {module:?}"
                     )));
@@ -459,7 +462,9 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     if version == 4 {
         for name in export_contracts.keys() {
             if !specs.contains_key(name) {
-                return Err(issue(format!("Export contract names undeclared module {name:?}")));
+                return Err(issue(format!(
+                    "Export contract names undeclared module {name:?}"
+                )));
             }
         }
     }
