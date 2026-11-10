@@ -1,20 +1,20 @@
 # Changelog
 
-## Unreleased — verified bytecode metadata inspector (2026-11-10; CI pending)
+## Unreleased — verified bytecode metadata inspector (2026-11-10; verified [PR #57](https://github.com/siposboris/NOBODY/pull/57))
 
 - Added read-only `inspect-bytecode FILE.nbc` in the Rust CLI, reporting safe format/operation counts after full v1/v2/v3 decode and verification.
 - Never executes bytecode, prints untrusted literals or rewrites files; tests include real v2/v3 programs, corrupted/missing files and deterministic reinspection.
 - No claim of disassembly, runtime isolation or signed file authenticity.
 
 
-## Unreleased — static boolean checks for if/elif/while (2026-11-10; CI pending)
+## Unreleased — static boolean checks for if/elif/while (2026-11-10; verified [PR #56](https://github.com/siposboris/NOBODY/pull/56))
 
 - Rust `typecheck` rejects known non-boolean branch/loop conditions with N1002; previously the independent evaluator rejected them only during execution.
 - Preserved unknown dynamic-condition deferral; tests include `ai`, `sk`, `en` and `len(text)` expressions.
 - Full flow-sensitive type analysis remains open.
 
 
-## Unreleased — checked constant folding for Rust bytecode (2026-11-10; CI pending)
+## Unreleased — checked constant folding for Rust bytecode (2026-11-10; verified [PR #55](https://github.com/siposboris/NOBODY/pull/55))
 
 - Reduced pure integer literal arithmetic into single `Push` instructions without altering output for supported arithmetic expressions.
 - Used checked `i128` operations and preserved runtime overflow failures; no folding of calls, variables or unsupported operators.
