@@ -37,6 +37,7 @@
 | **N4003** | `RUN_LIMIT` | Prekročený limit vykonávania |
 | **N4004** | `RUN_CALL` | Neplatné volanie |
 | **N5001** | `AST_SCHEMA` | Neplatný AST dokument |
+| **N5002** | `FORMAT_DRIFT` | Súbor Nobody sa líši od kanonického formátu; spusti `format-source` a skontroluj výsledok |
 | **N9001** | `CLI_INPUT` | Neplatný vstup alebo konfigurácia |
 | **N9999** | `UNCLASSIFIED` | Doteraz nezaradená chyba |
 
