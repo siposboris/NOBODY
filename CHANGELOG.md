@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — read-only Rust formatter check (2026-11-10; CI pending)
+
+- Added `format-check PROFILE FILE.nbd`: non-mutating canonical formatting check with N5002 and nonzero exit status on drift, useful for CI.
+- Added `ai`, `sk`, `en` CLI regression tests for success, failure and idempotence.
+- This does not preserve original comments, implement LSP, or finish the whole formatter milestone.
+
+
 ## Unreleased — native UTF-8 concatenation and equality (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41))
 
 - Standalone Linux x86-64 ELF now performs `+`, `==` and `!=` on UTF-8 text literals and mutable text variables. Equality compares contents rather than pointers.
