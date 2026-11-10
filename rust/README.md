@@ -49,6 +49,22 @@ conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
 This does **not** establish native-speaker translation quality, full grammar
 coverage, internationalization of error messages or production-readiness.
 
+## Read-only bytecode metadata inspection without execution
+
+`nobody-rs inspect-bytecode FILE.nbc` loads at most 2 MiB and fully
+decodes/verifies experimental portable bytecode before printing safe,
+deterministic metadata (wire version, file size, main/function instruction
+counts, text literal and Unicode length opcode totals). It **never
+executes** the program or writes the file, and avoids echoing untrusted
+function names and string contents. Invalid/truncated files fail before
+printing metadata. This is diagnostic tooling, **not** an OS sandbox or
+cryptographic authentication.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  inspect-bytecode text.nbc
+```
+
 ## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
 
 The Python-free independent stack VM now executes UTF-8 text literals,
