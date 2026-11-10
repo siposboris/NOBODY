@@ -304,8 +304,14 @@ fn native_text_function_abi_is_real_and_matches_rust_evaluator() {
         assert!(native.status.success(), "{file}: {:?}", native.status);
         assert!(reference.status.success(), "{file}: {:?}", reference.status);
         assert_eq!(native.stdout, reference.stdout, "{file}: ABI parity");
-        assert!(native.stdout.windows("Život ☸".len()).any(|x| x == "Život ☸".as_bytes()));
-        assert!(native.stdout.windows("Nobody ☸".len()).any(|x| x == "Nobody ☸".as_bytes()));
+        assert!(native
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(native
+            .stdout
+            .windows("Nobody ☸".len())
+            .any(|x| x == "Nobody ☸".as_bytes()));
         std::fs::remove_dir_all(temporary).unwrap();
     }
 }
