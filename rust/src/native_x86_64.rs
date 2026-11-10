@@ -1113,7 +1113,7 @@ mod tests {
             4004
         );
         assert_eq!(
-            compile_to_assembly("let text = \"hello\"\nprint(text)", "ai")
+            compile_to_assembly("let text = \"hello\"\ntext = 7\nprint(text)", "ai")
                 .unwrap_err()
                 .code,
             4004
@@ -1144,6 +1144,30 @@ mod tests {
         );
         assert_eq!(
             compile_to_assembly("let x = 2\nx = false", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+    }
+
+    #[test]
+    fn native_text_bindings_use_two_slots_and_reject_pointer_comparison() {
+        let asm = compile_to_assembly(
+            "let greeting = \"Ahoj\"\nlet saved = greeting\ngreeting = \"Zmena\"\nprint(greeting, saved)",
+            "ai",
+        )
+        .unwrap();
+        assert!(asm.contains("mov rdx, QWORD PTR [rbp-"));
+        assert!(asm.contains("mov QWORD PTR [rbp-16], rdx"));
+        assert!(asm.contains("call nobody_write_raw"));
+        assert_eq!(
+            compile_to_assembly("let text = \"a\"\nprint(text == \"a\")", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("let text = \"a\"\nprint(text + \"b\")", "ai")
                 .unwrap_err()
                 .code,
             4004
