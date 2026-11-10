@@ -2,6 +2,23 @@
 
 **Decision (2026-11-08):** Rust is the temporary production-compiler implementation language. The long-term goal is a Nobody compiler and runtime written in Nobody itself. Python is legacy reference material, not the target runtime.
 
+## Multi-file Rust project compilation (experimental; 2026-11-10)
+
+The Rust compiler can now load a bounded `nobody.project.v1` manifest
+describing source files with explicit syntax profiles and a dependency graph.
+It validates and translates each module to canonical `ai`, checks its
+normalized IR, and produces one program runnable in the independent bytecode
+VM or compilable to both portable `.nbc` and Linux x86-64 standalone ELF.
+The project layer is Rust-only and does not rely on Python. CI acceptance
+uses a real three-module Slovak/`ai`/English fixture, a standalone ELF
+output comparison, and failures for cyclic dependencies, unsafe paths and
+duplicate declarations.
+
+This does **not** implement source-language `import` declarations,
+namespaced/isolated modules, separate object-file linking, stable project
+manifests, complete language grammar, compiler parity or self-hosting.
+Existing Python reference components must not be deleted on this evidence.
+
 ## Hard rules
 
 1. **New core implementation work goes to Rust**, not to newly written Python modules. Existing Python code is temporarily retained for comparison and to prevent data loss.
