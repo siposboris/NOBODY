@@ -36,12 +36,12 @@ fn setup(root: &Path) -> PathBuf {
     let math = root.join("math.nbd");
     let source = fs::read_to_string(&math)
         .unwrap()
+        .replace(
+            "funkcia doubled",
+            "funkcia secret(n: cele): cele { vrat n + 1 }\nfunkcia doubled",
+        )
         .replace("vrat step(n) + step(n)", "vrat step(secret(n)) + step(n)");
-    fs::write(
-        &math,
-        format!("{source}\nfunkcia secret(n: cele): cele {{ vrat n + 1 }}\n"),
-    )
-    .unwrap();
+    fs::write(&math, source).unwrap();
     let extra = root.join("extra.nbd");
     let source = fs::read_to_string(&extra).unwrap();
     fs::write(
