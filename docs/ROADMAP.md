@@ -104,6 +104,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**Portable bytecode UTF-8 strings (2026-11-10; CI pending):** The Python-free Rust bytecode VM now executes string literals, mutable text values, `+` joins, content equality, and typed `str` function calls and returns. Files carrying text are encoded with bounded, verified `NOBBC001` v3 text payload and `str` type tag; v1/v2 decoding remains supported, and integer/bool-only new files remain v2. Tests run stored `.nbc` v3 from disk and compare output against Rust AST interpretation in `ai`/`sk`/`en`, rejecting corrupted payloads. This is not a stable ABI or full self-hosting.
+
+
+
 **Native typed string function ABI (2026-11-10; verified [PR #44](https://github.com/siposboris/NOBODY/pull/44), [Rust CI #42766777167](https://github.com/siposboris/NOBODY/actions/runs/42766777167)):** Linux x86-64 generated programs now pass explicit UTF-8 `str` function parameters as address/length pairs and return `str` via `rax`/`rdx`. Earlier-declared functions mix `int`, `bool`, `str` positional arguments, support nested string-returning calls and concatenation, and check type mismatches at compilation. Cross-profile `ai`/`sk`/`en` fixtures compare real standalone ELF output to the separate Rust evaluator. This is an internal and incomplete ABI without recursion, closures, float, unannotated text inference or stable cross-platform compatibility. No broad roadmap checkbox closed.
 
 
