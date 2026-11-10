@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Unicode string length in portable bytecode (2026-11-10; CI pending)
+
+- Added `TextLen` experimental v3 bytecode opcode 27, matching Rust AST and Linux ELF `len(text)` Unicode scalar semantics.
+- Verified stack underflow, type and arity failures, and older-version opcode rejection; added stored-file `.nbc` vs AST/VM parity for `ai`, `sk`, `en`.
+- Does not imply grapheme counting, safe execution of untrusted bytecode or complete runtime parity.
+
+
 ## Unreleased — localized length builtin static type contracts (2026-11-10; CI pending)
 
 - Static Rust checker infers `len(text)` result type `Int` and validates arity (N1005), known primitive operand types (N1002) and incompatible typed assignments (N1001).

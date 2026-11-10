@@ -112,6 +112,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 4 — Compiler pipeline, runtime and self-hosting
 
+**UTF-8 scalar length in portable bytecode (2026-11-10; CI pending):** Rust's Python-free VM now compiles localized `len(text)` into v3 opcode 27 (`TextLen`) with exact stack verification, runtime text-type check, Unicode scalar count, and v1/v2 wire-version rejection. Integration tests load stored `.nbc` in Slovak, English and `ai`, verifying output against the Rust AST interpreter. This closes a discrepancy among backends, not full VM or general string API parity.
+
+
+
 **Portable bytecode UTF-8 strings (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47), [Rust CI #42829747456](https://github.com/siposboris/NOBODY/actions/runs/42829747456)):** The Python-free Rust bytecode VM now executes string literals, mutable text values, `+` joins, content equality, and typed `str` function calls and returns. Files carrying text are encoded with bounded, verified `NOBBC001` v3 text payload and `str` type tag; v1/v2 decoding remains supported, and integer/bool-only new files remain v2. Tests run stored `.nbc` v3 from disk and compare output against Rust AST interpretation in `ai`/`sk`/`en`, rejecting corrupted payloads. This is not a stable ABI or full self-hosting.
 
 

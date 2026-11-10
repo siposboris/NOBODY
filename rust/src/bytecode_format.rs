@@ -92,6 +92,7 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
         Mul => out.push(8),
         Neg => out.push(9),
         Not => out.push(10),
+        TextLen => out.push(27),
         Eq => out.push(11),
         Ne => out.push(12),
         Lt => out.push(13),
@@ -179,12 +180,12 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
     let text_program = program
         .code
         .iter()
-        .any(|op| matches!(op, Instruction::PushText(_)))
+        .any(|op| matches!(op, Instruction::PushText(_) | Instruction::TextLen))
         || program.functions.iter().any(|function| {
             function
                 .code
                 .iter()
-                .any(|op| matches!(op, Instruction::PushText(_)))
+                .any(|op| matches!(op, Instruction::PushText(_) | Instruction::TextLen))
                 || function.return_type == Some(ValueType::Str)
                 || function.parameter_types.contains(&Some(ValueType::Str))
         });
@@ -320,6 +321,7 @@ impl<'a> Reader<'a> {
             }),
             24 => Ok(Return),
             25 => Ok(Halt),
+            27 if self.version == TEXT_WIRE_VERSION => Ok(TextLen),
             26 if self.version == TEXT_WIRE_VERSION => {
                 let size = self.u32()?;
                 if size > 1_048_576 {
@@ -454,6 +456,30 @@ mod tests {
         let split = bytes.len() - 8;
         let hash = checksum(&bytes[..split]);
         bytes[split..].copy_from_slice(&hash.to_le_bytes());
+    }
+
+    #[test]
+    fn unicode_length_opcode_v3_roundtrips_across_wire_and_runtime() {
+        let source =
+            "fn count(s: str): int { return len(s) }\nprint(count(\"Život ☸\"), len(\"👩‍💻\"))";
+        let compiled = compile_source(source, "ai").unwrap();
+        let wire = encode(&compiled).unwrap();
+        assert_eq!(u16::from_le_bytes([wire[8], wire[9]]), TEXT_WIRE_VERSION);
+        let restored = decode(&wire).unwrap();
+        assert!(restored.functions[0].code.contains(&Instruction::TextLen));
+        assert_eq!(execute(&restored).unwrap(), "7 3\n");
+        assert_eq!(encode(&restored).unwrap(), wire);
+    }
+
+    #[test]
+    fn older_wire_versions_cannot_smuggle_text_length_opcode() {
+        let old = compile_source("print(3)", "ai").unwrap();
+        let mut bytes = encode(&old).unwrap();
+        assert_eq!(u16::from_le_bytes([bytes[8], bytes[9]]), WIRE_VERSION);
+        // Header 24 bytes; Push(i128) occupies 17 bytes, then Print opcode.
+        bytes[41] = 27;
+        refresh_checksum(&mut bytes);
+        assert_eq!(decode(&bytes).unwrap_err().code, 4004);
     }
 
     #[test]

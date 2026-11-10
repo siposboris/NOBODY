@@ -81,6 +81,7 @@ Every instruction starts with one opcode byte, optionally followed by fixed-size
 | 24 | Return | none |
 | 25 | Halt | none |
 | 26 | PushText (**v3 only**) | UTF-8 byte count u32, then that many UTF-8 bytes |
+| 27 | TextLen (**v3 only**) | none; replaces a text stack value with its Unicode scalar count |
 
 ## Limits and validation
 

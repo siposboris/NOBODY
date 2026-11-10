@@ -4,6 +4,16 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Verified UTF-8 text length bytecode opcode (experimental)
+
+The independent Rust VM now compiles `len(text)` (Slovak `dlzka`)
+into a dedicated stack instruction, serialized as experimental `.nbc`
+**v3 opcode 27**. It counts Unicode scalar values, not bytes or grapheme
+clusters; malformed argument types produce N4004 and arity errors N4007.
+The verifier rejects stack underflow and earlier file versions cannot carry
+the v3-only opcode. Disk-backed test fixtures verify byte-for-byte output
+agreement with the independent Rust AST interpreter in `ai`/`sk`/`en`.
+
 ## UTF-8 Unicode scalar length in standalone ELF (experimental)
 
 `len("Život ☸")` (Slovak `dlzka`) returns 7: Unicode scalar count,
