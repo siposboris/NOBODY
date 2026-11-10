@@ -1334,8 +1334,14 @@ mod tests {
         .unwrap();
         assert!(asm.contains("call nobody_text_length"));
         assert!(asm.contains("and r8d, 192"));
-        assert_eq!(compile_to_assembly("print(len(3))", "ai").unwrap_err().code, 4004);
-        assert_eq!(compile_to_assembly("print(len())", "ai").unwrap_err().code, 4007);
+        assert_eq!(
+            compile_to_assembly("print(len(3))", "ai").unwrap_err().code,
+            4004
+        );
+        assert_eq!(
+            compile_to_assembly("print(len())", "ai").unwrap_err().code,
+            4007
+        );
     }
 
     #[test]
