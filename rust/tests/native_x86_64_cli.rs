@@ -191,10 +191,14 @@ fn native_text_variables_compile_and_match_evaluator() {
             String::from_utf8_lossy(&rust.stderr)
         );
         assert_eq!(direct.stdout, rust.stdout, "{filename}: interpreter parity");
-        assert!(direct.stdout.windows("Život ☸".len()).any(|x| x == "Život ☸".as_bytes()));
-        assert!(direct.stdout.windows(".global not_executable".len()).any(|x| {
-            x == b".global not_executable"
-        }));
+        assert!(direct
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(direct
+            .stdout
+            .windows(".global not_executable".len())
+            .any(|x| { x == b".global not_executable" }));
         std::fs::remove_dir_all(temp).unwrap();
     }
 }
