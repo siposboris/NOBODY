@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47) (final integrated CI required))
+
+- Independent Rust bytecode compiler/VM supports `str` values, UTF-8 literals, concatenation, content equality and annotated `str` parameter/return checks.
+- Experimental portable `NOBBC001` v3 adds bounded `PushText` opcode and type tag 3; v1/v2 decoding remains, and integer/bool-only files still serialize as v2.
+- Disk-file CLI tests for `ai`/`sk`/`en` compare AST and in-memory VM execution with decoded v3 execution. Invalid UTF-8/corruption rejected; stable ABI, sandboxing and self-hosting remain open.
+
+
 ## Unreleased — all-40-profile runtime and real ELF differential regression (2026-11-10; verified [PR #48](https://github.com/siposboris/NOBODY/pull/48))
 
 - Added generated nontrivial source programs for each of 40 syntax profiles and matching canonical IR, parser, static checker and Rust evaluator checks.

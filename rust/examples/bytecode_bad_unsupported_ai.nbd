@@ -1,1 +1,1 @@
-print("string values are not supported by the bytecode VM")
+print(1.5)

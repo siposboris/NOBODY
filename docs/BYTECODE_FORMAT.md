@@ -1,4 +1,4 @@
-# Nobody experimental binary bytecode v2 (.nbc)
+# Nobody experimental binary bytecode v2/v3 (.nbc)
 
 **Status:** experimental platform-neutral wire format for the supported Rust VM subset. Not a cross-version compatibility promise, native machine-code compiler, or self-hosting.
 
@@ -15,6 +15,31 @@ cargo run --locked --manifest-path rust/Cargo.toml --bin nobody -- \
 
 The compiler creates a new `.nbc` file and refuses to overwrite existing paths. The verification command validates the file without running it. The execution command needs neither the original `.nbd` source, language-profile setting, nor Python.
 
+## UTF-8 text values in v3 (experimental)
+
+The independent Rust bytecode VM now supports string literals, string-valued
+variables, string `+` concatenation, `==`/`!=` comparisons and typed
+`str` function parameters/returns. The in-memory bytecode verifier checks stack
+discipline as before; at runtime string joins are limited to 1 MiB per value
+and the existing finite instruction/output budgets still apply.
+
+The compiler emits **v3 only when needed** (text opcode or `str` signature).
+Programs containing only pre-existing integer/boolean instructions continue
+to produce exactly the previous **v2** format. Decoder reads v1/v2/v3, and
+rejects invalid UTF-8, truncated lengths, unknown tags, version-incompatible
+opcodes and incorrect checksums. Text is serialized as a checked u32 byte
+count and raw UTF-8; there is no memory address, Rust pointer or runtime heap
+layout in the file.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-bytecode sk rust/examples/bytecode_text_sk.nbd text.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  verify-bytecode text.nbc
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  run-compiled text.nbc
+```
+
 ## Binary layout
 
 All multi-byte fields are little-endian. Counts, slots, indexes and jump targets are unsigned 32-bit integers. Numeric literals are signed 128-bit two's-complement values. No Rust struct layouts or native addresses are serialized.
@@ -22,7 +47,7 @@ All multi-byte fields are little-endian. Counts, slots, indexes and jump targets
 | Field | Bytes | Meaning |
 |---|---:|---|
 | Magic | 8 | ASCII `NOBBC001` |
-| Format version | 2 | u16, emits **2**, decoder accepts **1** or **2** |
+| Format version | 2 | u16, emits **2** for programs without strings, **3** for string-capable programs; decoder accepts **1**, **2** and **3** |
 | Reserved flags | 2 | u16, exactly 0 |
 | Root slot count | 4 | u32 |
 | Root instruction count | 4 | u32 |
@@ -31,7 +56,7 @@ All multi-byte fields are little-endian. Counts, slots, indexes and jump targets
 | Function entries | variable | exactly the recorded function count |
 | Checksum | 8 | u64 FNV-1a of all preceding bytes |
 
-Each **v2** function entry consists of a u16 UTF-8 function-name byte length, that many name bytes, a u32 parameter count, u32 slot count, u32 instruction count, **one byte type tag for each parameter**, **one byte return type tag**, then the corresponding instruction stream. The first parameter-count slots of a function are initialized by the caller. Tags are: `0` = no annotation, `1` = `int` (signed i128 VM values), `2` = `bool`. The decoder rejects any unknown type tag. Function arguments are checked against their tags at each call, and return values are checked before returning to the caller. No implicit conversions are permitted.
+Each **v2/v3** function entry consists of a u16 UTF-8 function-name byte length, that many name bytes, a u32 parameter count, u32 slot count, u32 instruction count, **one byte type tag for each parameter**, **one byte return type tag**, then the corresponding instruction stream. The first parameter-count slots of a function are initialized by the caller. Tags are: `0` = no annotation, `1` = `int` (signed i128 VM values), `2` = `bool`; **v3** additionally supports tag `3` = UTF-8 `str`. Older v2 files reject that tag. The decoder rejects any unknown type tag. Function arguments are checked against their tags at each call, and return values are checked before returning to the caller. No implicit conversions are permitted.
 
 **Legacy v1 compatibility:** v1 used the same magic, top-level header, instruction opcodes and function fields, but had **no type tags**. The v2 decoder continues to load v1 files and assigns every parameter and return an explicit *unannotated* metadata value. Re-encoding a loaded file produces v2 output; the original file is never rewritten automatically. The internal Rust VM version constant `nobody.bytecode.experimental.v1` is separate from this on-disk wire version. This version-2 implementation was verified in [Rust CI #42666833278](https://github.com/siposboris/NOBODY/actions/runs/42666833278) and merged in [PR #34](https://github.com/siposboris/NOBODY/pull/34).
 
@@ -55,16 +80,17 @@ Every instruction starts with one opcode byte, optionally followed by fixed-size
 | 23 | Call | function ID u32, argument count u32 |
 | 24 | Return | none |
 | 25 | Halt | none |
+| 26 | PushText (**v3 only**) | UTF-8 byte count u32, then that many UTF-8 bytes |
 
 ## Limits and validation
 
 - 2 MiB maximum total file size, including checksum.
 - Up to 1,024 function entries, each with at most 10,000 instructions.
 - Up to 1,024 local variable slots per unit; 1–256 UTF-8 bytes per function name.
-- Unknown versions/flags/opcodes/type tags, noncanonical booleans, truncation, trailing data, invalid jumps and damaged checksums are rejected.
+- Unknown versions/flags/opcodes/type tags, noncanonical booleans, truncation, trailing data, invalid UTF-8 text, invalid jumps and damaged checksums are rejected. Opcode 26 and `str` type tag 3 are illegal before v3.
 - The existing control-flow verifier checks stack shape, definite slot initialization, function-signature length and call arity, return discipline and legal termination in each unit. The runtime checks annotated argument and return **value types**.
 - No fallback to source interpretation or Python when decoding fails.
 
 **Security:** FNV-1a is a noncryptographic checksum for accidental damage, not authentication or a signature; it can be recomputed trivially. A passing verifier is not an operating-system sandbox. Do not execute untrusted bytecode without external isolation.
 
-The format is deterministic: equivalent supported Nobody source programs in Slovak, English and `ai` can generate identical bytes. Bytecode has no embedded source or language profile. It remains an *experimental subset*: `int` and `bool` function signatures are implemented in v2, but `str`/`float` annotations, closures, recursion, general type checking, a stable cross-version ABI, native machine code from bytecode and self-hosting are still missing. Experimental `nobody.ast.v1` JSON export still rejects typed function signatures to avoid losing metadata.
+The format is deterministic: equivalent supported Nobody source programs in Slovak, English and `ai` can generate identical bytes. Bytecode has no embedded source or language profile. It remains an *experimental subset*: `int` and `bool` function signatures are implemented in v2; `str` function signatures, UTF-8 string literals, concatenation and equality are implemented in v3. `float` signatures, generalized text operations, closures, recursion, complete typing, a stable cross-version ABI, native machine code from bytecode and self-hosting remain missing. Experimental `nobody.ast.v1` JSON export still rejects typed function signatures to avoid losing metadata.

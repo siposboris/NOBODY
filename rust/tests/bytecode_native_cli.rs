@@ -330,9 +330,15 @@ fn typed_bytecode_rejects_incorrect_arguments_and_return_values() {
         "{}/examples/eval_typed_string_ai.nbd",
         env!("CARGO_MANIFEST_DIR")
     );
-    let unsupported = launch(&["run-bytecode", "ai", &source]);
-    assert!(!unsupported.status.success());
-    assert!(String::from_utf8_lossy(&unsupported.stderr).contains("N4004"));
+    let bytecode_result = launch(&["run-bytecode", "ai", &source]);
+    let ast_result = launch(&["run", "ai", &source]);
+    assert!(
+        bytecode_result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&bytecode_result.stderr)
+    );
+    assert!(ast_result.status.success());
+    assert_eq!(bytecode_result.stdout, ast_result.stdout);
 }
 
 #[test]

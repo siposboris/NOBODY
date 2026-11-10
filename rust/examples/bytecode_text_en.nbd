@@ -1,0 +1,13 @@
+function combine(left: str, right: str): str { return left + right }
+function echo(value: str): str { return value }
+let title = "Život"
+let suffix = " ☸"
+let result = combine(title, suffix)
+print(result, result == "Život ☸", title != result)
+print(echo(""), echo("quoted \"text\""), "👩‍💻")
+let current = ""
+for loop_ix in range(3) {
+    current = current + "!"
+    print(loop_ix, current)
+}
+print(combine(current, result))
