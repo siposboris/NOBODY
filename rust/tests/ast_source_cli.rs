@@ -91,7 +91,10 @@ fn format_check_is_read_only_canonical_and_profile_aware() {
         let original_bytes = fs::read(&path).unwrap();
         let args = ["format-check", profile, path.to_str().unwrap()];
         let unformatted = run(&args);
-        assert!(!unformatted.status.success(), "{profile}: source not canonical");
+        assert!(
+            !unformatted.status.success(),
+            "{profile}: source not canonical"
+        );
         assert!(unformatted.stdout.is_empty());
         assert!(String::from_utf8_lossy(&unformatted.stderr).contains("N5002"));
         assert_eq!(fs::read(&path).unwrap(), original_bytes);
