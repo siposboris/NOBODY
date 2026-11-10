@@ -1361,7 +1361,7 @@ print(choose(false, 3, 9))";
             "fn identity(flag: bool): bool { return flag }\nprint(identity(4))",
             "fn identity(flag: bool): int { return flag }\nprint(identity(true))",
             "fn f(n: int): bool { return n > 0 }\nprint(f(true))",
-            "fn f(n: str): int { return 4 }\nprint(f(\"text\"))",
+            "fn f(n: str): int { return 4 }\nprint(f(true))",
             "fn f(n: float): int { return 4 }\nprint(f(3))",
             "fn f(n: bool): bool { return n + 1 }\nprint(f(true))",
         ] {
@@ -1370,6 +1370,29 @@ print(choose(false, 3, 9))";
                 4004,
                 "{source}"
             );
+        }
+    }
+
+    #[test]
+    fn native_typed_string_function_abi_allocates_two_words_per_string() {
+        let source = "fn pair(first: str, count: int, second: str): str { return first + second }\nprint(pair(\"Život\", 42, \" ☸\"))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_text_concat"));
+        assert!(asm.contains("mov rax, QWORD PTR [rbp+"));
+        assert!(asm.contains("push rdx"));
+        assert!(asm.contains("add rsp, 40"));
+        assert!(asm.contains("mov rdx, QWORD PTR [rbp-"));
+    }
+
+    #[test]
+    fn native_typed_text_function_calls_reject_wrong_types() {
+        for source in [
+            "fn identity(text: str): str { return text }\nprint(identity(2))",
+            "fn identity(text: str): str { return text }\nprint(identity(true))",
+            "fn identity(text: str): int { return text }\nprint(identity(\"ok\"))",
+            "fn bad(text: str): str { return text + true }\nprint(bad(\"ok\"))",
+        ] {
+            assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
         }
     }
 
