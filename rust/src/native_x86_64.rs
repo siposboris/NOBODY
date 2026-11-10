@@ -37,6 +37,8 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
 enum Type {
     Int,
     Bool,
+    // A borrowed UTF-8 byte slice: pointer in rax, length in rdx.
+    Text,
 }
 
 #[derive(Clone, Copy)]
@@ -331,9 +333,8 @@ impl NativeCompiler {
         }
         let label = self.new_label();
         self.static_texts.push((label, value.as_bytes().to_vec()));
-        self.emit(&format!("    lea rsi, [rip+.L{label}]"))?;
-        self.emit(&format!("    mov edx, {}", value.len()))?;
-        self.emit("    call nobody_write_raw")
+        self.emit(&format!("    lea rax, [rip+.L{label}]"))?;
+        self.emit(&format!("    mov edx, {}", value.len()))
     }
 
     fn new_label(&mut self) -> usize {
@@ -412,9 +413,17 @@ impl NativeCompiler {
                 self.emit(if *value { "    mov eax, 1" } else { "    xor eax, eax" })?;
                 Ok(Type::Bool)
             }
+            IrExpr::String(raw) => {
+                let decoded = crate::evaluator::literal_text(raw)?;
+                self.emit_static_text(&decoded)?;
+                Ok(Type::Text)
+            }
             IrExpr::Name(Name::User(name)) => {
                 let binding = self.lookup(name).ok_or_else(|| issue(4001, format!("Unknown native variable {name:?}")))?;
                 self.emit(&format!("    mov rax, QWORD PTR [rbp-{}]", (binding.slot + 1) * 8))?;
+                if binding.kind == Type::Text {
+                    self.emit(&format!("    mov rdx, QWORD PTR [rbp-{}]", (binding.slot + 2) * 8))?;
+                }
                 Ok(binding.kind)
             }
             IrExpr::Unary { op, value } => {
@@ -467,7 +476,7 @@ impl NativeCompiler {
                         self.emit("    jo .Lnobody_overflow")?;
                         Ok(Type::Int)
                     }
-                    "==" | "!=" if left == right => {
+                    "==" | "!=" if left == right && left != Type::Text => {
                         self.emit("    cmp rcx, rax")?;
                         self.emit(if op == "==" { "    sete al" } else { "    setne al" })?;
                         self.emit("    movzx rax, al")?;
@@ -534,7 +543,14 @@ impl NativeCompiler {
                 }
                 let kind = self.expression(expr, 0)?;
                 let slot = self.allocate_slot()?;
+                if kind == Type::Text {
+                    // Text bindings consume two adjacent stack words.
+                    self.allocate_slot()?;
+                }
                 self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (slot + 1) * 8))?;
+                if kind == Type::Text {
+                    self.emit(&format!("    mov QWORD PTR [rbp-{}], rdx", (slot + 2) * 8))?;
+                }
                 self.scopes.last_mut().expect("root or nested lexical scope exists")
                     .insert(name.clone(), Binding { slot, kind });
                 Ok(())
@@ -545,7 +561,11 @@ impl NativeCompiler {
                 if ty != binding.kind {
                     return Err(unsupported("Native backend does not support changing a variable's value type"));
                 }
-                self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (binding.slot + 1) * 8))
+                self.emit(&format!("    mov QWORD PTR [rbp-{}], rax", (binding.slot + 1) * 8))?;
+                if ty == Type::Text {
+                    self.emit(&format!("    mov QWORD PTR [rbp-{}], rdx", (binding.slot + 2) * 8))?;
+                }
+                Ok(())
             }
             IrStatement::Expression(IrExpr::Call { callee, args })
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("print"))) =>
@@ -556,17 +576,20 @@ impl NativeCompiler {
                         self.emit("    mov edx, 1")?;
                         self.emit("    call nobody_write_raw")?;
                     }
-                    if let IrExpr::String(raw) = arg {
-                        // Share Rust evaluator decoding for escapes and Unicode.
-                        let decoded = crate::evaluator::literal_text(raw)?;
-                        self.emit_static_text(&decoded)?;
-                    } else {
-                        let kind = self.expression(arg, 0)?;
-                        self.emit("    mov rdi, rax")?;
-                        self.emit(match kind {
-                            Type::Int => "    call nobody_print_i64",
-                            Type::Bool => "    call nobody_print_bool",
-                        })?;
+                    let kind = self.expression(arg, 0)?;
+                    match kind {
+                        Type::Int => {
+                            self.emit("    mov rdi, rax")?;
+                            self.emit("    call nobody_print_i64")?;
+                        }
+                        Type::Bool => {
+                            self.emit("    mov rdi, rax")?;
+                            self.emit("    call nobody_print_bool")?;
+                        }
+                        Type::Text => {
+                            self.emit("    mov rsi, rax")?;
+                            self.emit("    call nobody_write_raw")?;
+                        }
                     }
                 }
                 self.emit("    lea rsi, [rip+.Lnobody_newline]")?;
