@@ -209,7 +209,7 @@ fn source_imports(
         }
         if !enabled {
             return Err(issue(
-                "Language-level imports require nobody.project.v2 (not v1)",
+                "Language-level imports require nobody.project.v2 or newer (not v1)",
             ));
         }
         if started_body {
@@ -319,6 +319,7 @@ fn check_namespaced_visibility(
 /// nobody.project.v1 / nobody.project.v2 / nobody.project.v3 / nobody.project.v4
 /// module math sk math.nbd -
 /// module main en main.nbd math
+/// export math step # v4 only; omitted symbols are private
 /// entry main
 pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let manifest = fs::canonicalize(path)
