@@ -25,18 +25,23 @@ fn setup(root: &Path) -> PathBuf {
     let old = fs::read_to_string(&manifest).unwrap();
     let updated = old
         .replace("nobody.project.v3", "nobody.project.v4")
-        .replace("entry main", "export math step,doubled\nexport extra step\nentry main");
+        .replace(
+            "entry main",
+            "export math step,doubled\nexport extra step\nentry main",
+        );
     fs::write(&manifest, updated).unwrap();
 
     // The same non-exported name exists in two different modules, and a
     // public function calls its own private helper.
     let math = root.join("math.nbd");
-    let source = fs::read_to_string(&math).unwrap().replace(
-        "vrat step(n) + step(n)",
-        "vrat step(secret(n)) + step(n)",
-    );
-    fs::write(&math, format!("{source}\nfunkcia secret(n: cele): cele {{ vrat n + 1 }}\n"))
-        .unwrap();
+    let source = fs::read_to_string(&math)
+        .unwrap()
+        .replace("vrat step(n) + step(n)", "vrat step(secret(n)) + step(n)");
+    fs::write(
+        &math,
+        format!("{source}\nfunkcia secret(n: cele): cele {{ vrat n + 1 }}\n"),
+    )
+    .unwrap();
     let extra = root.join("extra.nbd");
     let source = fs::read_to_string(&extra).unwrap();
     fs::write(
@@ -69,12 +74,20 @@ fn project_v4_private_symbols_do_not_collide_and_self_calls_work_in_all_backends
     let manifest = manifest.to_str().unwrap();
     assert!(cli(&["check-project", manifest]).status.success());
     let live = cli(&["run-project", manifest]);
-    assert!(live.status.success(), "{}", String::from_utf8_lossy(&live.stderr));
+    assert!(
+        live.status.success(),
+        "{}",
+        String::from_utf8_lossy(&live.stderr)
+    );
     assert_eq!(live.stdout, expected.as_bytes());
     let path = root.join("public-api.nbc");
     let output = path.to_str().unwrap();
     let built = cli(&["compile-project-bytecode", manifest, output]);
-    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     assert!(cli(&["verify-bytecode", output]).status.success());
     let stored = cli(&["run-compiled", output]);
     assert!(stored.status.success());
@@ -93,10 +106,18 @@ fn project_v4_exports_compile_to_real_standalone_elf_with_output_parity() {
         manifest.to_str().unwrap(),
         binary.to_str().unwrap(),
     ]);
-    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     assert!(fs::read(&binary).unwrap().starts_with(b"\x7fELF"));
     let native = Command::new(&binary).output().unwrap();
-    assert!(native.status.success(), "{}", String::from_utf8_lossy(&native.stderr));
+    assert!(
+        native.status.success(),
+        "{}",
+        String::from_utf8_lossy(&native.stderr)
+    );
     let reference = cli(&["run-project", manifest.to_str().unwrap()]);
     assert_eq!(native.stdout, reference.stdout);
     fs::remove_dir_all(root).unwrap();
@@ -115,7 +136,10 @@ fn v4_rejects_private_member_access_even_when_its_module_is_imported() {
         fs::write(&file, invalid).unwrap();
         let err = load_project(&manifest).unwrap_err();
         assert_eq!(err.code, 5003, "{err}");
-        assert!(err.detail.contains("inaccessible or missing export"), "{err}");
+        assert!(
+            err.detail.contains("inaccessible or missing export"),
+            "{err}"
+        );
     }
     fs::remove_dir_all(root).unwrap();
 }
@@ -172,8 +196,8 @@ fn all_40_profiles_can_use_v4_explicit_exports_without_syntax_mixing() {
 
 #[test]
 fn version_3_preserves_implicit_exports_for_existing_projects() {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/project_namespaces_v3/nobody.nbproj");
+    let manifest =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/project_namespaces_v3/nobody.nbproj");
     let project = load_project(&manifest).unwrap();
     assert_eq!(
         evaluate_source(&project.source, "ai").unwrap(),
