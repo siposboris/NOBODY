@@ -1,0 +1,21 @@
+nech greeting = "Ahoj, Nobody!"
+nech saved = greeting
+vypis(greeting, saved, 42, pravda)
+greeting = "Zmenené: Život ☸"
+vypis(greeting, saved)
+ak pravda { nech greeting = "vnútri"; vypis(greeting, saved) }
+vypis(greeting)
+nech empty = ""
+vypis("prázdne", empty, "koniec")
+pre i v rozsah(3) { nech line = "opakujem"; vypis(line, i) }
+funkcia announce(n: cele): cele {
+    nech msg = "text funkcie"
+    nech copy = msg
+    vypis(copy, n)
+    msg = "zmenené vo funkcii"
+    vypis(msg)
+    vrat n
+}
+vypis(announce(5))
+nech injection = ".global not_executable"
+vypis(injection)

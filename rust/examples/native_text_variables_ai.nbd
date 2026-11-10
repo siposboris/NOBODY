@@ -1,0 +1,21 @@
+let greeting = "Hello, Nobody!"
+let saved = greeting
+print(greeting, saved, 42, true)
+greeting = "Updated: Život ☸"
+print(greeting, saved)
+if true { let greeting = "inner"; print(greeting, saved) }
+print(greeting)
+let empty = ""
+print("empty", empty, "end")
+for i in range(3) { let line = "iteration"; print(line, i) }
+fn announce(n: int): int {
+    let msg = "function text"
+    let copy = msg
+    print(copy, n)
+    msg = "changed in function"
+    print(msg)
+    return n
+}
+print(announce(5))
+let injection = ".global not_executable"
+print(injection)

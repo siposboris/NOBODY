@@ -70,6 +70,9 @@ fn real_elf_outputs_match_existing_interpreter_for_ai_sk_en() {
         ("ai", "native_text_print_ai.nbd"),
         ("sk", "native_text_print_sk.nbd"),
         ("en", "native_text_print_en.nbd"),
+        ("ai", "native_text_variables_ai.nbd"),
+        ("sk", "native_text_variables_sk.nbd"),
+        ("en", "native_text_variables_en.nbd"),
         ("sk", "native_typed_signatures_sk.nbd"),
         ("en", "native_typed_signatures_en.nbd"),
     ] {
@@ -162,14 +165,64 @@ fn native_utf8_mixed_prints_are_standalone_and_match_evaluator() {
 }
 
 #[test]
-fn native_print_rejects_unsupported_dynamic_strings() {
+fn native_text_variables_compile_and_match_evaluator() {
+    for (profile, filename) in [
+        ("ai", "native_text_variables_ai.nbd"),
+        ("sk", "native_text_variables_sk.nbd"),
+        ("en", "native_text_variables_en.nbd"),
+    ] {
+        let source = format!("{}/examples/{filename}", env!("CARGO_MANIFEST_DIR"));
+        let temp = temporary();
+        let compiled_file = temp.join("text-vars");
+        let compiled = compile(profile, Path::new(&source), &compiled_file);
+        assert!(
+            compiled.status.success(),
+            "{filename}: {}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let elf = std::fs::read(&compiled_file).unwrap();
+        assert!(elf.starts_with(b"\x7fELF"));
+        let direct = Command::new(&compiled_file).output().unwrap();
+        let rust = nobody(&["run", profile, &source]);
+        assert!(direct.status.success(), "{filename}: {:?}", direct.status);
+        assert!(
+            rust.status.success(),
+            "{filename}: {}",
+            String::from_utf8_lossy(&rust.stderr)
+        );
+        assert_eq!(direct.stdout, rust.stdout, "{filename}: interpreter parity");
+        assert!(direct
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(direct
+            .stdout
+            .windows(".global not_executable".len())
+            .any(|x| { x == b".global not_executable" }));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+}
+
+#[test]
+fn native_text_ops_fail_closed_when_not_supported() {
     let tmp = temporary();
-    let source = tmp.join("dynamic.nbd");
+    let source = tmp.join("unsupported.nbd");
     let output = tmp.join("program");
-    std::fs::write(&source, "let message = \"Ahoj\"\nprint(message)").unwrap();
-    let result = compile("ai", &source, &output);
-    assert!(!result.status.success());
-    assert!(!output.exists());
+    for program in [
+        "let message = \"Ahoj\"\nmessage = 3\nprint(message)",
+        "let message = \"Ahoj\"\nprint(message + \"!\")",
+        "let message = \"Ahoj\"\nprint(message == \"Ahoj\")",
+        "fn f(message: str): int { return 1 }\nprint(f(\"Ahoj\"))",
+    ] {
+        std::fs::write(&source, program).unwrap();
+        let result = compile("ai", &source, &output);
+        assert!(
+            !result.status.success(),
+            "{program}: native compiler unexpectedly accepted unsupported semantics"
+        );
+        assert!(!output.exists());
+        assert!(String::from_utf8_lossy(&result.stderr).contains("N4004"));
+    }
     std::fs::remove_dir_all(tmp).unwrap();
 }
 

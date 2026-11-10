@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — native UTF-8 text variables (2026-11-10; verified in [PR #40](https://github.com/siposboris/NOBODY/pull/40))
+
+- Standalone ELF programs can now declare, copy, reassign and print UTF-8 text variables, including inside loops, conditional scopes and native functions.
+- Native text bindings hold immutable read-only text data pointers and UTF-8 byte lengths in two independently allocated stack words; no runtime allocation or Python dependency.
+- Actual compiled ELF output is compared with Rust interpreter output for `ai`, `sk`, `en`. Unsupported string concatenation, equality, text arguments/returns, typed declarations and value-type changes are rejected.
+- All four CI checks passed including [Rust CI #42753533095](https://github.com/siposboris/NOBODY/actions/runs/42753533095). No broad roadmap checkbox is closed until complete acceptance criteria pass.
+
+
 ## Unreleased — real native UTF-8 text and mixed-argument output (2026-11-09)
 
 - **Implemented and verified in [PR #39](https://github.com/siposboris/NOBODY/pull/39)**: standalone Linux x86-64 ELF now prints direct UTF-8 text literals, multiple numeric/boolean/text arguments separated by spaces, and empty `print()` calls, including inside loops.
