@@ -13,6 +13,7 @@ use crate::Diagnostic;
 
 const MAGIC: &[u8; 8] = b"NOBBC001";
 const WIRE_VERSION: u16 = 2;
+const TEXT_WIRE_VERSION: u16 = 3;
 const LEGACY_WIRE_VERSION: u16 = 1;
 const MAX_UNITS: usize = 1024;
 const MAX_OPCODES: usize = 10_000;
@@ -69,6 +70,11 @@ fn write_instruction(out: &mut Vec<u8>, op: &Instruction) -> Result<(), Diagnost
         PushBool(false) => out.extend_from_slice(&[1, 0]),
         PushBool(true) => out.extend_from_slice(&[1, 1]),
         PushNull => out.push(2),
+        PushText(value) => {
+            out.push(26);
+            write_u32(out, value.len())?;
+            out.extend_from_slice(value.as_bytes());
+        },
         Load(slot) => {
             out.push(3);
             write_u32(out, *slot)?;
@@ -146,6 +152,7 @@ fn write_type(out: &mut Vec<u8>, kind: Option<ValueType>) {
         None => 0,
         Some(ValueType::Int) => 1,
         Some(ValueType::Bool) => 2,
+        Some(ValueType::Str) => 3,
     });
 }
 
@@ -167,7 +174,16 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
     }
     let mut out = Vec::new();
     out.extend_from_slice(MAGIC);
-    write_u16(&mut out, WIRE_VERSION);
+    // Keep existing v2 bytes stable for integer/boolean-only programs.
+    // Text opcodes and typed string signatures require experimental v3.
+    let text_program = program.code.iter().any(|op| matches!(op, Instruction::PushText(_)))
+        || program.functions.iter().any(|function| {
+            function.code.iter().any(|op| matches!(op, Instruction::PushText(_)))
+                || function.return_type == Some(ValueType::Str)
+                || function.parameter_types.contains(&Some(ValueType::Str))
+        });
+    let version = if text_program { TEXT_WIRE_VERSION } else { WIRE_VERSION };
+    write_u16(&mut out, version);
     write_u16(&mut out, 0); // reserved flags: reject unknown flags on read
     write_u32(&mut out, program.slots)?;
     write_u32(&mut out, program.code.len())?;
@@ -206,6 +222,7 @@ pub fn encode(program: &Bytecode) -> Result<Vec<u8>, Diagnostic> {
 struct Reader<'a> {
     bytes: &'a [u8],
     position: usize,
+    version: u16,
 }
 
 impl<'a> Reader<'a> {
@@ -229,6 +246,7 @@ impl<'a> Reader<'a> {
             0 => Ok(None),
             1 => Ok(Some(ValueType::Int)),
             2 => Ok(Some(ValueType::Bool)),
+            3 if self.version == TEXT_WIRE_VERSION => Ok(Some(ValueType::Str)),
             _ => Err(invalid("Invalid bytecode v2 function type tag")),
         }
     }
@@ -292,6 +310,16 @@ impl<'a> Reader<'a> {
             }),
             24 => Ok(Return),
             25 => Ok(Halt),
+            26 if self.version == TEXT_WIRE_VERSION => {
+                let size = self.u32()?;
+                if size > 1_048_576 {
+                    return Err(too_large());
+                }
+                let bytes = self.take(size)?;
+                let value = std::str::from_utf8(bytes)
+                    .map_err(|_| invalid("Bytecode text payload is not valid UTF-8"))?;
+                Ok(PushText(value.to_owned()))
+            },
             unknown => Err(invalid(format!("Unknown bytecode opcode {unknown}"))),
         }
     }
@@ -327,14 +355,16 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
     let mut reader = Reader {
         bytes: &bytes[..split],
         position: 0,
+        version: 0,
     };
     if reader.take(8)? != MAGIC {
         return Err(invalid("Unknown Nobody bytecode file magic"));
     }
     let version = reader.u16()?;
-    if version != WIRE_VERSION && version != LEGACY_WIRE_VERSION {
+    if version != WIRE_VERSION && version != LEGACY_WIRE_VERSION && version != TEXT_WIRE_VERSION {
         return Err(invalid("Unsupported Nobody bytecode file version"));
     }
+    reader.version = version;
     if reader.u16()? != 0 {
         return Err(invalid("Unsupported reserved bytecode flags"));
     }
@@ -360,7 +390,7 @@ pub fn decode(bytes: &[u8]) -> Result<Bytecode, Diagnostic> {
         if arity > local_slots || local_slots > 1024 {
             return Err(invalid("Invalid bytecode function parameter or slot count"));
         }
-        let (parameter_types, return_type) = if version == WIRE_VERSION {
+        let (parameter_types, return_type) = if version != LEGACY_WIRE_VERSION {
             let mut types = Vec::with_capacity(arity);
             for _ in 0..arity {
                 types.push(reader.annotation()?);
@@ -414,6 +444,33 @@ mod tests {
         let split = bytes.len() - 8;
         let hash = checksum(&bytes[..split]);
         bytes[split..].copy_from_slice(&hash.to_le_bytes());
+    }
+
+    #[test]
+    fn text_v3_roundtrip_is_portable_and_backwards_compatible() {
+        let example = "fn message(s: str): str { return s + \" ☸\" }\nprint(message(\"Život\"), \"\" == \"\")";
+        let original = compile_source(example, "ai").unwrap();
+        let bytes = encode(&original).unwrap();
+        assert_eq!(u16::from_le_bytes([bytes[8], bytes[9]]), TEXT_WIRE_VERSION);
+        let decoded = decode(&bytes).unwrap();
+        assert_eq!(original, decoded);
+        assert_eq!(execute(&decoded).unwrap(), crate::evaluate_source(example, "ai").unwrap());
+        assert_eq!(encode(&decoded).unwrap(), bytes);
+        let old = compile_source("print(2 + 3)", "ai").unwrap();
+        let old_bytes = encode(&old).unwrap();
+        assert_eq!(u16::from_le_bytes([old_bytes[8], old_bytes[9]]), WIRE_VERSION);
+    }
+
+    #[test]
+    fn v3_text_payload_rejects_invalid_utf8_without_execution() {
+        let original = compile_source("print(\"ab\")", "ai").unwrap();
+        let mut bytes = encode(&original).unwrap();
+        // Header is 24 bytes, then push-text opcode(26), size(4), payload.
+        let first = bytes.iter().position(|value| *value == 26).unwrap();
+        let payload_start = first + 5;
+        bytes[payload_start] = 0xff;
+        refresh_checksum(&mut bytes);
+        assert_eq!(decode(&bytes).unwrap_err().code, 4004);
     }
 
     #[test]
