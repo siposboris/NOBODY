@@ -1,0 +1,21 @@
+funkcia identity(text: text): text { vrat text }
+funkcia decorate(text: text, suffix: text, count: cele): text {
+    nech result = text + suffix
+    vypis("spojené", result, count)
+    vrat result
+}
+funkcia choose(flag: logicke, first: text, second: text): text {
+    ak flag { vrat first } inak { vrat second }
+}
+funkcia chained(text: text): text {
+    nech combined = decorate(text, " ☸", 2)
+    vrat identity(combined)
+}
+vypis(identity("Ahoj"), identity(""))
+vypis(decorate("Život", " ☸", 8))
+vypis(choose(pravda, "Áno", "Nie"), choose(nepravda, "Áno", "Nie"))
+vypis(chained("Nobody"))
+pre i v rozsah(3) {
+    nech text = choose(i == 1, "stred", "okraj")
+    vypis(i, text)
+}
