@@ -3,6 +3,22 @@
 **Decision (2026-11-08):** Rust is the temporary production-compiler implementation language. The long-term goal is a Nobody compiler and runtime written in Nobody itself. Python is legacy reference material, not the target runtime.
 
 ## Multi-file Rust project compilation (experimental; 2026-11-10)
+## Namespaced compiler module linking (experimental; 2026-11-10)
+
+Rust project manifests v3 now provide explicit module symbol ownership and
+qualified `module.symbol` calls. Library modules may have identical export
+names, and their internal calls are lowered to deterministic ASCII-only
+compiler-private identifiers to avoid global collisions and Unicode mixed
+script issues. Reference validation rejects nonexistent, unimported or
+unqualified foreign symbols. V1 and V2 behaviors remain unchanged.
+
+Acceptance tests compile and execute real mixed-language source through
+independent Rust AST, portable bytecode and standalone x86-64 ELF and
+compare outputs. This is a full source-to-artifact path for the *supported
+subset*, but is not a general module AST, runtime dynamic module system,
+multi-object linker, full language compiler or self-hosting proof. Preserve
+the Python reference until broad behavior parity has passed.
+
 ## Localized module imports (experimental; 2026-11-10)
 
 The project build driver now recognizes actual source-level import directives
