@@ -505,10 +505,11 @@ mod tests {
             "print(3)\nimport math\n",
             "import math more\nprint(3)\n",
             "import math,other\nprint(3)\n",
-            "import Math\nprint(3)\n",
         ] {
             assert_eq!(source_imports(source, "ai", true).unwrap_err().code, 5003);
         }
+        // Uppercase syntax is rejected by the lexer even before manifest checks.
+        assert_eq!(source_imports("import Math\n", "ai", true).unwrap_err().code, 2002);
         let triple = "print(\"\"\"example\nimport math\n\"\"\")\n";
         let (clean, imported) = source_imports(triple, "ai", true).unwrap();
         assert_eq!(clean, triple);
