@@ -460,7 +460,8 @@ mod tests {
 
     #[test]
     fn unicode_length_opcode_v3_roundtrips_across_wire_and_runtime() {
-        let source = "fn count(s: str): int { return len(s) }\nprint(count(\"Život ☸\"), len(\"👩‍💻\"))";
+        let source =
+            "fn count(s: str): int { return len(s) }\nprint(count(\"Život ☸\"), len(\"👩‍💻\"))";
         let compiled = compile_source(source, "ai").unwrap();
         let wire = encode(&compiled).unwrap();
         assert_eq!(u16::from_le_bytes([wire[8], wire[9]]), TEXT_WIRE_VERSION);
