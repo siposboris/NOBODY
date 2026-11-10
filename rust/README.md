@@ -27,6 +27,16 @@ conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
 This does **not** establish native-speaker translation quality, full grammar
 coverage, internationalization of error messages or production-readiness.
 
+## Verified UTF-8 text length bytecode opcode (experimental)
+
+The independent Rust VM now compiles `len(text)` (Slovak `dlzka`)
+into a dedicated stack instruction, serialized as experimental `.nbc`
+**v3 opcode 27**. It counts Unicode scalar values, not bytes or grapheme
+clusters; malformed argument types produce N4004 and arity errors N4007.
+The verifier rejects stack underflow and earlier file versions cannot carry
+the v3-only opcode. Disk-backed test fixtures verify byte-for-byte output
+agreement with the independent Rust AST interpreter in `ai`/`sk`/`en`.
+
 ## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
 
 The Python-free independent stack VM now executes UTF-8 text literals,
