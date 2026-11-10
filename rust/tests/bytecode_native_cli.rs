@@ -332,7 +332,11 @@ fn typed_bytecode_rejects_incorrect_arguments_and_return_values() {
     );
     let bytecode_result = launch(&["run-bytecode", "ai", &source]);
     let ast_result = launch(&["run", "ai", &source]);
-    assert!(bytecode_result.status.success(), "{}", String::from_utf8_lossy(&bytecode_result.stderr));
+    assert!(
+        bytecode_result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&bytecode_result.stderr)
+    );
     assert!(ast_result.status.success());
     assert_eq!(bytecode_result.stdout, ast_result.stdout);
 }
