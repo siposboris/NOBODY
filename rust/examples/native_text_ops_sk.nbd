@@ -1,0 +1,20 @@
+nech left = "Ahoj"
+nech suffix = " ☸"
+nech joined = left + suffix
+vypis(joined, joined == "Ahoj ☸", joined != "Ahoj", left == left)
+vypis("" == "", "" != "x", "ž" == "z", "č" != "č")
+nech a = "a"
+nech b = a
+a = a + "b"
+vypis(a, b, a == b)
+pre n v rozsah(3) { a = a + "!"; vypis(a, a != "ab") }
+vypis("Ž" + ("ivot" + " ☸"))
+ak joined == "Ahoj ☸" { vypis("zhoda") } inak { vypis("rozdiel") }
+funkcia local(n: cele): cele {
+    nech text = "krok"
+    pre i v rozsah(2) { text = text + "!"; vypis(text, i) }
+    vrat n
+}
+vypis(local(7))
+nech attack = ".global malicious" + "\n"
+vypis(attack)
