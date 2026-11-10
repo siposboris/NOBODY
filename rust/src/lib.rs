@@ -28,6 +28,7 @@ pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
 pub mod ir;
 pub mod profiles;
 pub mod project;
+mod project_namespaces;
 pub use project::{load_project, Project};
 pub mod typecheck;
 pub use ir::{

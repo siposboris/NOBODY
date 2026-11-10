@@ -15,6 +15,15 @@ See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). 
 <!-- roadmap-progress:end -->
 
 ## Multi-file compiler (experimental)
+## Namespaced module compiler (experimental)
+
+The Rust compiler now supports `nobody.project.v3` with actual
+`module.symbol` references and **isolated exported names** across source
+modules. Mixed-language programs compile into real portable bytecode or
+standalone Linux x86-64 ELF, without depending on Python. See the
+[namespaced three-module example](rust/examples/project_namespaces_v3/nobody.nbproj).
+This is not complete compiler parity or self-hosting.
+
 ## Native source imports (experimental)
 
 The Rust project compiler now accepts localized source imports in versioned

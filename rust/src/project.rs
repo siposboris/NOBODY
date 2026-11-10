@@ -1,8 +1,9 @@
 //! Experimental multi-file Nobody project linker: one syntax language per file.
 //!
-//! This is intentionally a bounded, deterministic *project build* layer,
-//! not source-level imports, name-spaced modules, or a package manager.
-use crate::syntax::Statement;
+//! Version 1 links globally, version 2 adds localized imports, and version 3
+//! isolates module exports with explicit qualified member calls. This remains
+//! a bounded project build layer, not a package manager or dynamic linker.
+use crate::syntax::{Program, Statement};
 use crate::{parse_validated, same_ir, translate_source, Diagnostic};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
@@ -18,6 +19,14 @@ struct ModuleSpec {
     profile: String,
     path: String,
     dependencies: Vec<String>,
+}
+
+struct NamespaceUnit {
+    name: String,
+    source: String,
+    program: Program,
+    imports: BTreeSet<String>,
+    qualified_references: Vec<(String, String)>,
 }
 
 #[derive(Clone, Debug)]
@@ -273,12 +282,41 @@ fn check_direct_import_visibility(
     Ok(())
 }
 
+/// Version 3 forbids unqualified references to exports of other modules.
+fn check_namespaced_visibility(
+    name: &str,
+    source: &str,
+    statements: &[Statement],
+    exported: &BTreeMap<String, BTreeSet<String>>,
+) -> Result<(), Diagnostic> {
+    use crate::TokenKind;
+    let mut locally_declared = BTreeSet::new();
+    collect_declarations(statements, &mut locally_declared);
+    for token in crate::scan(source)? {
+        if token.kind != TokenKind::Name
+            || locally_declared.contains(&token.value)
+            || crate::profiles::semantic("ai", &token.value).is_some()
+        {
+            continue;
+        }
+        if let Some(owner) = exported.iter().find_map(|(owner, symbols)| {
+            (owner != name && symbols.contains(&token.value)).then_some(owner)
+        }) {
+            return Err(issue(format!(
+                "Unqualified symbol {:?} in module {name:?} belongs to {owner:?}; use {owner}.{} with a direct import",
+                token.value, token.value
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
 ///
 /// Format (whitespace-separated, no spaces in file paths):
-/// nobody.project.v1
+/// nobody.project.v1 / nobody.project.v2 / nobody.project.v3
 /// module math sk math.nbd -
 /// module main en main.nbd math
 /// entry main
@@ -298,14 +336,16 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             continue;
         }
         if version == 0 {
-            version =
-                match line {
-                    "nobody.project.v1" => 1,
-                    "nobody.project.v2" => 2,
-                    _ => return Err(issue(
-                        "First manifest directive must be nobody.project.v1 or nobody.project.v2",
-                    )),
-                };
+            version = match line {
+                "nobody.project.v1" => 1,
+                "nobody.project.v2" => 2,
+                "nobody.project.v3" => 3,
+                _ => {
+                    return Err(issue(
+                        "First manifest directive must be nobody.project.v1, v2 or v3",
+                    ))
+                }
+            };
             continue;
         }
         let parts: Vec<_> = line.split_whitespace().collect();
@@ -405,6 +445,8 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut exports = BTreeMap::<String, String>::new();
     let mut canonical_paths = BTreeSet::new();
     let mut visible = Vec::new();
+    let mut namespaced = Vec::new();
+    let mut exported_by_module: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for name in &order {
         let spec = &specs[name];
         let resolved = fs::canonicalize(root.join(&spec.path))
@@ -418,10 +460,15 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             return Err(issue("Two modules resolve to the same source file"));
         }
         let full_source = read_capped(&resolved, MAX_SOURCE)?;
-        let (source, imports) = source_imports(&full_source, &spec.profile, version == 2)?;
-        if version == 2 && imports != spec.dependencies.iter().cloned().collect() {
+        let (source, imports) = source_imports(&full_source, &spec.profile, version >= 2)?;
+        if version >= 2 && imports != spec.dependencies.iter().cloned().collect() {
             return Err(issue(format!("Source import declarations for module {name:?} must match its manifest dependencies exactly")));
         }
+        let (source, qualified_references) = if version == 3 {
+            crate::project_namespaces::qualify_references(&source, name, &imports)?
+        } else {
+            (source, Vec::new())
+        };
         let original = parse_validated(&source, &spec.profile)?;
         reject_foreign_keywords(&source, &spec.profile, &original.statements)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
@@ -431,6 +478,31 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             )));
         }
         let parsed = parse_validated(&translated, "ai")?;
+        if version == 3 {
+            let mut exports = BTreeSet::new();
+            for stmt in &parsed.statements {
+                let symbol = match stmt {
+                    Statement::Function { name, .. } | Statement::Let { name, .. } => Some(name),
+                    _ => None,
+                };
+                if let Some(symbol) = symbol {
+                    if !exports.insert(symbol.clone()) {
+                        return Err(issue(format!(
+                            "Duplicate top-level symbol {symbol:?} in module {name:?}"
+                        )));
+                    }
+                }
+            }
+            exported_by_module.insert(name.clone(), exports);
+            namespaced.push(NamespaceUnit {
+                name: name.clone(),
+                source: translated,
+                program: parsed,
+                imports,
+                qualified_references,
+            });
+            continue;
+        }
         if version == 2 {
             visible.push((
                 name.clone(),
@@ -461,6 +533,41 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     if version == 2 {
         for (module, source, statements, imports) in &visible {
             check_direct_import_visibility(module, source, statements, imports, &exports)?;
+        }
+    }
+    if version == 3 {
+        for unit in &namespaced {
+            check_namespaced_visibility(
+                &unit.name,
+                &unit.source,
+                &unit.program.statements,
+                &exported_by_module,
+            )?;
+            for (owner, symbol) in &unit.qualified_references {
+                if !unit.imports.contains(owner)
+                    || !exported_by_module
+                        .get(owner)
+                        .is_some_and(|symbols| symbols.contains(symbol))
+                {
+                    return Err(issue(format!(
+                        "Module {:?} refers to inaccessible or missing export {owner}.{symbol}",
+                        unit.name
+                    )));
+                }
+            }
+        }
+        for mut unit in namespaced {
+            let exports = &exported_by_module[&unit.name];
+            let source = crate::project_namespaces::assemble_namespaced_module(
+                &mut unit.program,
+                &unit.name,
+                exports,
+            )?;
+            if merged.len().saturating_add(source.len() + 1) > MAX_SOURCE {
+                return Err(issue("Namespaced project source exceeds 1 MiB"));
+            }
+            merged.push_str(&source);
+            merged.push('\n');
         }
     }
     parse_validated(&merged, "ai")?;

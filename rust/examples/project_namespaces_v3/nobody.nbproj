@@ -1,0 +1,5 @@
+nobody.project.v3
+module main ai main.nbd math,extra
+module math sk math.nbd -
+module extra en extra.nbd -
+entry main

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — namespaced multi-file compiler v3 (2026-11-10; CI pending)
+
+- Introduced `nobody.project.v3`, resolving `module.symbol` references through a directly imported module with a verified public top-level export.
+- Added collision-free ASCII name lowering for separate module-owned functions and globals. Two source modules may now declare the same function name without clobbering one another.
+- Integration tests cover real three-file mixed-language programs and actual Linux ELF/bytecode execution with equal output; a generated suite audits v3 qualified imports in all 40 profiles.
+- V1/v2 project compatibility preserved. First-class module AST/IR, visibility controls, full object linking and self-hosting remain open.
+
+
 
 ## Unreleased — localized source imports for multi-file compiler (2026-11-10; CI pending)
 

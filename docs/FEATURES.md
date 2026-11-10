@@ -13,6 +13,7 @@
 | Restricted immutable-only mode | Prototype | Limited constructs |
 | Catalog of 22 option families | Prototype | Many unimplemented |
 | Multi-file project compiler with explicit dependency manifests | Experimental |
+| Namespaced qualified module calls (v3) | Experimental | Duplicate export names allowed across modules; `module.symbol` compile-time references, import/member validation and private symbols; no reexports or aliases yet |
 | Localized source-level module imports in v2 projects | Experimental | 40 syntax profiles; mandatory manifest-direct import graph, explicit direct symbol visibility; global names remain unnamespaced |
  Rust-only bounded `nobody.project.v1` graph loader; per-file syntax profile, IR translation validation, portable bytecode and Linux x86-64 ELF builds. No source-level import syntax or module namespaces yet |
 | Formal parser, AST/IR, modules, generics | Planned | Full grammar, language-level modules, generics and formal semantics remain incomplete |

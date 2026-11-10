@@ -1,0 +1,2 @@
+funkcia step(n: cele): cele { vrat n * 3 }
+funkcia doubled(n: cele): cele { vrat step(n) + step(n) }
