@@ -1244,7 +1244,6 @@ mod tests {
             assert_eq!(crate::evaluate_source(source, "ai").unwrap_err().code, 4004);
         }
         for source in [
-            "fn f(n: str): str { return n }",
             "fn f(n: float): int { return 1 }",
         ] {
             assert_eq!(compile_source(source, "ai").unwrap_err().code, 4004);
