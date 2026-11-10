@@ -164,6 +164,115 @@ fn reject_foreign_keywords(
     Ok(())
 }
 
+/// Parse actual, localized source-level import directives at file scope.
+///
+/// A v2 source starts with zero or more localized import directives,
+/// separated by comments and blank lines. These are compile-time declarations;
+/// they do not become runtime expressions. Use lexer tokens rather than
+/// naive line matching, so strings never become accidental imports.
+fn source_imports(
+    source: &str,
+    profile: &str,
+    enabled: bool,
+) -> Result<(String, BTreeSet<String>), Diagnostic> {
+    use crate::TokenKind;
+    let keyword = crate::profiles::word(profile, "import")
+        .ok_or_else(|| issue(format!("Missing import keyword in profile {profile:?}")))?;
+    let tokens = crate::scan(source)?;
+    let mut by_line: BTreeMap<usize, Vec<&crate::Token>> = BTreeMap::new();
+    for token in &tokens {
+        by_line.entry(token.line).or_default().push(token);
+    }
+    let mut output = String::with_capacity(source.len());
+    let mut imports = BTreeSet::new();
+    let mut started_body = false;
+    for (index, line) in source.split_inclusive('\n').enumerate() {
+        let line_tokens = by_line.get(&(index + 1));
+        let meaningful = line_tokens.and_then(|tokens| tokens.first());
+        let is_import =
+            meaningful.is_some_and(|token| token.kind == TokenKind::Name && token.value == keyword);
+        if !is_import {
+            if meaningful.is_some_and(|token| token.kind != TokenKind::Comment) {
+                started_body = true;
+            }
+            output.push_str(line);
+            continue;
+        }
+        if !enabled {
+            return Err(issue(
+                "Language-level imports require nobody.project.v2 (not v1)",
+            ));
+        }
+        if started_body {
+            return Err(issue(format!(
+                "Import directive must precede all executable code (line {})",
+                index + 1
+            )));
+        }
+        let tokens = line_tokens.expect("a source import token exists");
+        let valid_shape = matches!(
+            tokens.as_slice(),
+            [_, module]
+                if module.kind == TokenKind::Name
+        ) || matches!(
+            tokens.as_slice(),
+            [_, module, comment]
+                if module.kind == TokenKind::Name && comment.kind == TokenKind::Comment
+        );
+        if !valid_shape {
+            return Err(issue(format!(
+                "Invalid import directive on line {}",
+                index + 1
+            )));
+        }
+        let module = &tokens[1].value;
+        if !valid_name(module) || crate::profiles::is_reserved(profile, module) {
+            return Err(issue(format!(
+                "Invalid or reserved imported module name {module:?} on line {}",
+                index + 1
+            )));
+        }
+        if !imports.insert(module.clone()) {
+            return Err(issue(format!("Duplicate source import {module:?}")));
+        }
+        // Preserve line numbering in downstream parser diagnostics.
+        if line.ends_with('\n') {
+            output.push('\n');
+        }
+    }
+    Ok((output, imports))
+}
+
+/// In a v2 project, a symbol exported by another file can be referenced
+/// only through a directly declared import of that file's module name.
+/// This is an intentionally conservative whole-file lexical check; full
+/// scope-aware namespaces and object-file linking are future work.
+fn check_direct_import_visibility(
+    module: &str,
+    source: &str,
+    statements: &[Statement],
+    imported: &BTreeSet<String>,
+    owners: &BTreeMap<String, String>,
+) -> Result<(), Diagnostic> {
+    use crate::TokenKind;
+    let mut locally_declared = BTreeSet::new();
+    collect_declarations(statements, &mut locally_declared);
+    for token in crate::scan(source)? {
+        if token.kind != TokenKind::Name || locally_declared.contains(&token.value) {
+            continue;
+        }
+        if let Some(owner) = owners.get(&token.value) {
+            if owner != module && !imported.contains(owner) {
+                return Err(issue(format!(
+                    "Module {module:?} uses symbol {:?} from {owner:?} without a direct import",
+                    token.value
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Load dependency-ordered Nobody source files and validate the merged AST.
 /// Each file is parsed using its own selected profile before translation into
 /// the shared 'ai' syntax; accidental keyword mixing is not permitted.
@@ -182,17 +291,21 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let text = read_capped(&manifest, MAX_MANIFEST)?;
     let mut specs = BTreeMap::<String, ModuleSpec>::new();
     let mut entry = None;
-    let mut version = false;
+    let mut version = 0u8;
     for (line_number, raw_line) in text.lines().enumerate() {
         let line = raw_line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if !version {
-            if line != "nobody.project.v1" {
-                return Err(issue("First manifest directive must be nobody.project.v1"));
-            }
-            version = true;
+        if version == 0 {
+            version =
+                match line {
+                    "nobody.project.v1" => 1,
+                    "nobody.project.v2" => 2,
+                    _ => return Err(issue(
+                        "First manifest directive must be nobody.project.v1 or nobody.project.v2",
+                    )),
+                };
             continue;
         }
         let parts: Vec<_> = line.split_whitespace().collect();
@@ -267,7 +380,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             }
         }
     }
-    if !version {
+    if version == 0 {
         return Err(issue("Project manifest has no version header"));
     }
     let entry = entry.ok_or_else(|| issue("Project requires exactly one entry module"))?;
@@ -291,6 +404,7 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
     let mut merged = String::new();
     let mut exports = BTreeMap::<String, String>::new();
     let mut canonical_paths = BTreeSet::new();
+    let mut visible = Vec::new();
     for name in &order {
         let spec = &specs[name];
         let resolved = fs::canonicalize(root.join(&spec.path))
@@ -303,7 +417,11 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         if !canonical_paths.insert(resolved.clone()) {
             return Err(issue("Two modules resolve to the same source file"));
         }
-        let source = read_capped(&resolved, MAX_SOURCE)?;
+        let full_source = read_capped(&resolved, MAX_SOURCE)?;
+        let (source, imports) = source_imports(&full_source, &spec.profile, version == 2)?;
+        if version == 2 && imports != spec.dependencies.iter().cloned().collect() {
+            return Err(issue(format!("Source import declarations for module {name:?} must match its manifest dependencies exactly")));
+        }
         let original = parse_validated(&source, &spec.profile)?;
         reject_foreign_keywords(&source, &spec.profile, &original.statements)?;
         let translated = translate_source(&source, &spec.profile, "ai")?;
@@ -313,6 +431,14 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             )));
         }
         let parsed = parse_validated(&translated, "ai")?;
+        if version == 2 {
+            visible.push((
+                name.clone(),
+                translated.clone(),
+                parsed.statements.clone(),
+                imports,
+            ));
+        }
         for stmt in &parsed.statements {
             let symbol = match stmt {
                 Statement::Function { name, .. } | Statement::Let { name, .. } => Some(name),
@@ -332,6 +458,11 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
         merged.push_str(&translated);
         merged.push('\n');
     }
+    if version == 2 {
+        for (module, source, statements, imports) in &visible {
+            check_direct_import_visibility(module, source, statements, imports, &exports)?;
+        }
+    }
     parse_validated(&merged, "ai")?;
     Ok(Project {
         source: merged,
@@ -342,6 +473,60 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn localized_source_imports_work_for_all_40_profiles() {
+        for profile in crate::profiles::PROFILES {
+            let import_word = crate::profiles::word(profile.code, "import").unwrap();
+            let print_word = crate::profiles::word(profile.code, "print").unwrap();
+            let source = format!(
+                "# leading comment\n{import_word} math # direct dependency\n{print_word}(3)\n"
+            );
+            let (clean, imported) = source_imports(&source, profile.code, true).unwrap();
+            assert!(imported.contains("math"), "{}", profile.code);
+            assert_eq!(imported.len(), 1);
+            assert!(clean.starts_with("# leading comment\n\n"));
+            crate::parse_validated(&clean, profile.code).unwrap();
+            let translated = crate::translate_source(&clean, profile.code, "ai").unwrap();
+            assert!(crate::same_ir(&clean, profile.code, &translated, "ai").unwrap());
+            assert_eq!(
+                source_imports(&source, profile.code, false)
+                    .unwrap_err()
+                    .code,
+                5003
+            );
+        }
+    }
+
+    #[test]
+    fn source_imports_are_strict_and_do_not_interpret_literal_text() {
+        for source in [
+            "import math\nimport math\nprint(3)\n",
+            "print(3)\nimport math\n",
+            "import math more\nprint(3)\n",
+            "import math,other\nprint(3)\n",
+        ] {
+            assert_eq!(source_imports(source, "ai", true).unwrap_err().code, 5003);
+        }
+        // Uppercase syntax is rejected by the lexer even before manifest checks.
+        assert_eq!(
+            source_imports("import Math\n", "ai", true)
+                .unwrap_err()
+                .code,
+            2002
+        );
+        let triple = "print(\"\"\"example\nimport math\n\"\"\")\n";
+        let (clean, imported) = source_imports(triple, "ai", true).unwrap();
+        assert_eq!(clean, triple);
+        assert!(imported.is_empty());
+        let commented = "# import math\nprint(3)\n";
+        let (clean, imported) = source_imports(commented, "ai", true).unwrap();
+        assert_eq!(clean, commented);
+        assert!(imported.is_empty());
+        let (clean, imported) = source_imports("import math", "ai", true).unwrap();
+        assert_eq!(clean, "");
+        assert!(imported.contains("math"));
+    }
 
     #[test]
     fn rejects_missing_manifest_and_unknown_header() {

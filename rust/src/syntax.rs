@@ -61,6 +61,7 @@ impl Language {
                     | "and"
                     | "or"
                     | "not"
+                    | "import"
             )
         )
     }

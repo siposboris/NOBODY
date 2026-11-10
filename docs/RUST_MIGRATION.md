@@ -3,6 +3,23 @@
 **Decision (2026-11-08):** Rust is the temporary production-compiler implementation language. The long-term goal is a Nobody compiler and runtime written in Nobody itself. Python is legacy reference material, not the target runtime.
 
 ## Multi-file Rust project compilation (experimental; 2026-11-10)
+## Localized module imports (experimental; 2026-11-10)
+
+The project build driver now recognizes actual source-level import directives
+using all 40 profile dictionaries, not just manifest dependency edges.
+A v2 manifest must declare the exact direct import graph; the Rust compiler
+checks keyword/profile agreement, graph cycles, import placement, duplicate
+imports, type-safe parsing of remaining statements, and direct references
+to symbols owned by imported modules. The v1 format remains accepted without
+imports. End-to-end CLI tests compare stored bytecode and native ELF output
+to the independent Rust evaluator; no Python runs in this path.
+
+These imports are project-only compile-time directives, not a fully integrated
+module AST, isolated namespace system, package manager or self-hosting engine.
+Do not delete Python references or mark complete Rust compiler parity on this
+basis.
+
+
 
 The Rust compiler can now load a bounded `nobody.project.v1` manifest
 describing source files with explicit syntax profiles and a dependency graph.

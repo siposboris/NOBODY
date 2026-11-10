@@ -5,6 +5,57 @@ eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
 ## Multi-file project compiler (Rust-only, experimental)
+## Source-level imports in multi-file projects (experimental)
+
+Project manifest **v2** adds real Nobody source-level import directives, localized
+for all 40 syntax profiles. Imports must appear before executable statements,
+after optional comments/empty lines. Every imported module must be a direct,
+listed dependency in the manifest and **all declared dependencies must be
+imported**; duplicate, undeclared, misplaced and circular imports fail early.
+An imported module's top-level symbols can be referenced only from files
+that directly import that module. This is not yet isolated namespaces.
+
+```text
+# nobody.nbproj
+nobody.project.v2
+module main en main.nbd bridge
+module math sk math.nbd -
+module bridge ai bridge.nbd math
+entry main
+
+# main.nbd (English syntax)
+import bridge
+let result = next_number(4)
+print(result, "Život ☸")
+
+# bridge.nbd (canonical ai syntax)
+import math
+fn next_number(n: int): int { return krat(n) + 1 }
+
+# math.nbd (Slovak syntax)
+funkcia krat(n: cele): cele { vrat n * 3 }
+```
+
+Try it using the unchanged project build CLI:
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  check-project rust/examples/project_imports_v2/nobody.nbproj
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-project-native rust/examples/project_imports_v2/nobody.nbproj nobody-imports-demo
+./nobody-imports-demo
+```
+
+The compiler recognizes imports using the actual UTF-8 lexer, so imports
+inside comments or string literals do not create dependencies. The original
+`nobody.project.v1` format remains supported without language-level imports.
+**Limitations:** imports are compile-time project directives (the ordinary
+single-source parser rejects them), direct symbol names remain global,
+there are no package namespaces, reexports, aliases, dynamic loading,
+separate object files or source-level import paths. This is not yet the
+complete compiler or self-hosting implementation.
+
+
 
 Nobody now has a real dependency-aware project build route. Each `.nbd`
 source selects **one** of the 40 syntax profiles independently. A small
