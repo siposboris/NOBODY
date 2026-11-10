@@ -28,6 +28,7 @@ pub enum Instruction {
     Mul,
     Neg,
     Not,
+    TextLen,
     Eq,
     Ne,
     Lt,
@@ -215,6 +216,18 @@ impl Compiler {
                     return Err(diagnostic(4005, "Bytecode text literal exceeds 1 MiB"));
                 }
                 self.emit(Instruction::PushText(decoded))
+            }
+            IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
+            {
+                if args.len() != 1 {
+                    return Err(diagnostic(
+                        4007,
+                        format!("len expects one string argument, got {}", args.len()),
+                    ));
+                }
+                self.expression(&args[0], depth + 1)?;
+                self.emit(Instruction::TextLen)
             }
             IrExpr::Call { callee, args } => {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
@@ -748,7 +761,7 @@ fn verify_unit(
                     .filter(|depth| *depth > 0)
                     .ok_or_else(|| unsupported("Binary bytecode stack underflow"))?;
             }
-            Instruction::Neg | Instruction::Not => {
+            Instruction::Neg | Instruction::Not | Instruction::TextLen => {
                 if state.depth == 0 {
                     return Err(unsupported("Unary bytecode stack underflow"));
                 }
@@ -976,6 +989,12 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 stack.push(Value::Int(value.checked_neg().ok_or_else(|| {
                     diagnostic(4003, "Bytecode unary negation overflow")
                 })?));
+            }
+            Instruction::TextLen => {
+                let Some(Value::Text(value)) = stack.pop() else {
+                    return Err(unsupported("Bytecode len requires a UTF-8 text argument"));
+                };
+                stack.push(Value::Int(value.chars().count() as i128));
             }
             Instruction::Not => {
                 let Some(Value::Bool(value)) = stack.pop() else {
@@ -1249,6 +1268,36 @@ mod tests {
                 .code,
             4004
         );
+    }
+
+    #[test]
+    fn bytecode_unicode_scalar_len_matches_reference_runtime() {
+        for (profile, source) in [
+            ("ai", "fn chars(s: str): int { return len(s) }\nprint(chars(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"), len(\"ž\" + \"a\"))"),
+            ("sk", "funkcia chars(s: text): cele { vrat dlzka(s) }\nvypis(chars(\"Život ☸\"), dlzka(\"\"), dlzka(\"👩‍💻\"), dlzka(\"ž\" + \"a\"))"),
+            ("en", "function chars(s: str): int { return len(s) }\nprint(chars(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"), len(\"ž\" + \"a\"))"),
+        ] {
+            let vm = execute_source(source, profile).unwrap();
+            assert_eq!(vm, "7 0 3 2\n");
+            assert_eq!(vm, crate::evaluate_source(source, profile).unwrap());
+            let compiled = compile_source(source, profile).unwrap();
+            assert!(compiled.functions.iter().any(|f| f.code.contains(&Instruction::TextLen)));
+        }
+    }
+
+    #[test]
+    fn bytecode_len_rejects_arity_type_and_stack_underflow() {
+        for source in ["print(len())", "print(len(\"a\", \"b\"))"] {
+            assert_eq!(compile_source(source, "ai").unwrap_err().code, 4007);
+        }
+        assert_eq!(execute_source("print(len(42))", "ai").unwrap_err().code, 4004);
+        let invalid = Bytecode {
+            version: BYTECODE_VERSION,
+            slots: 0,
+            functions: Vec::new(),
+            code: vec![Instruction::TextLen, Instruction::Halt],
+        };
+        assert_eq!(verify(&invalid).unwrap_err().code, 4004);
     }
 
     #[test]
