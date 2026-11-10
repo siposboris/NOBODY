@@ -172,6 +172,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 9 — Tooling and developer experience
 
+**Read-only formatter verification (2026-11-10, CI pending):** The Rust `format-check PROFILE FILE.nbd` detects noncanonical source formatting with N5002 and exit code 1, without touching the original. Tests cover `ai`, `sk`, `en` and formatter idempotence. Original comments and whitespace are not preserved by the AST emitter; full source-preserving formatting and editor integration remain open. No broad checklist item is closed.
+
+
+
 - [ ] Build a configurator where each feature is labeled implemented, experimental or planned, without fake switches.
 - [ ] Implement module-level profile negotiation and consistency checks.
 - [ ] Build an LSP server, diagnostics, completion, refactoring, formatter and debugger.
