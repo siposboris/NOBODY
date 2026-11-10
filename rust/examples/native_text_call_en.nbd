@@ -1,0 +1,21 @@
+function identity(text: str): str { return text }
+function decorate(text: str, suffix: str, count: int): str {
+    let result = text + suffix
+    print("joined", result, count)
+    return result
+}
+function choose(flag: bool, first: str, second: str): str {
+    if flag { return first } else { return second }
+}
+function chained(text: str): str {
+    let combined = decorate(text, " ☸", 2)
+    return identity(combined)
+}
+print(identity("Ahoj"), identity(""))
+print(decorate("Život", " ☸", 8))
+print(choose(true, "Áno", "Nie"), choose(false, "Áno", "Nie"))
+print(chained("Nobody"))
+for i in range(3) {
+    let text = choose(i == 1, "middle", "outer")
+    print(i, text)
+}
