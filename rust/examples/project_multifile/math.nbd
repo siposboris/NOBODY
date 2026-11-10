@@ -1,0 +1,1 @@
+funkcia krat(n: cele): cele { vrat n * 3 }
