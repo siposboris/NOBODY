@@ -4,6 +4,20 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## Read-only Nobody formatter verification
+
+`nobody-rs format-check PROFILE FILE.nbd` checks whether source matches the
+canonical Rust `format-source` output, returning success on exact match or
+diagnostic N5002 with a nonzero exit status on drift. It never modifies files.
+It operates on one selected syntax profile at a time and is useful in CI.
+The formatter emits AST-based source: original comments and whitespace are
+not preserved, so review generated code before overwriting anything.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-source sk rust/examples/native_text_ops_sk.nbd > clean.nbd
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- format-check sk clean.nbd
+```
+
 ## Native UTF-8 text operations (experimental)
 
 The standalone ELF compiler now handles `let combined = left + right`, `combined == expected`, and `combined != other` for UTF-8 text variables. A fixed 1 MiB process-lifetime arena stores joined text without libc; allocation exhaustion terminates with exit status `7`. Equality compares all bytes, not addresses. Actual ELF/evaluator parity tests cover text within loops/functions and non-ASCII text across `ai`, `sk`, and `en`. String ordering, text-native function parameters/returns, garbage collection and unrestricted memory allocation remain out of scope.
