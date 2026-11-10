@@ -134,7 +134,7 @@ fn reject_foreign_keywords(
     profile: &str,
     parsed: &[Statement],
 ) -> Result<(), Diagnostic> {
-    use crate::{TokenKind, profiles};
+    use crate::{profiles, TokenKind};
     let mut declared = BTreeSet::new();
     collect_declarations(parsed, &mut declared);
     for token in crate::scan(source)? {
