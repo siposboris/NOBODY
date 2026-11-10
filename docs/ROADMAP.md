@@ -39,6 +39,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 1 — Lexer, syntax, parser, AST and translation
 
+**All-40-profile text-length backend equivalence (2026-11-10; CI pending):** The native Rust integration suite generates a localized typed UTF-8 length program for each of 40 registered syntax profiles, then compares normalized IR, conservative typechecker, AST evaluator, in-memory bytecode VM, serialized `.nbc` v3 exact bytes and disk-decoded VM output. Linux x86-64 CI additionally runs all 40 *real standalone ELF* programs and requires identical stdout. Unicode scalar counting includes combining/joiner scenarios; this is a carefully scoped subset test, not a native-speaker audit or whole-language equivalence proof.
+
+
+
 **Full profile execution regression (2026-11-10; verified [PR #48](https://github.com/siposboris/NOBODY/pull/48), [Rust CI #42828013644](https://github.com/siposboris/NOBODY/actions/runs/42828013644)):** A Rust integration test constructs a typed, nontrivial Nobody program from each of the 40 registered syntax dictionaries: declarations, localized primitive types, `for` loops, `if`/`else`, named typed functions, Unicode strings and output. It verifies canonical IR equality, Rust AST evaluator output, conservative static checker acceptance and, on Linux x86-64 CI, actual standalone ELF execution with byte-identical stdout for *every* profile. Mixed-profile keywords are rejected. This is a machine-generated structural/runtime regression test, not 40 native-speaker linguistic reviews or full grammar parity.
 
 
