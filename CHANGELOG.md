@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Unicode string length in portable bytecode (2026-11-10; CI pending)
+
+- Added `TextLen` experimental v3 bytecode opcode 27, matching Rust AST and Linux ELF `len(text)` Unicode scalar semantics.
+- Verified stack underflow, type and arity failures, and older-version opcode rejection; added stored-file `.nbc` vs AST/VM parity for `ai`, `sk`, `en`.
+- Does not imply grapheme counting, safe execution of untrusted bytecode or complete runtime parity.
+
+
 ## Unreleased — portable UTF-8 string bytecode v3 (2026-11-10; verified [PR #47](https://github.com/siposboris/NOBODY/pull/47), [Rust CI #42829747456](https://github.com/siposboris/NOBODY/actions/runs/42829747456))
 
 - Independent Rust bytecode compiler/VM supports `str` values, UTF-8 literals, concatenation, content equality and annotated `str` parameter/return checks.
