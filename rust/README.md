@@ -24,6 +24,18 @@ native helper counts leading UTF-8 bytes and requires no external runtime.
 Real compiled ELF examples in `ai`/`sk`/`en` must match the Rust AST
 evaluator; nontext arguments and wrong arity are explicitly rejected.
 
+## All-40-profile UTF-8 length backend differential tests
+
+The `all_profiles_text_length_backends` Rust integration suite checks the
+*same localized source program* in all 40 registered syntax dictionaries
+for exact canonical IR and exact compiled `.nbc` v3 byte equality. It
+executes the Rust AST interpreter, in-memory bytecode, and decoded portable
+bytecode; Linux x86-64 tests also compile and execute all 40 actual ELF
+programs to compare output. The text length result must count Unicode
+scalars (including non-ASCII, joiner and empty strings), never bytes.
+These tests provide narrow regression evidence, not completeness or
+native-speaker validation of 39 human syntax dictionaries.
+
 ## All-40-profile interpreter and native ELF acceptance
 
 A dedicated Rust acceptance suite generates the same typed Nobody program in
