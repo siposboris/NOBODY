@@ -253,10 +253,22 @@ fn real_elf_text_operations_match_interpreter_for_ai_sk_en() {
             "{filename}: {}",
             String::from_utf8_lossy(&reference.stderr)
         );
-        assert_eq!(machine.stdout, reference.stdout, "{filename}: stdout parity");
-        assert!(machine.stdout.windows("Život ☸".len()).any(|x| x == "Život ☸".as_bytes()));
-        assert!(machine.stdout.windows("true false".len()).any(|x| x == b"true false"));
-        assert!(machine.stdout.windows(".global malicious".len()).any(|x| x == b".global malicious"));
+        assert_eq!(
+            machine.stdout, reference.stdout,
+            "{filename}: stdout parity"
+        );
+        assert!(machine
+            .stdout
+            .windows("Život ☸".len())
+            .any(|x| x == "Život ☸".as_bytes()));
+        assert!(machine
+            .stdout
+            .windows("true false".len())
+            .any(|x| x == b"true false"));
+        assert!(machine
+            .stdout
+            .windows(".global malicious".len())
+            .any(|x| x == b".global malicious"));
         let generated = nobody(&["native-asm", profile, &source]);
         assert!(generated.status.success());
         let assembly = String::from_utf8(generated.stdout).unwrap();
