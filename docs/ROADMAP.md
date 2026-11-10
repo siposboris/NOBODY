@@ -208,6 +208,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 9 — Tooling and developer experience
 
+**Read-only portable bytecode inspector (2026-11-10; CI pending):** New `inspect-bytecode FILE.nbc` uses the bounded Rust v1/v2/v3 validator, then reports version, size, instruction/function counts, text literal and Unicode length-opcode totals without executing the program, modifying its bytes or displaying embedded source data. Regression tests cover valid v2/v3 files, deterministic output, read-only behavior and rejection of malformed or missing files. This is metadata inspection, not debugger, disassembler or sandbox.
+
+
+
 **Read-only formatter verification (2026-11-10, verified [PR #42](https://github.com/siposboris/NOBODY/pull/42)):** The Rust `format-check PROFILE FILE.nbd` detects noncanonical source formatting with N5002 and exit code 1, without touching the original. Tests cover `ai`, `sk`, `en` and formatter idempotence. Original comments and whitespace are not preserved by the AST emitter; full source-preserving formatting and editor integration remain open. All four workflows passed including [Rust CI #42765224570](https://github.com/siposboris/NOBODY/actions/runs/42765224570). No broad checklist item is closed.
 
 
