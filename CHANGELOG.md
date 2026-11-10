@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — static boolean checks for if/elif/while (2026-11-10; CI pending)
+
+- Rust `typecheck` rejects known non-boolean branch/loop conditions with N1002; previously the independent evaluator rejected them only during execution.
+- Preserved unknown dynamic-condition deferral; tests include `ai`, `sk`, `en` and `len(text)` expressions.
+- Full flow-sensitive type analysis remains open.
+
+
 ## Unreleased — checked constant folding for Rust bytecode (2026-11-10; CI pending)
 
 - Reduced pure integer literal arithmetic into single `Push` instructions without altering output for supported arithmetic expressions.

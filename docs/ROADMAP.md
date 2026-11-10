@@ -72,6 +72,10 @@ Nobody is an independent, MIT-licensed programming language project with an even
 
 ## Phase 2 — Semantic analysis, typing and error reporting
 
+**Static boolean flow-condition diagnostics (2026-11-10; CI pending):** Rust type analysis now rejects provably non-boolean expressions in `if`, `elif`, and `while` with N1002 before execution, matching runtime semantics. Unknown/dynamic types remain allowed for runtime checking; regression tests exercise the three primary syntax profiles and text/number/null/length operands. This is not complete type inference or flow-sensitive narrowing.
+
+
+
 **Localized text length builtin contracts (2026-11-10; verified [PR #51](https://github.com/siposboris/NOBODY/pull/51), [Rust CI #42836145109](https://github.com/siposboris/NOBODY/actions/runs/42836145109)):** Conservative Rust typechecker now infers that `len(text)`/`dlzka(text)` returns an integer; it rejects certainly non-text arguments with N1002, wrong arity N1005 and assigning the result to incompatible typed declarations N1001. Unknown operands defer safely. Nested operations and three primary syntax profiles are covered by Rust tests. General polymorphic builtins and complete type inference remain open.
 
 
