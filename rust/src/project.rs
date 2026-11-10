@@ -463,6 +463,54 @@ mod tests {
     use super::*;
 
     #[test]
+    fn localized_source_imports_work_for_all_40_profiles() {
+        for profile in crate::profiles::PROFILES {
+            let import_word = crate::profiles::word(profile.code, "import").unwrap();
+            let print_word = crate::profiles::word(profile.code, "print").unwrap();
+            let source = format!(
+                "# leading comment\n{import_word} math # direct dependency\n{print_word}(3)\n"
+            );
+            let (clean, imported) = source_imports(&source, profile.code, true).unwrap();
+            assert!(imported.contains("math"), "{}", profile.code);
+            assert_eq!(imported.len(), 1);
+            assert!(clean.starts_with("# leading comment\n\n"));
+            crate::parse_validated(&clean, profile.code).unwrap();
+            let translated = crate::translate_source(&clean, profile.code, "ai").unwrap();
+            assert!(crate::same_ir(&clean, profile.code, &translated, "ai").unwrap());
+            assert_eq!(
+                source_imports(&source, profile.code, false)
+                    .unwrap_err()
+                    .code,
+                5003
+            );
+        }
+    }
+
+    #[test]
+    fn source_imports_are_strict_and_do_not_interpret_literal_text() {
+        for source in [
+            "import math\nimport math\nprint(3)\n",
+            "print(3)\nimport math\n",
+            "import math more\nprint(3)\n",
+            "import math,other\nprint(3)\n",
+            "import Math\nprint(3)\n",
+        ] {
+            assert_eq!(source_imports(source, "ai", true).unwrap_err().code, 5003);
+        }
+        let triple = "print(\"\"\"example\nimport math\n\"\"\")\n";
+        let (clean, imported) = source_imports(triple, "ai", true).unwrap();
+        assert_eq!(clean, triple);
+        assert!(imported.is_empty());
+        let commented = "# import math\nprint(3)\n";
+        let (clean, imported) = source_imports(commented, "ai", true).unwrap();
+        assert_eq!(clean, commented);
+        assert!(imported.is_empty());
+        let (clean, imported) = source_imports("import math", "ai", true).unwrap();
+        assert_eq!(clean, "");
+        assert!(imported.contains("math"));
+    }
+
+    #[test]
     fn rejects_missing_manifest_and_unknown_header() {
         let missing = Path::new("/nonexistent/nobody_project_missing_manifest.nbproj");
         assert_eq!(load_project(missing).unwrap_err().code, 5003);
