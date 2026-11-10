@@ -2,6 +2,27 @@
 
 This is the first **real ELF64 machine-code output** from Nobody. The Rust compiler lowers a small subset of canonical Nobody IR directly into x86-64 GNU Intel-syntax assembly, runs `as` and `ld`, and emits a standalone ELF executable with Linux syscalls for output and exit. The resulting executable needs **no Python, Nobody bytecode VM, Rust runtime or libc**. This is not a complete compiler backend, sandbox, or self-hosting.
 
+## Unicode scalar length: `len(text)` / `dlzka(text)` (experimental)
+
+The Rust AST evaluator and Linux x86-64 ELF backend now support
+`len(text)` for one UTF-8 string argument; the Slovak syntax is
+`dlzka(text)`. The result is the number of **Unicode scalar values**,
+not UTF-8 bytes or displayed grapheme clusters: `len("Život ☸") == 7`,
+`len("") == 0`, and `len("👩‍💻") == 3` (woman, joiner, laptop).
+Only strings are accepted; invalid arity and value type fail explicitly.
+Length is implemented by a native byte-loop over UTF-8 leading bytes, not
+by embedding a Rust VM in the generated ELF.
+
+```bash
+cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- \
+  compile-native sk rust/examples/native_len_sk.nbd native-len
+./native-len
+```
+
+Differential tests execute standalone ELF programs for `ai`, `sk`, `en`
+and compare their exact output with the independent Rust evaluator.
+This is not Unicode grapheme segmentation or general string indexing.
+
 ## Compile and run on Fedora
 
 Install GNU binutils (`sudo dnf install binutils`) if `as`, `ld` and `readelf` are missing. Rust/Cargo are required to build the compiler, not to run the generated executable.

@@ -1,0 +1,9 @@
+funkcia identity(s: text): text { vrat s }
+funkcia count(s: text): cele { vrat dlzka(s) }
+nech text_value = "Život ☸"
+vypis(dlzka(text_value), dlzka(""), dlzka("👩‍💻"))
+vypis(dlzka(text_value + "!"), dlzka(identity(text_value)), count(text_value))
+nech copy = text_value
+copy = copy + "✨"
+vypis(copy, dlzka(copy), count(copy))
+pre n v rozsah(3) { vypis("krok", n, dlzka(copy)) }

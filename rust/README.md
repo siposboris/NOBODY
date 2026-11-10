@@ -4,6 +4,29 @@ This is the Rust-first migration of the Nobody compiler frontend. Its goal is
 eventually to replace the Python interpreter/compiler and later be rewritten in
 Nobody itself. **Parsing does not mean running or native compilation.**
 
+## UTF-8 Unicode scalar length in standalone ELF (experimental)
+
+`len("Život ☸")` (Slovak `dlzka`) returns 7: Unicode scalar count,
+not byte count or grapheme count. The Rust evaluator and direct Linux
+x86-64 machine-code backend now implement it for text literals, text
+variables, concatenation results and typed string-function results. The
+native helper counts leading UTF-8 bytes and requires no external runtime.
+Real compiled ELF examples in `ai`/`sk`/`en` must match the Rust AST
+evaluator; nontext arguments and wrong arity are explicitly rejected.
+
+## All-40-profile interpreter and native ELF acceptance
+
+A dedicated Rust acceptance suite generates the same typed Nobody program in
+**all 40 registered language profiles**, using the current official Rust
+keyword dictionaries (not manually maintained examples). It compares
+canonical language-neutral IR, parser validity, static checker acceptance and
+the independent Rust AST interpreter result; Linux x86-64 CI additionally
+compiles every profile to actual standalone ELF and checks byte-identical
+output. The program includes translated function signatures, loops,
+conditionals and UTF-8 text. It checks mixed-profile keyword rejection.
+This does **not** establish native-speaker translation quality, full grammar
+coverage, internationalization of error messages or production-readiness.
+
 ## Portable UTF-8 strings in Rust bytecode VM and .nbc v3
 
 The Python-free independent stack VM now executes UTF-8 text literals,
