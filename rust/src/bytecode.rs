@@ -215,7 +215,7 @@ impl Compiler {
                     return Err(diagnostic(4005, "Bytecode text literal exceeds 1 MiB"));
                 }
                 self.emit(Instruction::PushText(decoded))
-            },
+            }
             IrExpr::Call { callee, args } => {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
                     return Err(unsupported("Bytecode only calls declared named functions"));
@@ -698,9 +698,10 @@ fn verify_unit(
         let instruction = &code[pc];
         let mut successors = Vec::with_capacity(2);
         match instruction {
-            Instruction::Push(_) | Instruction::PushBool(_) | Instruction::PushText(_) | Instruction::PushNull => {
-                state.depth += 1
-            }
+            Instruction::Push(_)
+            | Instruction::PushBool(_)
+            | Instruction::PushText(_)
+            | Instruction::PushNull => state.depth += 1,
             Instruction::Load(slot) => {
                 if !state.initialized.get(*slot).copied().unwrap_or(false) {
                     return Err(unsupported(
@@ -945,7 +946,10 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                 match (left, right, instruction) {
                     (Value::Text(a), Value::Text(b), Instruction::Add) => {
                         if a.len().saturating_add(b.len()) > MAX_OUTPUT {
-                            return Err(diagnostic(4005, "Bytecode text concatenation exceeds 1 MiB"));
+                            return Err(diagnostic(
+                                4005,
+                                "Bytecode text concatenation exceeds 1 MiB",
+                            ));
                         }
                         stack.push(Value::Text(a + &b));
                     }
@@ -958,7 +962,11 @@ pub fn execute(program: &Bytecode) -> Result<String, Diagnostic> {
                         .ok_or_else(|| diagnostic(4003, "Bytecode arithmetic overflow"))?;
                         stack.push(Value::Int(result));
                     }
-                    _ => return Err(unsupported("Arithmetic accepts integers, or two strings for '+'")),
+                    _ => {
+                        return Err(unsupported(
+                            "Arithmetic accepts integers, or two strings for '+'",
+                        ))
+                    }
                 }
             }
             Instruction::Neg => {
@@ -1259,7 +1267,12 @@ mod tests {
     fn string_operations_have_bounded_runtime_behavior() {
         let source = "let text = \"x\"\nfor i in range(22) { text = text + text }\nprint(text)";
         assert_eq!(execute_source(source, "ai").unwrap_err().code, 4005);
-        assert_eq!(execute_source("print(\"a\" - \"b\")", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            execute_source("print(\"a\" - \"b\")", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
     }
 
     #[test]
