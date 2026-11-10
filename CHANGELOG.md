@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased — native UTF-8 concatenation and equality (2026-11-10, PR #41; CI pending)
+## Unreleased — native UTF-8 concatenation and equality (2026-11-10, verified [PR #41](https://github.com/siposboris/NOBODY/pull/41))
 
 - Standalone Linux x86-64 ELF now performs `+`, `==` and `!=` on UTF-8 text literals and mutable text variables. Equality compares contents rather than pointers.
 - Text joins allocate from a fixed 1 MiB process-lifetime arena without Python, libc, Rust or Nobody VM inside the executable. Arena exhaustion exits with status 7.
 - New source fixtures and actual ELF-vs-Rust-evaluator parity tests for `ai`, `sk`, `en`, UTF-8, empty values, nested concatenation, mutable loops and function-local text.
-- **Still open:** text arguments/returns, string ordering, GC, collections, all-platform native compiler, parity completion, Python removal and self-hosting.
+- All four CI checks passed, including [Rust CI #42754693569](https://github.com/siposboris/NOBODY/actions/runs/42754693569). **Still open:** text arguments/returns, string ordering, GC, collections, all-platform native compiler, parity completion, Python removal and self-hosting.
 
 
 ## Unreleased — native UTF-8 text variables (2026-11-10; verified in [PR #40](https://github.com/siposboris/NOBODY/pull/40))
