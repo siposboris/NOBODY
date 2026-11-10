@@ -6,8 +6,12 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn scratch() -> PathBuf {
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-    let root = std::env::temp_dir().join(format!("nobody-v2-imports-{}-{nanos}", std::process::id()));
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let root =
+        std::env::temp_dir().join(format!("nobody-v2-imports-{}-{nanos}", std::process::id()));
     fs::create_dir_all(&root).unwrap();
     root
 }
@@ -35,16 +39,28 @@ fn actual_import_directives_compile_and_run_vm_and_stored_v3() {
     assert!(!program.source.contains("import math"));
     let name = manifest.to_str().unwrap();
     let verify = cli(&["check-project", name]);
-    assert!(verify.status.success(), "{}", String::from_utf8_lossy(&verify.stderr));
+    assert!(
+        verify.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verify.stderr)
+    );
     let ast = nobody::evaluate_source(&program.source, "ai").unwrap();
     let run = cli(&["run-project", name]);
-    assert!(run.status.success(), "{}", String::from_utf8_lossy(&run.stderr));
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
     assert_eq!(run.stdout, ast.as_bytes());
     assert_eq!(run.stdout, "13 Život ☸\n".as_bytes());
 
     let output = root.join("linked.nbc");
     let result = cli(&["compile-project-bytecode", name, output.to_str().unwrap()]);
-    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
     let check = cli(&["verify-bytecode", output.to_str().unwrap()]);
     assert!(check.status.success());
     let disk = cli(&["run-compiled", output.to_str().unwrap()]);
@@ -64,7 +80,11 @@ fn real_source_imports_link_to_independent_native_linux_elf() {
         manifest.to_str().unwrap(),
         target.to_str().unwrap(),
     ]);
-    assert!(compile.status.success(), "{}", String::from_utf8_lossy(&compile.stderr));
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
     assert!(fs::read(&target).unwrap().starts_with(b"\x7fELF"));
     let executable = Command::new(&target).output().unwrap();
     let interpreted = cli(&["run-project", manifest.to_str().unwrap()]);
@@ -96,7 +116,11 @@ fn import_directives_must_match_manifest_graph_and_precede_executable_code() {
     }
     fs::write(&path, normal).unwrap();
     let old = fs::read_to_string(&manifest).unwrap();
-    fs::write(&manifest, old.replace("nobody.project.v2", "nobody.project.v1")).unwrap();
+    fs::write(
+        &manifest,
+        old.replace("nobody.project.v2", "nobody.project.v1"),
+    )
+    .unwrap();
     assert_eq!(load_project(&manifest).unwrap_err().code, 5003);
     fs::remove_dir_all(root).unwrap();
 }
