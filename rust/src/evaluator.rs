@@ -314,7 +314,10 @@ impl Evaluator {
                 if args.len() != 1 {
                     return Err(error(
                         4007,
-                        format!("len expects exactly one string argument, received {}", args.len()),
+                        format!(
+                            "len expects exactly one string argument, received {}",
+                            args.len()
+                        ),
                         "Pass one UTF-8 string value to len.",
                     ));
                 }
@@ -618,18 +621,41 @@ mod len_tests {
     #[test]
     fn unicode_length_counts_scalars_not_utf8_bytes() {
         for (profile, source, expected) in [
-            ("ai", "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))", "7 0 3\n"),
-            ("sk", "vypis(dlzka(\"Život ☸\"), dlzka(\"\"), dlzka(\"👩‍💻\"))", "7 0 3\n"),
-            ("en", "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))", "7 0 3\n"),
+            (
+                "ai",
+                "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))",
+                "7 0 3\n",
+            ),
+            (
+                "sk",
+                "vypis(dlzka(\"Život ☸\"), dlzka(\"\"), dlzka(\"👩‍💻\"))",
+                "7 0 3\n",
+            ),
+            (
+                "en",
+                "print(len(\"Život ☸\"), len(\"\"), len(\"👩‍💻\"))",
+                "7 0 3\n",
+            ),
         ] {
             assert_eq!(evaluate_source(source, profile).unwrap(), expected);
         }
     }
     #[test]
     fn len_invalid_arity_and_type_fail_with_numbered_diagnostics() {
-        assert_eq!(evaluate_source("print(len())", "ai").unwrap_err().code, 4007);
-        assert_eq!(evaluate_source("print(len(\"a\", \"b\"))", "ai").unwrap_err().code, 4007);
-        assert_eq!(evaluate_source("print(len(2))", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("print(len())", "ai").unwrap_err().code,
+            4007
+        );
+        assert_eq!(
+            evaluate_source("print(len(\"a\", \"b\"))", "ai")
+                .unwrap_err()
+                .code,
+            4007
+        );
+        assert_eq!(
+            evaluate_source("print(len(2))", "ai").unwrap_err().code,
+            4004
+        );
     }
 }
 
