@@ -533,6 +533,41 @@ pub fn load_project(path: &Path) -> Result<Project, Diagnostic> {
             check_direct_import_visibility(module, source, statements, imports, &exports)?;
         }
     }
+    if version == 3 {
+        for unit in &namespaced {
+            check_namespaced_visibility(
+                &unit.name,
+                &unit.source,
+                &unit.program.statements,
+                &exported_by_module,
+            )?;
+            for (owner, symbol) in &unit.qualified_references {
+                if !unit.imports.contains(owner)
+                    || !exported_by_module
+                        .get(owner)
+                        .is_some_and(|symbols| symbols.contains(symbol))
+                {
+                    return Err(issue(format!(
+                        "Module {:?} refers to inaccessible or missing export {owner}.{symbol}",
+                        unit.name
+                    )));
+                }
+            }
+        }
+        for mut unit in namespaced {
+            let exports = &exported_by_module[&unit.name];
+            let source = crate::project_namespaces::assemble_namespaced_module(
+                &mut unit.program,
+                &unit.name,
+                exports,
+            )?;
+            if merged.len().saturating_add(source.len() + 1) > MAX_SOURCE {
+                return Err(issue("Namespaced project source exceeds 1 MiB"));
+            }
+            merged.push_str(&source);
+            merged.push('\n');
+        }
+    }
     parse_validated(&merged, "ai")?;
     Ok(Project {
         source: merged,
