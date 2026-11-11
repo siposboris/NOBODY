@@ -433,6 +433,10 @@ fn block(
                 check_condition_type(condition, env)?;
                 let mut local = env.clone();
                 let mut local_functions = functions.clone();
+                // A loop may execute more than once. A write to an outer
+                // function on an earlier iteration makes its original arity
+                // uncertain even at the start of a later iteration.
+                invalidate_possible_outer_writes(body, &mut local_functions, &BTreeSet::new());
                 block(body, &mut local, &mut local_functions)?;
                 invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
             }
@@ -447,6 +451,11 @@ fn block(
                 local.insert(variable.clone(), Type::Unknown);
                 let mut local_functions = functions.clone();
                 local_functions.remove(variable);
+                let mut iterator_shadow = BTreeSet::new();
+                iterator_shadow.insert(variable.clone());
+                // Repeated iterations may observe writes from previous ones.
+                // Preserve the iterator's local shadow when invalidating.
+                invalidate_possible_outer_writes(body, &mut local_functions, &iterator_shadow);
                 block(body, &mut local, &mut local_functions)?;
                 // The loop iterator shadows any outer signature only inside
                 // the body; it must not invalidate that outer binding itself.
@@ -455,8 +464,6 @@ fn block(
                 }
                 // The iterator is a local binding throughout the loop body.
                 // Assignments to it cannot replace a function in the outer scope.
-                let mut iterator_shadow = BTreeSet::new();
-                iterator_shadow.insert(variable.clone());
                 invalidate_possible_outer_writes(body, functions, &iterator_shadow);
             }
             IrStatement::Function {
@@ -792,6 +799,42 @@ mod tests {
             "f(1, 2)"
         );
         assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
+    }
+
+    #[test]
+    fn repeated_while_iterations_defer_arity_after_possible_rebinding() {
+        // The second iteration may call a value assigned in the first.
+        check_source(
+            "fn f(x) { return x }\nwhile uncertain { f(1,2)\nf = mystery }",
+            "ai",
+        )
+        .unwrap();
+        // A loop without writes retains a known function signature.
+        assert_eq!(
+            check_source("fn f(x) { return x }\nwhile uncertain { f(1,2) }", "ai")
+                .unwrap_err()
+                .code,
+            1005
+        );
+    }
+
+    #[test]
+    fn repeated_for_iterations_respect_outer_writes_and_iterator_shadowing() {
+        check_source(
+            "fn f(x) { return x }\nfor i in range(2) { f(1,2)\nf = mystery }",
+            "ai",
+        )
+        .unwrap();
+        // Rebinding the loop iterator never rebinds an outer function.
+        assert_eq!(
+            check_source(
+                "fn f(x) { return x }\nfor f in range(2) { f = mystery }\nf(1,2)",
+                "ai"
+            )
+            .unwrap_err()
+            .code,
+            1005
+        );
     }
 
     #[test]
