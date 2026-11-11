@@ -450,7 +450,11 @@ fn block(
                 if let Some(arity) = functions.get(variable).copied() {
                     local_functions.insert(variable.clone(), arity);
                 }
-                invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
+                // The iterator is a local binding throughout the loop body.
+                // Assignments to it cannot replace a function in the outer scope.
+                let mut iterator_shadow = BTreeSet::new();
+                iterator_shadow.insert(variable.clone());
+                invalidate_possible_outer_writes(body, functions, &iterator_shadow);
             }
             IrStatement::Function {
                 name,
@@ -725,6 +729,38 @@ mod tests {
             "f(1,2)"
         );
         check_source(deferred, "ai").unwrap();
+    }
+
+    #[test]
+    fn loop_iterator_assignments_do_not_erase_outer_function_arity() {
+        // The loop variable shadows f, even when reassigned in its body.
+        let source = concat!(
+            "fn f(x) { return x }\n",
+            "for f in range(2) { f = mystery }\n",
+            "f(1, 2)"
+        );
+        assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
+    }
+
+    #[test]
+    fn loop_body_writes_to_outer_function_still_invalidate_arity() {
+        // A different iterator does not protect an actual outer assignment.
+        let source = concat!(
+            "fn f(x) { return x }\n",
+            "for i in range(2) { f = mystery }\n",
+            "f(1, 2)"
+        );
+        check_source(source, "ai").unwrap();
+    }
+
+    #[test]
+    fn nested_loop_iterator_shadow_preserves_outer_function_arity() {
+        let source = concat!(
+            "fn f(x) { return x }\n",
+            "for i in range(2) { for f in range(2) { f = mystery } }\n",
+            "f(1, 2)"
+        );
+        assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
     }
 
     #[test]
