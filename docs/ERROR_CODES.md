@@ -126,7 +126,7 @@
 
 ### N2004 — Nepovolený znak (`LEX_CHARACTER`)
 
-**Čo presne znamená:** Lexer nerozpoznal znak mimo komentára a textového literálu.
+**Čo presne znamená:** Lexer nerozpoznal znak mimo komentára a textového literálu. Rust lexer tiež odmieta ASCII riadiace znaky NUL, BEL, ESC a DEL mimo literálov; bežné medzery, tabulátory a konce riadkov sú povolené.
 
 **Ako opraviť:** Odstráň uvedený znak alebo ho vlož medzi úvodzovky.
 
