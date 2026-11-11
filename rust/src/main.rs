@@ -55,7 +55,9 @@ fn main() {
         println!(r#"  "implementation": "Rust","#);
         println!(r#"  "compiler_version": "{}","#, env!("CARGO_PKG_VERSION"));
         println!(r#"  "implemented_syntax_profiles": {},"#, PROFILES.len());
-        println!(r#"  "native_machine_code_compiler": false,"#);
+        println!(r#"  "native_machine_code_compiler": true,"#);
+        println!(r#"  "native_target": "linux-x86_64-elf",""#);
+        println!(r#"  "native_scope": "restricted experimental subset",""#);
         println!(r#"  "self_hosted": false,"#);
         println!(r#"  "python_required_for_rust_cli": false"#);
         println!("}}");
