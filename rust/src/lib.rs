@@ -112,6 +112,12 @@ fn failure(code: u16, line: usize, column: usize, detail: impl Into<String>) -> 
     }
 }
 
+fn is_hidden_format_control(c: char) -> bool {
+    // Invisible formatting characters can conceal tokens without changing their
+    // apparent spelling. Do not blanket-reject joiners used by native scripts.
+    matches!(c as u32, 0x00AD | 0x200B | 0x2060 | 0xFEFF)
+}
+
 pub fn is_bidi_control(c: char) -> bool {
     matches!(c as u32, 0x061C | 0x200E | 0x200F |
         0x202A..=0x202E | 0x2066..=0x2069)
@@ -249,7 +255,7 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
     // Detect visually deceptive controls even in comments and quoted strings.
     let (mut check_line, mut check_col) = (1, 1);
     for ch in source.chars() {
-        if is_bidi_control(ch) {
+        if is_bidi_control(ch) || is_hidden_format_control(ch) {
             return Err(failure(
                 2005,
                 check_line,
@@ -444,6 +450,25 @@ mod tests {
     fn prohibit_visual_override_in_comments() {
         let error = scan("# secret\u{202E}").unwrap_err();
         assert_eq!(error.code, 2005);
+    }
+    #[test]
+    fn reject_invisible_format_controls_everywhere() {
+        for control in ['\u{00ad}', '\u{200b}', '\u{2060}', '\u{feff}'] {
+            for source in [
+                format!("nech x = 1{control}"),
+                format!("# note{control}"),
+                format!("vypis(\"text{control}\")"),
+            ] {
+                let error = scan(&source).unwrap_err();
+                assert_eq!(error.code, 2005, "U+{:04X}", control as u32);
+                assert_eq!(error.line, 1);
+                assert!(error.column > 1);
+            }
+        }
+    }
+    #[test]
+    fn preserve_native_script_joiners() {
+        assert!(scan("nech x = \"क्\u{200d}ष\"").is_ok());
     }
     #[test]
     fn unmatched_string_has_number() {
