@@ -216,12 +216,18 @@ impl Parser {
     }
     fn identifier(&mut self) -> Result<String, Diagnostic> {
         let (line, col) = self.location();
-        if self.word().is_some_and(|word| self.language.legacy_ai_keyword(word)) {
+        if self
+            .word()
+            .is_some_and(|word| self.language.legacy_ai_keyword(word))
+        {
             return Err(error(
                 3010,
                 line,
                 col,
-                format!("Legacy AI keyword {:?} cannot be a binding name", self.word().unwrap_or_default()),
+                format!(
+                    "Legacy AI keyword {:?} cannot be a binding name",
+                    self.word().unwrap_or_default()
+                ),
             ));
         }
         match self.take() {
