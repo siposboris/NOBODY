@@ -719,7 +719,11 @@ mod tests {
         let invalid_else = "fn f(x) { return x }\nif false { f = mystery } else { f(1,2) }";
         assert_eq!(check_source(invalid_else, "ai").unwrap_err().code, 1005);
         // After the conditional, an executed arm may have replaced f.
-        let deferred = "fn f(x) { return x }\nif false { f = mystery } elif true { print(1) }\nf(1,2)";
+        let deferred = concat!(
+            "fn f(x) { return x }\n",
+            "if false { f = mystery } elif true { print(1) }\n",
+            "f(1,2)"
+        );
         check_source(deferred, "ai").unwrap();
     }
 
