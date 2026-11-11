@@ -221,6 +221,10 @@ impl Parser {
                 if t.kind == TokenKind::Name
                     && self.language.boolean(&t.value).is_none()
                     && !self.language.is_unsupported_keyword(&t.value)
+                    // The Python reference reserves the Slovak built-in `sucet`.
+                    // Keep the existing range-shadowing behavior until the wider
+                    // built-in reservation policy is reconciled across runtimes.
+                    && !(self.language.code == "sk" && t.value == "sucet")
                     && t.value != self.language.let_word() =>
             {
                 Ok(t.value)
@@ -613,6 +617,26 @@ pub fn parse(source: &str, language_code: &str) -> Result<Program, Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn slovak_sum_builtin_is_not_a_binding_name() {
+        // Python's reference parser already rejects this reserved spelling.
+        // Reject it in every Rust binding position, not just function names.
+        for source in [
+            "nech sucet = 1",
+            "sucet = 1",
+            "funkcia sucet(x) { vrat x }",
+            "funkcia f(sucet) { vrat sucet }",
+            "pre sucet v rozsah(2) { vypis(sucet) }",
+        ] {
+            let err = parse(source, "sk").unwrap_err();
+            assert_eq!(err.code, 3003, "{source}");
+        }
+        // Calling the built-in remains syntactically valid.
+        assert!(parse("vypis(sucet(1, 2))", "sk").is_ok());
+        // A non-reserved user-defined name remains valid.
+        assert!(parse("funkcia scitaj(x) { vrat x }", "sk").is_ok());
+    }
+
     #[test]
     fn sk_declaration_assignment_and_call() {
         let program = parse("nech vek: cele = 30\nvek = vek + 1\nvypis(vek)", "sk").unwrap();
