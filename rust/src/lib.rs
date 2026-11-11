@@ -390,7 +390,10 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                 2004,
                 tok_line,
                 tok_col,
-                format!("Nepovoleny ASCII riadiaci znak U+{:04X} mimo textu", c as u32),
+                format!(
+                    "Nepovoleny ASCII riadiaci znak U+{:04X} mimo textu",
+                    c as u32
+                ),
             ));
         } else if !c.is_ascii() {
             return Err(failure(
