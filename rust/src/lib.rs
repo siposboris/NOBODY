@@ -385,7 +385,7 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                 tok_col,
                 format!("Osamotena kombinujuca znacka U+{:04X}", c as u32),
             ));
-        } else if (c.is_ascii_control() && !c.is_ascii_whitespace()) || c == '\u007f' {
+        } else if (c.is_ascii_control() && !c.is_ascii_whitespace()) || c == '\u{007f}' {
             return Err(failure(
                 2004,
                 tok_line,
@@ -477,7 +477,7 @@ mod tests {
     }
     #[test]
     fn reject_ascii_control_characters_outside_literals() {
-        for control in ['\u0000', '\u0007', '\u001b', '\u007f'] {
+        for control in ['\u{0000}', '\u{0007}', '\u{001b}', '\u{007f}'] {
             let source = format!("nech x = 1{control}");
             let error = scan(&source).unwrap_err();
             assert_eq!(error.code, 2004, "U+{:04X}", control as u32);
