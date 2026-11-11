@@ -216,6 +216,20 @@ impl Parser {
     }
     fn identifier(&mut self) -> Result<String, Diagnostic> {
         let (line, col) = self.location();
+        if self
+            .word()
+            .is_some_and(|word| self.language.legacy_ai_keyword(word))
+        {
+            return Err(error(
+                3010,
+                line,
+                col,
+                format!(
+                    "Legacy AI keyword {:?} cannot be a binding name",
+                    self.word().unwrap_or_default()
+                ),
+            ));
+        }
         match self.take() {
             Some(t)
                 if t.kind == TokenKind::Name
@@ -635,6 +649,23 @@ mod tests {
         assert!(parse("vypis(sucet(1, 2))", "sk").is_ok());
         // A non-reserved user-defined name remains valid.
         assert!(parse("funkcia scitaj(x) { vrat x }", "sk").is_ok());
+    }
+
+    #[test]
+    fn legacy_ai_keywords_are_rejected_in_every_binding_position() {
+        for source in [
+            "let ai_if = 1",
+            "ai_if = 1",
+            "fn ai_return(x) { return x }",
+            "fn f(ai_else) { return ai_else }",
+            "for ai_while in range(2) { print(ai_while) }",
+        ] {
+            let err = parse(source, "ai").unwrap_err();
+            assert_eq!(err.code, 3010, "{source}");
+            assert!(err.repair.contains("migrate-ai"), "{source}");
+        }
+        assert!(parse("let my_if = 1", "ai").is_ok());
+        assert!(parse("let ai_if = 1", "en").is_ok());
     }
 
     #[test]
