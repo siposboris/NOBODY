@@ -145,6 +145,9 @@ fn exact_integer_constant(expr: &IrExpr) -> Option<i128> {
                 "+" => a.checked_add(b),
                 "-" => a.checked_sub(b),
                 "*" => a.checked_mul(b),
+                // Only nonnegative integer powers can be evaluated exactly.
+                // Overflow or an exponent outside u32 remains dynamic.
+                "**" => a.checked_pow(u32::try_from(b).ok()?),
                 _ => None,
             }
         }
@@ -507,6 +510,34 @@ pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn exact_integer_powers_detect_zero_divisors() {
+        for source in [
+            "print(10 / (2 ** 3 - 8))",
+            "print(10 // (3 ** 2 - 9))",
+            "print(10 % (0 ** 5))",
+            "print(10 / ((-2) ** 2 - 4))",
+        ] {
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1008,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn exact_integer_powers_do_not_guess_on_overflow_or_negative_exponents() {
+        for source in [
+            "print(10 / (2 ** 3 - 7))",
+            "print(10 / (2 ** -1))",
+            "print(10 / (999999999999999999999999 ** 99))",
+            "print(10 / (unknown ** 2))",
+        ] {
+            check_source(source, "ai").unwrap();
+        }
+    }
+
     #[test]
     fn certainly_nonboolean_if_and_while_conditions_are_rejected() {
         for source in [
