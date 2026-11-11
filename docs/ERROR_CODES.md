@@ -17,7 +17,7 @@
 | **N2002** | `LEX_CASE` | Nepovolené veľké písmená |
 | **N2003** | `LEX_COMBINING` | Osamotená diakritická značka |
 | **N2004** | `LEX_CHARACTER` | Nepovolený znak |
-| **N2005** | `LEX_BIDI` | Skrytý riadiaci znak smeru |
+| **N2005** | `LEX_BIDI` | Skrytý riadiaci znak smeru alebo neviditeľný formátovací znak (U+00AD, U+200B, U+2060, U+FEFF), aj v komentároch a reťazcoch |
 | **N2006** | `LEX_NUMBER` | Neplatný desiatkový číselný literál |
 | **N2007** | `LEX_MIXED_SCRIPT` | Podozrivé miešanie latinky, gréčtiny a cyriliky v názve |
 | **N2008** | `LEX_NFC` | Identifikátor nie je v kanonickej forme Unicode NFC |
