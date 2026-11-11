@@ -399,19 +399,28 @@ fn block(
                 branches,
                 otherwise,
             } => {
+                // Branches are mutually exclusive: a write in one arm must
+                // not erase a known function signature while checking another.
+                let entry_functions = functions.clone();
                 for (condition, body) in branches {
-                    check_calls(condition, functions)?;
+                    check_calls(condition, &entry_functions)?;
                     check_binary_types(condition, env)?;
                     check_condition_type(condition, env)?;
                     let mut local = env.clone();
-                    let mut local_functions = functions.clone();
+                    let mut local_functions = entry_functions.clone();
                     block(body, &mut local, &mut local_functions)?;
-                    invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
                 }
                 if let Some(body) = otherwise {
                     let mut local = env.clone();
-                    let mut local_functions = functions.clone();
+                    let mut local_functions = entry_functions.clone();
                     block(body, &mut local, &mut local_functions)?;
+                }
+                // Only after every arm has been checked do we conservatively
+                // invalidate signatures for statements following the if.
+                for (_, body) in branches {
+                    invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
+                }
+                if let Some(body) = otherwise {
                     invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
                 }
             }
@@ -702,6 +711,22 @@ mod tests {
     fn accepts_assignment_to_visible_outer_variable() {
         check_source("let x: int = 1\nif true { x = 2 }", "ai").unwrap();
     }
+    #[test]
+    fn mutually_exclusive_branches_keep_entry_function_arity() {
+        // A write in the first arm cannot affect the call in the elif arm.
+        let invalid = "fn f(x) { return x }\nif false { f = mystery } elif true { f(1,2) }";
+        assert_eq!(check_source(invalid, "ai").unwrap_err().code, 1005);
+        let invalid_else = "fn f(x) { return x }\nif false { f = mystery } else { f(1,2) }";
+        assert_eq!(check_source(invalid_else, "ai").unwrap_err().code, 1005);
+        // After the conditional, an executed arm may have replaced f.
+        let deferred = concat!(
+            "fn f(x) { return x }\n",
+            "if false { f = mystery } elif true { print(1) }\n",
+            "f(1,2)"
+        );
+        check_source(deferred, "ai").unwrap();
+    }
+
     #[test]
     fn known_function_arity_mismatch_is_n1005() {
         let err = check_source("fn add(a,b) { return a+b }\nadd(1)", "ai").unwrap_err();
