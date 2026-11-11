@@ -17,7 +17,9 @@ fn native_nobody_reports_true_implementation_status() {
     assert!(message.contains(r#""implemented_syntax_profiles": 40"#));
     assert!(message.contains(r#""self_hosted": false"#));
     assert!(message.contains(r#""python_required_for_rust_cli": false"#));
-    assert!(message.contains(r#""native_machine_code_compiler": false"#));
+    assert!(message.contains(r#""native_machine_code_compiler": true"#));
+    assert!(message.contains(r#""native_target": "linux-x86_64-elf""#));
+    assert!(message.contains(r#""native_scope": "restricted experimental subset""#));
 }
 
 #[test]
