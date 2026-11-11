@@ -385,6 +385,16 @@ pub fn scan(source: &str) -> Result<Vec<Token>, Diagnostic> {
                 tok_col,
                 format!("Osamotena kombinujuca znacka U+{:04X}", c as u32),
             ));
+        } else if (c.is_ascii_control() && !c.is_ascii_whitespace()) || c == '\u{007f}' {
+            return Err(failure(
+                2004,
+                tok_line,
+                tok_col,
+                format!(
+                    "Nepovoleny ASCII riadiaci znak U+{:04X} mimo textu",
+                    c as u32
+                ),
+            ));
         } else if !c.is_ascii() {
             return Err(failure(
                 2004,
@@ -467,6 +477,20 @@ mod tests {
             tokens.iter().map(|t| t.value.as_str()).collect::<Vec<_>>(),
             vec!["1", "-", "2"]
         );
+    }
+    #[test]
+    fn reject_ascii_control_characters_outside_literals() {
+        for control in ['\u{0000}', '\u{0007}', '\u{001b}', '\u{007f}'] {
+            let source = format!("nech x = 1{control}");
+            let error = scan(&source).unwrap_err();
+            assert_eq!(error.code, 2004, "U+{:04X}", control as u32);
+            assert_eq!((error.line, error.column), (1, 11));
+        }
+    }
+    #[test]
+    fn preserve_ordinary_ascii_whitespace_and_quoted_controls() {
+        assert!(scan("nech\tx = 1\r\nvypis(x)").is_ok());
+        assert!(scan("vypis(\"\u{0007}\")").is_ok());
     }
     #[test]
     fn string_preserved() {
