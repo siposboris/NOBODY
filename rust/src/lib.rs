@@ -487,7 +487,7 @@ mod tests {
     #[test]
     fn preserve_ordinary_ascii_whitespace_and_quoted_controls() {
         assert!(scan("nech\tx = 1\r\nvypis(x)").is_ok());
-        assert!(scan("vypis(\"\\u{0007}\")").is_ok());
+        assert!(scan("vypis(\"\u{0007}\")").is_ok());
     }
     #[test]
     fn string_preserved() {
