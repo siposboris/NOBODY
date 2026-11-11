@@ -736,7 +736,7 @@ mod tests {
         // The loop variable shadows f, even when reassigned in its body.
         let source = concat!(
             "fn f(x) { return x }\n",
-            "for f in range(0, 2) { f = mystery }\n",
+            "for f in range(2) { f = mystery }\n",
             "f(1, 2)"
         );
         assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
@@ -747,7 +747,7 @@ mod tests {
         // A different iterator does not protect an actual outer assignment.
         let source = concat!(
             "fn f(x) { return x }\n",
-            "for i in range(0, 2) { f = mystery }\n",
+            "for i in range(2) { f = mystery }\n",
             "f(1, 2)"
         );
         check_source(source, "ai").unwrap();
@@ -757,7 +757,7 @@ mod tests {
     fn nested_loop_iterator_shadow_preserves_outer_function_arity() {
         let source = concat!(
             "fn f(x) { return x }\n",
-            "for i in range(0, 2) { for f in range(0, 2) { f = mystery } }\n",
+            "for i in range(2) { for f in range(2) { f = mystery } }\n",
             "f(1, 2)"
         );
         assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
