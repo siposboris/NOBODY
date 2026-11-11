@@ -518,7 +518,11 @@ mod tests {
             "print(10 % (0 ** 5))",
             "print(10 / ((-2) ** 2 - 4))",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1008, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1008,
+                "{source}"
+            );
         }
     }
 
