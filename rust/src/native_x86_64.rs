@@ -158,20 +158,16 @@ impl ParameterConstraints<'_> {
                     // A boolean literal provides a reliable type constraint
                     // on the other operand without requiring whole-program
                     // flow-sensitive type inference.
-                    let left = if matches!(rhs.as_ref(), IrExpr::Boolean(_)) {
-                        Some(Type::Bool)
-                    } else if matches!(rhs.as_ref(), IrExpr::Number(_)) {
-                        Some(Type::Int)
-                    } else {
-                        None
+                    let literal_type = |expr: &IrExpr| match expr {
+                        IrExpr::Boolean(_) => Some(Type::Bool),
+                        IrExpr::Number(_) => Some(Type::Int),
+                        IrExpr::String(_) => Some(Type::Text),
+                        _ => None,
                     };
-                    let right = if matches!(lhs.as_ref(), IrExpr::Boolean(_)) {
-                        Some(Type::Bool)
-                    } else if matches!(lhs.as_ref(), IrExpr::Number(_)) {
-                        Some(Type::Int)
-                    } else {
-                        None
-                    };
+                    // Equality with a literal constrains an unannotated
+                    // parameter, including UTF-8 strings.
+                    let left = literal_type(rhs);
+                    let right = literal_type(lhs);
                     self.expression(lhs, left, depth + 1)?;
                     self.expression(rhs, right, depth + 1)?;
                 } else {
@@ -1439,6 +1435,23 @@ print(choose(false, 3, 9))";
                 4004,
                 "{source}"
             );
+        }
+    }
+
+    #[test]
+    fn native_unannotated_string_equality_infers_text_parameters() {
+        let source = "fn matches(word) { return word == \"Život\" }\nprint(matches(\"Život\"))\nprint(matches(\"Iné\"))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_text_equal"));
+        assert!(asm.contains("call nobody_print_bool"));
+        assert!(asm.contains("push rdx"));
+        assert!(asm.contains("    call .L"));
+        for source in [
+            "fn matches(word) { return word == \"ok\" }\nprint(matches(7))",
+            "fn matches(word) { return word != \"ok\" }\nprint(matches(true))",
+            "fn conflicts(word) { if word == \"ok\" { return word + 1 } else { return 0 } }\nprint(conflicts(\"ok\"))",
+        ] {
+            assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
         }
     }
 
