@@ -164,7 +164,6 @@ struct Compiler {
     function_ids: BTreeMap<String, usize>,
     functions: Vec<CompiledFunction>,
     in_function: bool,
-    blocked_function: Option<String>,
 }
 
 struct LoopContext {
@@ -277,12 +276,6 @@ impl Compiler {
                 let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
                     return Err(unsupported("Bytecode only calls declared named functions"));
                 };
-                if self.blocked_function.as_deref() == Some(name.as_str()) {
-                    return Err(diagnostic(
-                        4005,
-                        "Recursive bytecode function calls are not yet supported",
-                    ));
-                }
                 let function = *self
                     .function_ids
                     .get(name)
@@ -546,8 +539,20 @@ impl Compiler {
                         return Err(unsupported("Duplicate function parameter"));
                     }
                 }
-                // A function sees its parameters and locals and only earlier
-                // declared callable functions; it never borrows caller locals.
+                // Register the function before compiling its body so direct
+                // recursion resolves to a stable id. Forward calls remain unsupported.
+                let id = self.functions.len();
+                self.functions.push(CompiledFunction {
+                    name: name.clone(),
+                    arity: parameters.len(),
+                    slots: parameters.len(),
+                    parameter_types: expected_types,
+                    return_type: expected_return,
+                    code: Vec::new(),
+                });
+                self.function_ids.insert(name.clone(), id);
+                // A function sees its parameters, locals, earlier functions and itself;
+                // it never borrows caller locals.
                 let mut child = Compiler {
                     code: Vec::new(),
                     scopes: vec![locals],
@@ -556,23 +561,14 @@ impl Compiler {
                     function_ids: self.function_ids.clone(),
                     functions: self.functions.clone(),
                     in_function: true,
-                    blocked_function: Some(name.clone()),
                 };
                 for stmt in body {
                     child.statement(stmt)?;
                 }
                 child.emit(Instruction::PushNull)?;
                 child.emit(Instruction::Return)?;
-                let id = self.functions.len();
-                self.functions.push(CompiledFunction {
-                    name: name.clone(),
-                    arity: parameters.len(),
-                    slots: child.slots,
-                    parameter_types: expected_types,
-                    return_type: expected_return,
-                    code: child.code,
-                });
-                self.function_ids.insert(name.clone(), id);
+                self.functions[id].slots = child.slots;
+                self.functions[id].code = child.code;
                 Ok(())
             }
             IrStatement::Return(value) => {
@@ -618,7 +614,6 @@ pub fn compile_ir(module: &Module) -> Result<Bytecode, Diagnostic> {
         function_ids: BTreeMap::new(),
         functions: Vec::new(),
         in_function: false,
-        blocked_function: None,
     };
     for statement in &module.statements {
         compiler.statement(statement)?;
@@ -721,10 +716,8 @@ fn verify_unit(
                         "Call argument count differs from function metadata",
                     ));
                 }
-                if function_id.is_some_and(|current| *function >= current) {
-                    return Err(unsupported(
-                        "Recursive and forward bytecode calls are unsupported",
-                    ));
+                if function_id.is_some_and(|current| *function > current) {
+                    return Err(unsupported("Forward bytecode calls are unsupported"));
                 }
             }
             _ => {}
@@ -1620,11 +1613,26 @@ while x < 7 {
     }
 
     #[test]
-    fn wrong_arity_and_recursion_are_numbered() {
+    fn wrong_arity_and_unbounded_recursion_are_numbered() {
         let arity = include_str!("../examples/bytecode_function_bad_arity_ai.nbd");
         assert_eq!(compile_source(arity, "ai").unwrap_err().code, 4007);
         let recursive = include_str!("../examples/bytecode_function_recursive_ai.nbd");
-        assert_eq!(compile_source(recursive, "ai").unwrap_err().code, 4005);
+        let compiled = compile_source(recursive, "ai").unwrap();
+        assert_eq!(execute(&compiled).unwrap_err().code, 4005);
+    }
+
+    #[test]
+    fn recursive_factorial_runs_in_rust_bytecode() {
+        let source = "fn factorial(n: int) -> int {
+  if n <= 1 { return 1 }
+  return n * factorial(n - 1)
+}
+print(factorial(5))";
+        let compiled = compile_source(source, "ai").unwrap();
+        assert_eq!(execute(&compiled).unwrap(), "120\n");
+        let encoded = crate::bytecode_format::encode(&compiled).unwrap();
+        let decoded = crate::bytecode_format::decode(&encoded).unwrap();
+        assert_eq!(execute(&decoded).unwrap(), "120\n");
     }
 
     #[test]
@@ -1691,7 +1699,8 @@ while x < 7 {
             code: vec![Instruction::Halt],
             functions: vec![cyclic_function],
         };
-        assert_eq!(verify(&cyclic).unwrap_err().code, 4004);
+        verify(&cyclic).unwrap();
+        assert_eq!(execute(&cyclic).unwrap_err().code, 4005);
     }
 
     #[test]
