@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">Nobody programming language logo</title>
+<desc id="desc">Angular green and white letter N inside a broken green ring with code brackets, above NOBODY and Universal Programming Language.</desc>
+<defs>
+  <linearGradient id="green" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#0b9d36"/><stop offset=".48" stop-color="#51ff39"/><stop offset="1" stop-color="#e7ffe0"/></linearGradient>
+  <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#c6ffc0"/><stop offset="1" stop-color="#40ed43"/></linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
+</defs>
+<rect width="1200" height="650" fill="#050806"/>
+<g fill="none" stroke="#46f43f" stroke-width="12" stroke-linecap="square" opacity=".32" filter="url(#glow)">
+  <path d="M367 263 A235 235 0 0 1 822 174 M827 284 A235 235 0 0 1 427 426 M369 354 A235 235 0 0 1 359 330"/>
+</g>
+<g fill="none" stroke="url(#green)" stroke-width="10" stroke-linecap="square">
+  <path d="M367 263 A235 235 0 0 1 822 174"/>
+  <path d="M827 284 A235 235 0 0 1 427 426"/>
+</g>
+<path d="M320 260 L265 300 L320 340" fill="none" stroke="#62fa4b" stroke-width="12" stroke-linejoin="miter"/>
+<path d="M880 260 L935 300 L880 340" fill="none" stroke="#62fa4b" stroke-width="12" stroke-linejoin="miter"/>
+<path d="M852 256 L827 343" stroke="#a6ffa0" stroke-width="11"/>
+<g>
+  <path d="M435 400 V190 L493 163 V315 L435 400" fill="url(#steel)"/>
+  <path d="M493 163 L706 364 L763 336 L550 136 Z" fill="url(#green)"/>
+  <path d="M706 364 L763 336 V169 L716 199 V324 Z" fill="url(#steel)"/>
+  <path d="M435 400 L493 315 V163 L435 190 Z" fill="#1ca82c" opacity=".55"/>
+</g>
+<text x="600" y="535" fill="#f7fff8" font-family="DejaVu Sans,Arial,sans-serif" font-size="100" font-weight="700" letter-spacing="12" text-anchor="middle">NOBODY</text>
+<path d="M205 587 H295 M905 587 H995" stroke="#55f447" stroke-width="3"/>
+<text x="600" y="595" fill="#79f36c" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" letter-spacing="6" text-anchor="middle">UNIVERSAL PROGRAMMING LANGUAGE</text>
+</svg>
