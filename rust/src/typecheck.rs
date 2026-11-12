@@ -145,6 +145,12 @@ fn exact_integer_constant(expr: &IrExpr) -> Option<i128> {
                 "+" => a.checked_add(b),
                 "-" => a.checked_sub(b),
                 "*" => a.checked_mul(b),
+                // Nonnegative integer division and remainder have identical
+                // truncation/floor semantics. Negative operands are deferred:
+                // the exact constant pass must not assume a runtime rounding
+                // convention when deciding whether a divisor is zero.
+                "//" if a >= 0 && b > 0 => a.checked_div(b),
+                "%" if a >= 0 && b > 0 => a.checked_rem(b),
                 // Only nonnegative integer powers can be evaluated exactly.
                 // Overflow or an exponent outside u32 remains dynamic.
                 "**" => a.checked_pow(u32::try_from(b).ok()?),
@@ -852,6 +858,31 @@ mod tests {
             .code,
             1005
         );
+    }
+
+    #[test]
+    fn exact_nonnegative_integer_division_and_remainder_detect_zero_divisors() {
+        for operator in ["/", "//", "%"] {
+            for divisor in ["(8 // 2 - 4)", "(10 % 3 - 1)", "(2 ** 3 % 4)"] {
+                let source = format!("let result = 10 {operator} {divisor}");
+                assert_eq!(check_source(&source, "ai").unwrap_err().code, 1008);
+            }
+        }
+    }
+
+    #[test]
+    fn exact_integer_division_defers_unsafe_or_unknown_constants() {
+        for divisor in [
+            "(8 // 2 - 3)",
+            "(10 % 3)",
+            "(-7 // 2 + 3)",
+            "(7 // -2 + 3)",
+            "(7 // 0)",
+            "(unknown // 2)",
+        ] {
+            let source = format!("let result = 10 / {divisor}");
+            check_source(&source, "ai").unwrap();
+        }
     }
 
     #[test]
