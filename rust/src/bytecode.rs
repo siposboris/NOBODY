@@ -1698,7 +1698,10 @@ print(factorial(5))";
             slots: 0,
             code: vec![
                 Instruction::PushBool(true),
-                Instruction::Call { function: 0, argc: 1 },
+                Instruction::Call {
+                    function: 0,
+                    argc: 1,
+                },
                 Instruction::Drop,
                 Instruction::Halt,
             ],
