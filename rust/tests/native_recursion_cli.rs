@@ -48,7 +48,7 @@ fn typed_factorial_runs_in_standalone_elf() {
 
 #[test]
 fn unbounded_native_self_call_exits_on_depth_budget() {
-    let source = "fn loop(n: int): int { return loop(n) }\nprint(loop(1))\n";
+    let source = "fn recurse(n: int): int { return recurse(n) }\nprint(recurse(1))\n";
     let (dir, binary) = build(source, "limit");
     let run = Command::new(&binary).output().unwrap();
     assert_eq!(run.status.code(), Some(5));
