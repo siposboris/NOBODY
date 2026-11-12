@@ -19,7 +19,8 @@ fn render(roadmap: &str) -> Result<String, String> {
     if total == 0 {
         return Err("No roadmap checkboxes found; refusing to report 100%".into());
     }
-    let percent = (100 * complete + total / 2) / total;
+    let hundredths = (10_000 * complete + total / 2) / total;
+    let percent = format!("{}.{:02}", hundredths / 100, hundredths % 100);
     let filled = (20 * complete + total / 2) / total;
     let bar = format!("{}{}", "█".repeat(filled), "░".repeat(20 - filled));
     Ok(format!(
@@ -105,10 +106,21 @@ mod tests {
     #[test]
     fn counts_and_rounds_like_legacy_python() {
         let rendered = render("- [x] done\n- [ ] todo\n").unwrap();
-        assert!(rendered.contains("progress — 50%"));
+        assert!(rendered.contains("progress — 50.00%"));
         assert!(rendered.contains("**1 / 2 roadmap checklist items marked complete**"));
         assert!(rendered.contains("██████████░░░░░░░░░░"));
         assert!(rendered.contains(COMMAND));
+    }
+    #[test]
+    fn displays_two_decimals_without_floating_point() {
+        let roadmap = format!("{}{}", "- [x] done\n".repeat(45), "- [ ] todo\n".repeat(67));
+        let rendered = render(&roadmap).unwrap();
+        assert!(rendered.contains("progress — 40.18%"));
+        assert!(rendered.contains("**40.18%**"));
+        let one = render("- [x] done\n- [ ] todo\n- [ ] todo\n").unwrap();
+        assert!(one.contains("33.33%"));
+        let none = render("- [ ] todo\n").unwrap();
+        assert!(none.contains("0.00%"));
     }
     #[test]
     fn nested_checkboxes_are_excluded_and_missing_checkboxes_fail() {
