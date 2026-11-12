@@ -354,11 +354,11 @@ impl Evaluator {
                         "Pass exactly the declared number of arguments.",
                     ));
                 }
-                if self.active_calls.len() >= 32 || self.active_calls.contains(name) {
+                if self.active_calls.len() >= 32 {
                     return Err(error(
                         4005,
                         format!("Recursive or excessive nested function call to {name:?}"),
-                        "Recursive function calls are not supported in this evaluator slice.",
+                        "Reduce recursive call depth or ensure the function reaches a base case.",
                     ));
                 }
                 let mut parameters = BTreeMap::new();
@@ -617,6 +617,18 @@ pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic
 #[cfg(test)]
 mod len_tests {
     use super::*;
+
+    #[test]
+    fn direct_recursion_computes_factorial() {
+        let source = "fn factorial(n: int): int { if n <= 1 { return 1 } else { return n * factorial(n - 1) } }\nprint(factorial(5))\n";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "120\n");
+    }
+
+    #[test]
+    fn unbounded_recursion_stops_at_call_budget() {
+        let source = "fn recurse(n: int): int { return recurse(n) }\nprint(recurse(1))\n";
+        assert_eq!(evaluate_source(source, "ai").unwrap_err().code, 4005);
+    }
 
     #[test]
     fn unicode_length_counts_scalars_not_utf8_bytes() {
