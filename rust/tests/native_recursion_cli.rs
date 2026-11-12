@@ -3,10 +3,7 @@
 use std::process::Command;
 
 fn build(source_text: &str, name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!(
-        "nobody-recursion-{name}-{}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("nobody-recursion-{name}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let source = dir.join("source.nbd");
     let binary = dir.join("program");
