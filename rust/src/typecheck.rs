@@ -590,7 +590,11 @@ mod tests {
             "for i in range(0, 10, 2 - 2) { print(i) }",
             "for i in range(0, 10, 0 ** 3) { print(i) }",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
         }
     }
 
