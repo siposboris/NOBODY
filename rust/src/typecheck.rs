@@ -205,6 +205,28 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
             for arg in args {
                 check_binary_types(arg, env)?;
             }
+            if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
+                if !(1..=3).contains(&args.len()) {
+                    return Err(diagnostic(
+                        1005,
+                        format!(
+                            "Built-in range expects one to three arguments, got {}",
+                            args.len()
+                        ),
+                        "Pass range(stop), range(start, stop), or range(start, stop, step).",
+                    ));
+                }
+                for arg in args {
+                    let actual = infer(arg, env);
+                    if actual != Type::Unknown && actual != Type::Int {
+                        return Err(diagnostic(
+                            1002,
+                            format!("Built-in range requires integer arguments, found {actual:?}"),
+                            "Supply integer start, stop and step expressions to range.",
+                        ));
+                    }
+                }
+            }
             if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) {
                 if args.len() != 1 {
                     return Err(diagnostic(
@@ -526,6 +548,44 @@ pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn range_builtin_rejects_invalid_arity_and_known_noninteger_arguments() {
+        for source in [
+            "for i in range() { print(i) }",
+            "for i in range(1, 2, 3, 4) { print(i) }",
+        ] {
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1005,
+                "{source}"
+            );
+        }
+        for source in [
+            "for i in range(true) { print(i) }",
+            "for i in range(1.5) { print(i) }",
+            "for i in range(0, \"stop\") { print(i) }",
+            "for i in range(0, 5, false) { print(i) }",
+        ] {
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn range_builtin_accepts_valid_and_dynamic_integer_arguments() {
+        for source in [
+            "for i in range(5) { print(i) }",
+            "for i in range(1, 5) { print(i) }",
+            "for i in range(1, 5, 2) { print(i) }",
+            "fn count(n) { for i in range(n) { print(i) } }",
+        ] {
+            check_source(source, "ai").unwrap();
+        }
+    }
+
     #[test]
     fn exact_integer_powers_detect_zero_divisors() {
         for source in [
