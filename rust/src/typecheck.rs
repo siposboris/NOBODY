@@ -226,6 +226,15 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
                         ));
                     }
                 }
+                // A statically zero step cannot advance the iterator. Keep
+                // dynamic steps deferred to runtime rather than guessing.
+                if args.len() == 3 && exact_integer_constant(&args[2]) == Some(0) {
+                    return Err(diagnostic(
+                        1002,
+                        "Built-in range requires a nonzero step".to_string(),
+                        "Use a nonzero integer as the third range argument.",
+                    ));
+                }
             }
             if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) {
                 if args.len() != 1 {
@@ -571,6 +580,32 @@ mod tests {
                 1002,
                 "{source}"
             );
+        }
+    }
+
+    #[test]
+    fn range_builtin_rejects_provably_zero_steps() {
+        for source in [
+            "for i in range(0, 10, 0) { print(i) }",
+            "for i in range(0, 10, 2 - 2) { print(i) }",
+            "for i in range(0, 10, 0 ** 3) { print(i) }",
+        ] {
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn range_builtin_defers_dynamic_steps_and_accepts_nonzero_constants() {
+        for source in [
+            "for i in range(0, 10, 2) { print(i) }",
+            "for i in range(0, 10, -1) { print(i) }",
+            "for i in range(0, 10, unknown_step) { print(i) }",
+        ] {
+            check_source(source, "ai").unwrap();
         }
     }
 
