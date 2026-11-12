@@ -3,16 +3,21 @@
 Experimental **open-source programming language** with configurable syntax profiles for human languages and a shared, language-neutral core. Licensed under MIT. **Not production-ready.**
 
 <!-- roadmap-progress:start -->
-### Roadmap checklist progress — 40%
+### Roadmap checklist progress — 40.18%
 
 **45 / 112 roadmap checklist items marked complete** (67 still open)
 
-`████████░░░░░░░░░░░░` **40%**
+`████████░░░░░░░░░░░░` **40.18%**
 
 This measures **completed checklist entries**, not the percentage of a working compiler, feature parity, quality, or production readiness. Some checked items are historical prototypes or partial milestones. Nobody is experimental; its Rust runtime, native compiler and self-hosting are not complete.
 
 See the [full roadmap](docs/ROADMAP.md) and [feature status](docs/FEATURES.md). Regenerate with `cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-roadmap -- --write`.
 <!-- roadmap-progress:end -->
+
+### Active compiler milestones
+
+The checklist percentage above changes **only** when a top-level roadmap item is completed. For meaningful incremental progress, track evidence-backed acceptance gates separately in [compiler milestone gates](docs/COMPILER_MILESTONE_GATES.md). An unverified PR or test does not count as a passed gate. Gate counts are **not** added to the overall percentage.
+
 
 ## Explicit module exports (experimental, v4)
 
