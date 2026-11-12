@@ -808,14 +808,14 @@ mod tests {
     fn repeated_while_condition_defers_arity_after_body_rebinding() {
         // A later condition evaluation may call a different value of f.
         check_source(
-            "fn f(x) { return x }\\nwhile f(1,2) { f = mystery }",
+            "fn f(x) { return x }\nwhile f(1,2) { f = mystery }",
             "ai",
         )
         .unwrap();
         // Without a body write, every condition evaluation sees the
         // original known signature and N1005 is still warranted.
         assert_eq!(
-            check_source("fn f(x) { return x }\\nwhile f(1,2) { break }", "ai")
+            check_source("fn f(x) { return x }\nwhile f(1,2) { break }", "ai")
                 .unwrap_err()
                 .code,
             1005
