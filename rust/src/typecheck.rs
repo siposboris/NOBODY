@@ -209,7 +209,10 @@ fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(),
                 if !(1..=3).contains(&args.len()) {
                     return Err(diagnostic(
                         1005,
-                        format!("Built-in range expects one to three arguments, got {}", args.len()),
+                        format!(
+                            "Built-in range expects one to three arguments, got {}",
+                            args.len()
+                        ),
                         "Pass range(stop), range(start, stop), or range(start, stop, step).",
                     ));
                 }
@@ -551,7 +554,11 @@ mod tests {
             "for i in range() { print(i) }",
             "for i in range(1, 2, 3, 4) { print(i) }",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1005, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1005,
+                "{source}"
+            );
         }
         for source in [
             "for i in range(true) { print(i) }",
@@ -559,7 +566,11 @@ mod tests {
             "for i in range(0, \"stop\") { print(i) }",
             "for i in range(0, 5, false) { print(i) }",
         ] {
-            assert_eq!(check_source(source, "ai").unwrap_err().code, 1002, "{source}");
+            assert_eq!(
+                check_source(source, "ai").unwrap_err().code,
+                1002,
+                "{source}"
+            );
         }
     }
 
