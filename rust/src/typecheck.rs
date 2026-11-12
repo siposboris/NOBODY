@@ -877,12 +877,17 @@ mod tests {
             "(10 % 3)",
             "(-7 // 2 + 3)",
             "(7 // -2 + 3)",
-            "(7 // 0)",
             "(unknown // 2)",
         ] {
             let source = format!("let result = 10 / {divisor}");
             check_source(&source, "ai").unwrap();
         }
+    }
+
+    #[test]
+    fn nested_zero_integer_divisor_is_rejected_before_outer_division() {
+        let err = check_source("let result = 10 / (7 // 0)", "ai").unwrap_err();
+        assert_eq!(err.code, 1008);
     }
 
     #[test]
