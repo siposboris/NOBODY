@@ -848,11 +848,21 @@ impl NativeCompiler {
                     return Err(issue(4005, "Native function parameter storage exceeds stack budget"));
                 }
                 let label = self.new_label();
+                // Explicit return annotations make self-call ABI and result type known
+                // before emitting the body. Forward calls remain unsupported.
+                if let Some(result) = declared_result {
+                    self.functions.insert(name.clone(), FunctionInfo {
+                        label, arity: parameters.len(), parameters: parameter_types, result
+                    });
+                }
                 let skip = self.new_label();
                 self.emit(&format!("    jmp .L{skip}"))?;
                 self.label(label)?;
                 self.emit("    push rbp")?;
                 self.emit("    mov rbp, rsp")?;
+                self.emit("    inc r14")?;
+                self.emit("    cmp r14, 64")?;
+                self.emit("    ja .Lnobody_budget")?;
                 let prologue = self.asm.len();
 
                 // Independent call frames: no caller local state or global
@@ -903,8 +913,8 @@ impl NativeCompiler {
                 self.in_function = saved_function;
                 self.return_kind = saved_return;
                 self.label(skip)?;
-                // Adding only after compilation disallows direct/indirect
-                // recursion and forward references in this first subset.
+                // Unannotated functions are registered after their bodies;
+                // annotated functions may call themselves, but not forward callees.
                 self.functions.insert(name.clone(), FunctionInfo {
                     label, arity: parameters.len(), parameters: parameter_types, result: result_kind
                 });
@@ -919,6 +929,7 @@ impl NativeCompiler {
                     return Err(unsupported("All native function returns must have the same int, bool or str type"));
                 }
                 self.return_kind = Some(ty);
+                self.emit("    dec r14")?;
                 self.emit("    leave")?;
                 self.emit("    ret")
             }
@@ -956,6 +967,7 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit("_start:")?;
     compiler.emit("    mov rbp, rsp")?;
     compiler.emit(&format!("    mov r15, {RUNTIME_STEPS}"))?;
+    compiler.emit("    xor r14d, r14d")?;
     let prologue = compiler.asm.len();
     for statement in &module.statements {
         compiler.statement(statement)?;
