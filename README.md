@@ -1,5 +1,7 @@
 # Nobody
 
+<p align="center"><img src="assets/nobody-logo.svg" alt="Nobody — universal programming language" width="640"></p>
+
 Experimental **open-source programming language** with configurable syntax profiles for human languages and a shared, language-neutral core. Licensed under MIT. **Not production-ready.**
 
 <!-- roadmap-progress:start -->
