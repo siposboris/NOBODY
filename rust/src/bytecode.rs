@@ -1623,7 +1623,7 @@ while x < 7 {
 
     #[test]
     fn recursive_factorial_runs_in_rust_bytecode() {
-        let source = "fn factorial(n: int) -> int {
+        let source = "fn factorial(n: int): int {
   if n <= 1 { return 1 }
   return n * factorial(n - 1)
 }
@@ -1696,7 +1696,12 @@ print(factorial(5))";
         let cyclic = Bytecode {
             version: BYTECODE_VERSION,
             slots: 0,
-            code: vec![Instruction::Halt],
+            code: vec![
+                Instruction::PushBool(true),
+                Instruction::Call { function: 0, argc: 1 },
+                Instruction::Drop,
+                Instruction::Halt,
+            ],
             functions: vec![cyclic_function],
         };
         verify(&cyclic).unwrap();
