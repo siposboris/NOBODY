@@ -428,16 +428,19 @@ fn block(
                 }
             }
             IrStatement::While { condition, body } => {
-                check_calls(condition, functions)?;
+                // The condition runs again after each iteration. A function
+                // rebound by the body can therefore have an unknown arity
+                // when the condition is evaluated on a later iteration.
+                // Preserve the original environment for statements before
+                // this loop, but use a conservative loop-entry signature map
+                // for both the condition and the body.
+                let mut loop_functions = functions.clone();
+                invalidate_possible_outer_writes(body, &mut loop_functions, &BTreeSet::new());
+                check_calls(condition, &loop_functions)?;
                 check_binary_types(condition, env)?;
                 check_condition_type(condition, env)?;
                 let mut local = env.clone();
-                let mut local_functions = functions.clone();
-                // A loop may execute more than once. A write to an outer
-                // function on an earlier iteration makes its original arity
-                // uncertain even at the start of a later iteration.
-                invalidate_possible_outer_writes(body, &mut local_functions, &BTreeSet::new());
-                block(body, &mut local, &mut local_functions)?;
+                block(body, &mut local, &mut loop_functions)?;
                 invalidate_possible_outer_writes(body, functions, &BTreeSet::new());
             }
             IrStatement::For {
@@ -799,6 +802,24 @@ mod tests {
             "f(1, 2)"
         );
         assert_eq!(check_source(source, "ai").unwrap_err().code, 1005);
+    }
+
+    #[test]
+    fn repeated_while_condition_defers_arity_after_body_rebinding() {
+        // A later condition evaluation may call a different value of f.
+        check_source(
+            "fn f(x) { return x }\\nwhile f(1,2) { f = mystery }",
+            "ai",
+        )
+        .unwrap();
+        // Without a body write, every condition evaluation sees the
+        // original known signature and N1005 is still warranted.
+        assert_eq!(
+            check_source("fn f(x) { return x }\\nwhile f(1,2) { break }", "ai")
+                .unwrap_err()
+                .code,
+            1005
+        );
     }
 
     #[test]
