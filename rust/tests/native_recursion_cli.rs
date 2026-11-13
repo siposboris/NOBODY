@@ -90,3 +90,22 @@ fn recursive_call_inside_another_function_matches_evaluator() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn separate_recursive_calls_preserve_caller_locals_in_elf() {
+    // The caller must retain its local across two independent recursive calls.
+    // This exercises nested stack frames and argument/return preservation.
+    let source = "fn factorial(n: int): int { if n <= 1 { return 1 } else { return n * factorial(n - 1) } }\nfn combine(n: int): int { let saved = 11 return factorial(n) + factorial(n - 1) + saved }\nprint(combine(5))\n";
+    let (dir, binary) = build(source, "two-recursive-calls");
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(native.stdout, b"155\n");
+
+    let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
+        .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(evaluated.status.success(), "{evaluated:?}");
+    assert_eq!(native.stdout, evaluated.stdout);
+    std::fs::remove_dir_all(dir).unwrap();
+}
