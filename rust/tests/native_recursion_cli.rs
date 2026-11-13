@@ -71,3 +71,22 @@ fn branching_fibonacci_matches_evaluator_in_standalone_elf() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn recursive_call_inside_another_function_matches_evaluator() {
+    // Exercise a recursive callee across a separate native function frame,
+    // including the caller's live local variable after the call returns.
+    let source = "fn factorial(n: int): int { if n <= 1 { return 1 } else { return n * factorial(n - 1) } }\nfn offset_factorial(n: int): int { let offset: int = 7 return factorial(n) + offset }\nprint(offset_factorial(5))\n";
+    let (dir, binary) = build(source, "nested-caller");
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(native.stdout, b"127\\n");
+
+    let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
+        .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(evaluated.status.success(), "{evaluated:?}");
+    assert_eq!(native.stdout, evaluated.stdout);
+    std::fs::remove_dir_all(dir).unwrap();
+}
