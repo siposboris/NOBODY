@@ -27,6 +27,7 @@ pub mod evaluator;
 pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
 pub mod ir;
 pub mod profiles;
+pub mod catalog;
 pub mod project;
 mod project_namespaces;
 pub use project::{load_project, Project};
