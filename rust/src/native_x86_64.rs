@@ -190,12 +190,16 @@ impl ParameterConstraints<'_> {
                     }
                 } else {
                     let is_range = matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range")));
+                    let is_len = matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len")));
                     for argument in args {
-                        self.expression(
-                            argument,
-                            if is_range { Some(Type::Int) } else { None },
-                            depth + 1,
-                        )?;
+                        let expected = if is_range {
+                            Some(Type::Int)
+                        } else if is_len {
+                            Some(Type::Text)
+                        } else {
+                            None
+                        };
+                        self.expression(argument, expected, depth + 1)?;
                     }
                 }
             }
@@ -1452,6 +1456,22 @@ print(choose(false, 3, 9))";
             "fn conflicts(word) { if word == \"ok\" { return word + 1 } else { return 0 } }\nprint(conflicts(\"ok\"))",
         ] {
             assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
+        }
+    }
+
+    #[test]
+    fn native_len_infers_unannotated_text_parameter() {
+        let source = "fn size(word) { return len(word) }\nprint(size(\"Život ☸\"))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_text_length"));
+        assert!(asm.contains("push rdx"));
+        assert!(asm.contains("    call .L"));
+        for invalid in [
+            "fn size(word) { return len(word) }\nprint(size(7))",
+            "fn size(word) { return len(word) }\nprint(size(true))",
+            "fn size(word) { return len(word) + word }\nprint(size(\"ok\"))",
+        ] {
+            assert_eq!(compile_to_assembly(invalid, "ai").unwrap_err().code, 4004, "{invalid}");
         }
     }
 
