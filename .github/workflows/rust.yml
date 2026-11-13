@@ -7,8 +7,6 @@ on:
       - 'rust/**'
       - '.github/workflows/rust.yml'
       - 'scripts/verify-rust.sh'
-      - 'scripts/check-python-rust-parity.py'
-      - 'scripts/check-ast-json-parity.py'
       - 'tests/fixtures/ast_json_parity/**'
       - 'tests/fixtures/runtime_parity/**'
   pull_request:
@@ -51,14 +49,10 @@ jobs:
         run: cargo test --locked --manifest-path rust/Cargo.toml --all-targets
       - name: Clippy
         run: cargo clippy --locked --manifest-path rust/Cargo.toml --all-targets -- -D warnings
-      - name: Python reference vs Rust runtime differential
-        run: |
-          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
-          python3 scripts/check-python-rust-parity.py
-      - name: Python reference vs Rust AST JSON differential
-        run: |
-          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody
-          python3 scripts/check-ast-json-parity.py
+      - name: Python-free Rust runtime fixture regression
+        run: cargo test --locked --manifest-path rust/Cargo.toml --test runtime_fixture_rust_parity
+      - name: Python-free Rust AST JSON fixture regression
+        run: cargo test --locked --manifest-path rust/Cargo.toml --test legacy_ast_json_fixture_gate
       - name: CLI lex and parser subset smoke
         run: |
           cargo run --locked --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
