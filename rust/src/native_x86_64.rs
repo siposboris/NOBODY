@@ -982,18 +982,27 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
             if parameters.len() > 32 || compiler.functions.len() >= 32 {
                 return Err(issue(4005, "Native function signature budget exceeded"));
             }
-            if parameter_types.len() != parameters.len() || parameter_types.iter().any(Option::is_none) {
+            if parameter_types.len() != parameters.len()
+                || parameter_types.iter().any(Option::is_none)
+            {
                 continue;
             }
             let mut kinds = [Type::Int; 32];
             for (index, annotation) in parameter_types.iter().enumerate() {
-                kinds[index] = explicit_native_type(annotation.as_deref().expect("checked annotation"))?;
+                kinds[index] =
+                    explicit_native_type(annotation.as_deref().expect("checked annotation"))?;
             }
             let result = explicit_native_type(result)?;
             let label = compiler.new_label();
-            compiler.functions.insert(name.clone(), FunctionInfo {
-                label, arity: parameters.len(), parameters: kinds, result
-            });
+            compiler.functions.insert(
+                name.clone(),
+                FunctionInfo {
+                    label,
+                    arity: parameters.len(),
+                    parameters: kinds,
+                    result,
+                },
+            );
         }
     }
     for statement in &module.statements {
