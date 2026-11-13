@@ -67,6 +67,7 @@ struct NativeCompiler {
     labels: usize,
     loops: Vec<LoopTargets>,
     functions: BTreeMap<String, FunctionInfo>,
+    emitted_functions: BTreeSet<String>,
     in_function: bool,
     return_kind: Option<Type>,
     // Every literal is stored in read-only data as numeric bytes, never raw assembler.
@@ -814,7 +815,7 @@ impl NativeCompiler {
                 if self.in_function || self.scopes.len() != 1 {
                     return Err(unsupported("Native nested function definitions and closures are unsupported"));
                 }
-                if self.functions.contains_key(name) || self.lookup(name).is_some() {
+                if self.emitted_functions.contains(name) || self.lookup(name).is_some() {
                     return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
                 }
                 if self.functions.len() >= 32 {
@@ -843,10 +844,13 @@ impl NativeCompiler {
                 if parameter_words > MAX_SLOTS {
                     return Err(issue(4005, "Native function parameter storage exceeds stack budget"));
                 }
-                let label = self.new_label();
-                // Explicit return annotations make self-call ABI and result type known
-                // before emitting the body. Forward calls remain unsupported.
-                if let Some(result) = declared_result {
+                let label = self.functions.get(name).map(|info| info.label).unwrap_or_else(|| self.new_label());
+                if let Some(info) = self.functions.get(name) {
+                    if info.arity != parameters.len() || info.parameters != parameter_types ||
+                        declared_result != Some(info.result) {
+                        return Err(unsupported("Native forward function signature differs from its declaration"));
+                    }
+                } else if let Some(result) = declared_result {
                     self.functions.insert(name.clone(), FunctionInfo {
                         label, arity: parameters.len(), parameters: parameter_types, result
                     });
@@ -914,6 +918,7 @@ impl NativeCompiler {
                 self.functions.insert(name.clone(), FunctionInfo {
                     label, arity: parameters.len(), parameters: parameter_types, result: result_kind
                 });
+                self.emitted_functions.insert(name.clone());
                 Ok(())
             }
             IrStatement::Return(expr) => {
@@ -953,6 +958,7 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
         labels: 0,
         loops: Vec::new(),
         functions: BTreeMap::new(),
+        emitted_functions: BTreeSet::new(),
         in_function: false,
         return_kind: None,
         static_texts: Vec::new(),
@@ -965,6 +971,31 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     compiler.emit(&format!("    mov r15, {RUNTIME_STEPS}"))?;
     compiler.emit("    xor r14d, r14d")?;
     let prologue = compiler.asm.len();
+    // Reserve signatures and labels for fully annotated functions before
+    // emitting any body. This permits forward calls and mutual recursion
+    // without guessing the ABI of unannotated functions.
+    for statement in &module.statements {
+        if let IrStatement::Function { name, parameters, parameter_types, return_type: Some(result), .. } = statement {
+            if compiler.functions.contains_key(name) {
+                return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
+            }
+            if parameters.len() > 32 || compiler.functions.len() >= 32 {
+                return Err(issue(4005, "Native function signature budget exceeded"));
+            }
+            if parameter_types.len() != parameters.len() || parameter_types.iter().any(Option::is_none) {
+                continue;
+            }
+            let mut kinds = [Type::Int; 32];
+            for (index, annotation) in parameter_types.iter().enumerate() {
+                kinds[index] = explicit_native_type(annotation.as_deref().expect("checked annotation"))?;
+            }
+            let result = explicit_native_type(result)?;
+            let label = compiler.new_label();
+            compiler.functions.insert(name.clone(), FunctionInfo {
+                label, arity: parameters.len(), parameters: kinds, result
+            });
+        }
+    }
     for statement in &module.statements {
         compiler.statement(statement)?;
     }
