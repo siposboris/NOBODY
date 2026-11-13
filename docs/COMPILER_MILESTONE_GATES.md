@@ -9,8 +9,8 @@ This page tracks **verifiable partial progress**, not a new estimate of overall 
 - [ ] Confirm bytecode round-trip and execution parity for all documented supported constructs.
 
 ## Native Linux x86-64 ELF backend
-- [ ] Confirm typed direct recursion in a standalone ELF with factorial and bounded failure tests on main.
-- [ ] Confirm branching recursion (e.g. Fibonacci) preserves intermediate values in a standalone ELF, with CI.
+- [x] Confirm typed direct recursion in a standalone ELF with factorial and bounded failure tests on main. Verified by `typed_factorial_runs_in_standalone_elf` and `unbounded_native_self_call_exits_on_depth_budget` in `rust/tests/native_recursion_cli.rs`, with [successful Rust CI #43363269185](https://github.com/siposboris/NOBODY/actions/runs/43363269185) and merged [PR #87](https://github.com/siposboris/NOBODY/pull/87) (`5b1648dd1f649bfbcf9da6dadc6d0ccee870ce21`).
+- [x] Confirm branching recursion (e.g. Fibonacci) preserves intermediate values in a standalone ELF, with CI. Verified by `branching_fibonacci_matches_evaluator_in_standalone_elf` in `rust/tests/native_recursion_cli.rs`, [successful Rust CI #43363269185](https://github.com/siposboris/NOBODY/actions/runs/43363269185), and merged [PR #87](https://github.com/siposboris/NOBODY/pull/87) (`5b1648dd1f649bfbcf9da6dadc6d0ccee870ce21`).
 - [ ] Confirm forward function calls and mutual recursion, or document precise unsupported diagnostics and acceptance gaps.
 - [ ] Confirm all currently documented supported native constructs via real ELF execution and evaluator comparison.
 
