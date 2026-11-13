@@ -90,3 +90,19 @@ fn recursive_call_inside_another_function_matches_evaluator() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn typed_mutual_recursion_runs_in_standalone_elf() {
+    let source = "fn even(n: int): bool { if n == 0 { return true } else { return odd(n - 1) } }\nfn odd(n: int): bool { if n == 0 { return false } else { return even(n - 1) } }\nprint(even(8))\nprint(odd(8))\n";
+    let (dir, binary) = build(source, "mutual");
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(native.stdout, b"true\nfalse\n");
+    let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
+        .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(evaluated.status.success(), "{evaluated:?}");
+    assert_eq!(native.stdout, evaluated.stdout);
+    std::fs::remove_dir_all(dir).unwrap();
+}
