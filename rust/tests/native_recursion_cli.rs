@@ -106,3 +106,22 @@ fn typed_mutual_recursion_runs_in_standalone_elf() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn multi_hop_forward_calls_preserve_integer_results_in_standalone_elf() {
+    // Each typed function calls one declared later in the source. This
+    // exercises symbol registration across more than one forward-call edge.
+    let source = "fn first(n: int): int { return second(n) + 2 }\nfn second(n: int): int { return third(n) * 3 }\nfn third(n: int): int { return n - 4 }\nprint(first(10))\n";
+    let (dir, binary) = build(source, "forward-chain");
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(native.stdout, b"20\n");
+
+    let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
+        .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(evaluated.status.success(), "{evaluated:?}");
+    assert_eq!(native.stdout, evaluated.stdout);
+    std::fs::remove_dir_all(dir).unwrap();
+}
