@@ -818,7 +818,7 @@ impl NativeCompiler {
                 if self.emitted_functions.contains(name) || self.lookup(name).is_some() {
                     return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
                 }
-                if self.functions.len() >= 32 {
+                if self.functions.len() >= 32 && !self.functions.contains_key(name) {
                     return Err(issue(4005, "The native backend supports at most 32 functions"));
                 }
                 if parameters.len() > 32 {
@@ -1527,6 +1527,15 @@ print(combine(4, 3))";
         assert!(assembly.contains("QWORD PTR [rbp+"));
         assert!(!assembly.contains("combine("));
         assert!(!assembly.contains("twice("));
+    }
+
+    #[test]
+    fn native_forward_typed_functions_and_mutual_recursion_compile() {
+        let forward = "fn first(x: int): int { return second(x) }\nfn second(x: int): int { return x + 1 }\nprint(first(4))";
+        assert!(compile_to_assembly(forward, "ai").is_ok());
+
+        let mutual = "fn even(n: int): bool { if n == 0 { return true } else { return odd(n - 1) } }\nfn odd(n: int): bool { if n == 0 { return false } else { return even(n - 1) } }\nprint(even(6))";
+        assert!(compile_to_assembly(mutual, "ai").is_ok());
     }
 
     #[test]
