@@ -90,3 +90,23 @@ fn recursive_call_inside_another_function_matches_evaluator() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn negative_recursive_arguments_match_evaluator_in_standalone_elf() {
+    // A signed negative argument crosses native call frames repeatedly.
+    // The positive term on the left of the recursive addition must survive
+    // the nested call, and the signed comparison must terminate at zero.
+    let source = "fn distance(n: int): int { if n >= 0 { return n } else { return 1 + distance(n + 1) } }\nprint(distance(-7))\nprint(distance(3))\n";
+    let (dir, binary) = build(source, "signed-arguments");
+    let native = Command::new(&binary).output().unwrap();
+    assert!(native.status.success(), "{native:?}");
+    assert_eq!(native.stdout, b"7\n3\n");
+
+    let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
+        .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(evaluated.status.success(), "{evaluated:?}");
+    assert_eq!(native.stdout, evaluated.stdout);
+    std::fs::remove_dir_all(dir).unwrap();
+}
