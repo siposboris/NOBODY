@@ -15,7 +15,11 @@ fn historical_runtime_fixtures_agree_between_rust_engines() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "nbd"))
         .collect();
     fixtures.sort();
-    assert_eq!(fixtures.len(), 6, "historical runtime parity fixture count changed");
+    assert_eq!(
+        fixtures.len(),
+        6,
+        "historical runtime parity fixture count changed"
+    );
 
     let executable = env!("CARGO_BIN_EXE_nobody-rs");
     for fixture in fixtures {
