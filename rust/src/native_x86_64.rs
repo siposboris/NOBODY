@@ -975,9 +975,18 @@ pub fn generate_assembly(module: &Module) -> Result<String, Diagnostic> {
     // emitting any body. This permits forward calls and mutual recursion
     // without guessing the ABI of unannotated functions.
     for statement in &module.statements {
-        if let IrStatement::Function { name, parameters, parameter_types, return_type: Some(result), .. } = statement {
+        if let IrStatement::Function {
+            name,
+            parameters,
+            parameter_types,
+            return_type: Some(result),
+            ..
+        } = statement
+        {
             if compiler.functions.contains_key(name) {
-                return Err(unsupported(format!("Duplicate native function declaration {name:?}")));
+                return Err(unsupported(format!(
+                    "Duplicate native function declaration {name:?}"
+                )));
             }
             if parameters.len() > 32 || compiler.functions.len() >= 32 {
                 return Err(issue(4005, "Native function signature budget exceeded"));
