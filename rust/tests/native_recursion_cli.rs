@@ -80,7 +80,7 @@ fn recursive_call_inside_another_function_matches_evaluator() {
     let (dir, binary) = build(source, "nested-caller");
     let native = Command::new(&binary).output().unwrap();
     assert!(native.status.success(), "{native:?}");
-    assert_eq!(native.stdout, b"127\\n");
+    assert_eq!(native.stdout, b"127\n");
 
     let evaluated = Command::new(env!("CARGO_BIN_EXE_nobody"))
         .args(["run", "ai", dir.join("source.nbd").to_str().unwrap()])
