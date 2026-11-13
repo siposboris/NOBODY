@@ -1459,15 +1459,19 @@ print(choose(false, 3, 9))";
 
     #[test]
     fn native_unannotated_string_assignment_infers_text_parameters() {
-        let source = "fn replace(word) { word = \"Život\" return word }\\nprint(replace(\"old\"))";
+        let source = "fn replace(word) { word = \"Život\" return word }\nprint(replace(\"old\"))";
         let asm = compile_to_assembly(source, "ai").unwrap();
         assert!(asm.contains("call nobody_print_text"));
         for source in [
-            "fn replace(word) { word = \"ok\" return word }\\nprint(replace(3))",
-            "fn replace(word) { word = \"ok\" return word }\\nprint(replace(true))",
-            "fn replace(word) { word = 4 word = \"ok\" return word }\\nprint(replace(4))",
+            "fn replace(word) { word = \"ok\" return word }\nprint(replace(3))",
+            "fn replace(word) { word = \"ok\" return word }\nprint(replace(true))",
+            "fn replace(word) { word = 4 word = \"ok\" return word }\nprint(replace(4))",
         ] {
-            assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
         }
     }
 
