@@ -268,9 +268,19 @@ mod tests {
 }
 
 /// Classify legacy bootstrap error messages without launching Python.
-/// Pattern precedence and ASCII case-insensitive matching mirror errors.py.
+/// Pattern precedence and Unicode-aware case-insensitive matching mirror errors.py.
 pub fn classify_message(message: &str) -> &'static str {
-    let lower = message.to_ascii_lowercase();
+    // Python re.I also folds the four Unicode special cases below when
+    // matching ASCII patterns. Preserve those legacy diagnostics without regex.
+    let lower: String = message
+        .chars()
+        .flat_map(|ch| match ch {
+            'ſ' => 's'.to_lowercase(),
+            'K' => 'k'.to_lowercase(),
+            'ı' | 'İ' => 'i'.to_lowercase(),
+            other => other.to_lowercase(),
+        })
+        .collect();
     let patterns: &[(&[&str], &str)] = &[
         (&["unterminated string"], "LEX_STRING"),
         (&["must be lowercase"], "LEX_CASE"),
@@ -368,6 +378,9 @@ mod legacy_classification_tests {
             ("Invalid AST", "AST_SCHEMA"),
             ("No such file", "CLI_INPUT"),
             ("completely new failure", "UNCLASSIFIED"),
+            ("ſtep limit", "RUN_LIMIT"),
+            ("UnKnown name", "RUN_NAME"),
+            ("MıSSING file", "CLI_INPUT"),
             (
                 "Expected expression and Unknown variable",
                 "PARSE_EXPRESSION",
