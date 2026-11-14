@@ -3,6 +3,8 @@
 //! scalar values. This is an experimental migration, not yet a full compiler.
 //! No Python runtime dependency. Unicode NFC validation uses a pinned Rust crate.
 
+pub mod diagnostics;
+
 use std::fmt;
 use unicode_normalization::is_nfc;
 
