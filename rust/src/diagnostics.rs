@@ -226,6 +226,22 @@ pub fn lookup(number: u16) -> Option<&'static Definition> {
     DEFINITIONS.iter().find(|entry| entry.number == number)
 }
 
+/// Native equivalent of Python errors.definition(symbol).
+pub fn lookup_symbol(symbol: &str) -> Option<&'static Definition> {
+    DEFINITIONS.iter().find(|entry| entry.symbol == symbol)
+}
+
+/// Native equivalent of Python errors.format_diagnostic(symbol, message, line).
+/// An unknown symbol returns None instead of raising Python KeyError.
+pub fn format_diagnostic(symbol: &str, message: &str, line: Option<usize>) -> Option<String> {
+    let entry = lookup_symbol(symbol)?;
+    let location = line.map_or_else(String::new, |number| format!("riadok {number}: "));
+    Some(format!(
+        "N{:04} [{}] {}{}. Oprava: {}",
+        entry.number, symbol, location, message, entry.fix
+    ))
+}
+
 pub fn format_entry(entry: &Definition) -> String {
     format!(
         "N{:04} [{}]: {}\n  Príčina: {}\n  Oprava: {}",
@@ -324,15 +340,8 @@ pub fn classify_message(message: &str) -> &'static str {
 /// Render a legacy-style numbered diagnostic, including its actionable fix.
 pub fn format_message(message: &str, line: Option<usize>) -> String {
     let symbol = classify_message(message);
-    let entry = DEFINITIONS
-        .iter()
-        .find(|entry| entry.symbol == symbol)
-        .expect("all classification symbols must be in the diagnostic catalogue");
-    let location = line.map_or_else(String::new, |number| format!("riadok {number}: "));
-    format!(
-        "N{:04} [{}] {}{}. Oprava: {}",
-        entry.number, symbol, location, message, entry.fix
-    )
+    format_diagnostic(symbol, message, line)
+        .expect("all classification symbols must be in the diagnostic catalogue")
 }
 
 #[cfg(test)]
@@ -367,6 +376,22 @@ mod legacy_classification_tests {
         for (message, expected) in cases {
             assert_eq!(classify_message(message), expected, "{message}");
         }
+    }
+
+    #[test]
+    fn explicit_symbol_lookup_and_format_match_python_contract() {
+        assert_eq!(lookup_symbol("RUN_NAME").unwrap().number, 4001);
+        assert!(lookup_symbol("run_name").is_none());
+        assert!(lookup_symbol("MISSING_SYMBOL").is_none());
+        assert_eq!(
+            format_diagnostic("RUN_NAME", "Unknown name x", Some(7)).unwrap(),
+            "N4001 [RUN_NAME] riadok 7: Unknown name x. Oprava: Deklaruj ju pred použitím alebo ju odovzdaj ako parameter."
+        );
+        assert_eq!(
+            format_diagnostic("LEX_STRING", "Unterminated string", None).unwrap(),
+            "N2001 [LEX_STRING] Unterminated string. Oprava: Doplň zodpovedajúcu úvodzovku; viacriadkové reťazce uzatváraj tromi."
+        );
+        assert!(format_diagnostic("MISSING_SYMBOL", "error", None).is_none());
     }
 
     #[test]
