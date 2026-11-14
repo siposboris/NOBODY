@@ -251,7 +251,6 @@ mod tests {
     }
 }
 
- 
 /// Classify legacy bootstrap error messages without launching Python.
 /// Pattern precedence and ASCII case-insensitive matching mirror errors.py.
 pub fn classify_message(message: &str) -> &'static str {
