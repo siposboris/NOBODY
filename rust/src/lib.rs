@@ -25,6 +25,7 @@ mod ast_json_locations;
 pub use ast_json::{export_ast_json, export_ast_json_v2};
 pub mod evaluator;
 pub use evaluator::{evaluate_ir, evaluate_source, RuntimeValue};
+pub mod catalog;
 pub mod ir;
 pub mod profiles;
 pub mod project;

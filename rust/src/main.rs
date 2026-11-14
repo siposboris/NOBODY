@@ -1,3 +1,4 @@
+use nobody::catalog;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source, compile_bytecode_source, emit_ast_json_v2, emit_program, evaluate_source,
@@ -9,7 +10,7 @@ use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs catalog [--json]\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 fn main() {
     let arguments: Vec<String> = env::args().collect();
@@ -35,11 +36,12 @@ fn main() {
         Some("compile-project-bytecode" | "compile-project-native") if arguments.len() == 4 => true,
         Some("check-project" | "run-project") if arguments.len() == 3 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
-        Some("list-languages" | "languages" | "info" | "audit-languages")
+        Some("list-languages" | "languages" | "catalog" | "info" | "audit-languages")
             if arguments.len() == 2 =>
         {
             true
         }
+        Some("catalog") if arguments.len() == 3 && arguments[2] == "--json" => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
         Some("translate") if arguments.len() == 5 => true,
         _ => false,
@@ -75,6 +77,29 @@ fn main() {
         }
         if !problems.is_empty() {
             process::exit(1);
+        }
+        return;
+    }
+    if command == "catalog" {
+        let entries = match catalog::languages() {
+            Ok(entries) => entries,
+            Err(error) => {
+                eprintln!("N9002: {error}");
+                process::exit(1);
+            }
+        };
+        if arguments.len() == 3 {
+            println!("{}", catalog::json(&entries));
+        } else {
+            for (index, entry) in entries.iter().enumerate() {
+                println!(
+                    "{:3}. {}: {} {}",
+                    index + 1,
+                    entry.name,
+                    entry.status,
+                    entry.syntax_code.unwrap_or("")
+                );
+            }
         }
         return;
     }
