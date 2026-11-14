@@ -69,7 +69,10 @@ pub fn languages() -> Result<Vec<Entry<'static>>, String> {
         || reviewed_codes.len() != REVIEWED.len()
         || !reviewed_names.is_subset(&unique)
     {
-        return Err("Reviewed language mappings must be unique and present in reference catalogue".to_owned());
+        return Err(
+            "Reviewed language mappings must be unique and present in reference catalogue"
+                .to_owned(),
+        );
     }
     Ok(names
         .into_iter()
@@ -148,7 +151,11 @@ mod tests {
         let entries = languages().unwrap();
         assert_eq!(summary(&entries), (249, 40, 210));
         assert_eq!(
-            entries.iter().find(|e| e.name == "Slovak").unwrap().syntax_code,
+            entries
+                .iter()
+                .find(|e| e.name == "Slovak")
+                .unwrap()
+                .syntax_code,
             Some("sk")
         );
         assert_eq!(
@@ -159,11 +166,14 @@ mod tests {
                 .syntax_code,
             None
         );
-        assert!(entries.iter().filter(|e| e.status == "experimental").all(|e| {
-            crate::profiles::PROFILES
-                .iter()
-                .any(|p| Some(p.code) == e.syntax_code)
-        }));
+        assert!(entries
+            .iter()
+            .filter(|e| e.status == "experimental")
+            .all(|e| {
+                crate::profiles::PROFILES
+                    .iter()
+                    .any(|p| Some(p.code) == e.syntax_code)
+            }));
     }
 
     #[test]
