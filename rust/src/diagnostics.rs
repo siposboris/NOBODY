@@ -263,16 +263,56 @@ pub fn classify_message(message: &str) -> &'static str {
         (&["non-ascii character"], "LEX_CHARACTER"),
         (&["forbidden bidirectional control"], "LEX_BIDI"),
         (&["foreign keyword"], "PARSE_LANGUAGE"),
-        (&["expected identifier", "expected user identifier"], "PARSE_IDENTIFIER"),
+        (
+            &["expected identifier", "expected user identifier"],
+            "PARSE_IDENTIFIER",
+        ),
         (&["unclosed block", "closing brace"], "PARSE_BLOCK"),
         (&["expected expression"], "PARSE_EXPRESSION"),
-        (&["expected ", "unexpected end", "assignment target", "supported types"], "PARSE_EXPECT"),
+        (
+            &[
+                "expected ",
+                "unexpected end",
+                "assignment target",
+                "supported types",
+            ],
+            "PARSE_EXPECT",
+        ),
         (&["unknown variable", "unknown name"], "RUN_NAME"),
         (&["type mismatch"], "RUN_TYPE"),
         (&["step limit", "call depth", "recursion"], "RUN_LIMIT"),
-        (&["wrong argument count", "only whitelisted functions", "call not permitted"], "RUN_CALL"),
-        (&["ast schema", "ast root", "ast node", "ast nesting", "ast json", "invalid ast", "unknown ast"], "AST_SCHEMA"),
-        (&["unsupported language", "unsupported syntax language", "unsupported output", "configuration", "missing ", "unknown setting", "no such file"], "CLI_INPUT"),
+        (
+            &[
+                "wrong argument count",
+                "only whitelisted functions",
+                "call not permitted",
+            ],
+            "RUN_CALL",
+        ),
+        (
+            &[
+                "ast schema",
+                "ast root",
+                "ast node",
+                "ast nesting",
+                "ast json",
+                "invalid ast",
+                "unknown ast",
+            ],
+            "AST_SCHEMA",
+        ),
+        (
+            &[
+                "unsupported language",
+                "unsupported syntax language",
+                "unsupported output",
+                "configuration",
+                "missing ",
+                "unknown setting",
+                "no such file",
+            ],
+            "CLI_INPUT",
+        ),
     ];
     for &(needles, symbol) in patterns {
         if needles.iter().any(|needle| lower.contains(needle)) {
@@ -320,7 +360,10 @@ mod legacy_classification_tests {
             ("Invalid AST", "AST_SCHEMA"),
             ("No such file", "CLI_INPUT"),
             ("completely new failure", "UNCLASSIFIED"),
-            ("Expected expression and Unknown variable", "PARSE_EXPRESSION"),
+            (
+                "Expected expression and Unknown variable",
+                "PARSE_EXPRESSION",
+            ),
         ];
         for (message, expected) in cases {
             assert_eq!(classify_message(message), expected, "{message}");
