@@ -66,5 +66,8 @@ fn python_languages_command_is_served_by_rust_without_python_runtime() {
         .output()
         .expect("run active profile listing");
     assert!(active.status.success());
-    assert_eq!(String::from_utf8(active.stdout).unwrap().lines().count(), 40);
+    assert_eq!(
+        String::from_utf8(active.stdout).unwrap().lines().count(),
+        40
+    );
 }
