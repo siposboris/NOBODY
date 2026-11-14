@@ -24,7 +24,7 @@ fn native_nobody_reports_true_implementation_status() {
 
 #[test]
 fn native_nobody_lists_only_available_syntax_profiles() {
-    let output = run(&["languages"]);
+    let output = run(&["list-languages"]);
     assert!(output.status.success());
     let message = String::from_utf8(output.stdout).unwrap();
     let codes: Vec<&str> = message.lines().collect();

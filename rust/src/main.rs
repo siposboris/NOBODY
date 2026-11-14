@@ -42,7 +42,7 @@ fn main() {
         {
             true
         }
-        Some("catalog") if arguments.len() == 3 && arguments[2] == "--json" => true,
+        Some("catalog" | "languages") if arguments.len() == 3 && arguments[2] == "--json" => true,
         Some("errors") if arguments.len() == 3 && arguments[2].parse::<u16>().is_ok() => true,
         Some("errors") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
@@ -99,7 +99,7 @@ fn main() {
         }
         return;
     }
-    if command == "catalog" {
+    if command == "catalog" || command == "languages" {
         let entries = match catalog::languages() {
             Ok(entries) => entries,
             Err(error) => {
@@ -122,7 +122,7 @@ fn main() {
         }
         return;
     }
-    if command == "list-languages" || command == "languages" {
+    if command == "list-languages" {
         for profile in PROFILES {
             println!("{}", profile.code);
         }

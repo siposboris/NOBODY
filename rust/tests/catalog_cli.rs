@@ -43,3 +43,31 @@ fn rust_catalog_rejects_unrecognized_options() {
         .expect("run CLI");
     assert_eq!(output.status.code(), Some(2));
 }
+
+#[test]
+fn python_languages_command_is_served_by_rust_without_python_runtime() {
+    let executable = env!("CARGO_BIN_EXE_nobody-rs");
+    for args in [vec!["languages"], vec!["languages", "--json"]] {
+        let legacy = Command::new(executable)
+            .args(&args)
+            .output()
+            .expect("run Python-compatible languages command");
+        let canonical = Command::new(executable)
+            .arg("catalog")
+            .args(&args[1..])
+            .output()
+            .expect("run Rust catalog command");
+        assert!(legacy.status.success(), "{:?}", legacy.stderr);
+        assert_eq!(legacy.stdout, canonical.stdout);
+    }
+
+    let active = Command::new(executable)
+        .arg("list-languages")
+        .output()
+        .expect("run active profile listing");
+    assert!(active.status.success());
+    assert_eq!(
+        String::from_utf8(active.stdout).unwrap().lines().count(),
+        40
+    );
+}
