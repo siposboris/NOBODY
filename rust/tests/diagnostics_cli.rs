@@ -3,7 +3,10 @@ use std::process::Command;
 #[test]
 fn rust_cli_exposes_legacy_numbered_diagnostics() {
     let exe = env!("CARGO_BIN_EXE_nobody-rs");
-    let all = Command::new(exe).arg("errors").output().expect("run errors");
+    let all = Command::new(exe)
+        .arg("errors")
+        .output()
+        .expect("run errors");
     assert!(all.status.success());
     let text = String::from_utf8(all.stdout).unwrap();
     assert_eq!(text.matches("  Príčina: ").count(), 30);
@@ -18,6 +21,9 @@ fn rust_cli_exposes_legacy_numbered_diagnostics() {
 
     let missing = Command::new(exe).args(["errors", "42"]).output().unwrap();
     assert_eq!(missing.status.code(), Some(1));
-    let invalid = Command::new(exe).args(["errors", "invalid"]).output().unwrap();
+    let invalid = Command::new(exe)
+        .args(["errors", "invalid"])
+        .output()
+        .unwrap();
     assert_eq!(invalid.status.code(), Some(2));
 }
