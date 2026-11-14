@@ -250,3 +250,129 @@ mod tests {
         assert!(lookup(42).is_none());
     }
 }
+
+/// Classify legacy bootstrap error messages without launching Python.
+/// Pattern precedence and ASCII case-insensitive matching mirror errors.py.
+pub fn classify_message(message: &str) -> &'static str {
+    let lower = message.to_ascii_lowercase();
+    let patterns: &[(&[&str], &str)] = &[
+        (&["unterminated string"], "LEX_STRING"),
+        (&["must be lowercase"], "LEX_CASE"),
+        (&["combining mark"], "LEX_COMBINING"),
+        (&["non-ascii character"], "LEX_CHARACTER"),
+        (&["forbidden bidirectional control"], "LEX_BIDI"),
+        (&["foreign keyword"], "PARSE_LANGUAGE"),
+        (
+            &["expected identifier", "expected user identifier"],
+            "PARSE_IDENTIFIER",
+        ),
+        (&["unclosed block", "closing brace"], "PARSE_BLOCK"),
+        (&["expected expression"], "PARSE_EXPRESSION"),
+        (
+            &[
+                "expected ",
+                "unexpected end",
+                "assignment target",
+                "supported types",
+            ],
+            "PARSE_EXPECT",
+        ),
+        (&["unknown variable", "unknown name"], "RUN_NAME"),
+        (&["type mismatch"], "RUN_TYPE"),
+        (&["step limit", "call depth", "recursion"], "RUN_LIMIT"),
+        (
+            &[
+                "wrong argument count",
+                "only whitelisted functions",
+                "call not permitted",
+            ],
+            "RUN_CALL",
+        ),
+        (
+            &[
+                "ast schema",
+                "ast root",
+                "ast node",
+                "ast nesting",
+                "ast json",
+                "invalid ast",
+                "unknown ast",
+            ],
+            "AST_SCHEMA",
+        ),
+        (
+            &[
+                "unsupported language",
+                "unsupported syntax language",
+                "unsupported output",
+                "configuration",
+                "missing ",
+                "unknown setting",
+                "no such file",
+            ],
+            "CLI_INPUT",
+        ),
+    ];
+    for &(needles, symbol) in patterns {
+        if needles.iter().any(|needle| lower.contains(needle)) {
+            return symbol;
+        }
+    }
+    "UNCLASSIFIED"
+}
+
+/// Render a legacy-style numbered diagnostic, including its actionable fix.
+pub fn format_message(message: &str, line: Option<usize>) -> String {
+    let symbol = classify_message(message);
+    let entry = DEFINITIONS
+        .iter()
+        .find(|entry| entry.symbol == symbol)
+        .expect("all classification symbols must be in the diagnostic catalogue");
+    let location = line.map_or_else(String::new, |number| format!("riadok {number}: "));
+    format!(
+        "N{:04} [{}] {}{}. Oprava: {}",
+        entry.number, symbol, location, message, entry.fix
+    )
+}
+
+#[cfg(test)]
+mod legacy_classification_tests {
+    use super::*;
+
+    #[test]
+    fn preserves_legacy_pattern_priority_and_case_insensitivity() {
+        let cases = [
+            ("Unterminated string", "LEX_STRING"),
+            ("MUST BE LOWERCASE", "LEX_CASE"),
+            ("combining mark", "LEX_COMBINING"),
+            ("non-ascii character", "LEX_CHARACTER"),
+            ("Forbidden bidirectional control", "LEX_BIDI"),
+            ("Foreign keyword", "PARSE_LANGUAGE"),
+            ("Expected user identifier", "PARSE_IDENTIFIER"),
+            ("Unclosed block", "PARSE_BLOCK"),
+            ("Expected expression", "PARSE_EXPRESSION"),
+            ("Unexpected end", "PARSE_EXPECT"),
+            ("Unknown variable", "RUN_NAME"),
+            ("Type mismatch", "RUN_TYPE"),
+            ("recursion", "RUN_LIMIT"),
+            ("Wrong argument count", "RUN_CALL"),
+            ("Invalid AST", "AST_SCHEMA"),
+            ("No such file", "CLI_INPUT"),
+            ("completely new failure", "UNCLASSIFIED"),
+            (
+                "Expected expression and Unknown variable",
+                "PARSE_EXPRESSION",
+            ),
+        ];
+        for (message, expected) in cases {
+            assert_eq!(classify_message(message), expected, "{message}");
+        }
+    }
+
+    #[test]
+    fn formats_numbered_diagnostics_with_optional_line() {
+        let diagnostic = format_message("Unknown name x", Some(7));
+        assert!(diagnostic.starts_with("N4001 [RUN_NAME] riadok 7: Unknown name x. Oprava: "));
+        assert!(format_message("unrecognized failure", None).starts_with("N9999 [UNCLASSIFIED] "));
+    }
+}
