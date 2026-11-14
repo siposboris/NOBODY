@@ -47,7 +47,7 @@ pub fn lookup(number: u16) -> Option<&'static Definition> {
 }
 
 pub fn format_entry(entry: &Definition) -> String {
-    format!("N{:04} [{}]: {}\\n  Príčina: {}\\n  Oprava: {}", entry.number, entry.symbol, entry.title, entry.cause, entry.fix)
+    format!("N{:04} [{}]: {}\\n  Príčina: {}\n  Oprava: {}", entry.number, entry.symbol, entry.title, entry.cause, entry.fix)
 }
 
 #[cfg(test)]
