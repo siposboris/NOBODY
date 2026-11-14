@@ -241,6 +241,8 @@ impl ParameterConstraints<'_> {
                     self.constrain_name(name, Type::Bool)?;
                 } else if matches!(expr, IrExpr::Number(_)) {
                     self.constrain_name(name, Type::Int)?;
+                } else if matches!(expr, IrExpr::String(_)) {
+                    self.constrain_name(name, Type::Text)?;
                 }
             }
             IrStatement::If {
@@ -1501,6 +1503,24 @@ print(choose(false, 3, 9))";
             "fn conflicts(word) { if word == \"ok\" { return word + 1 } else { return 0 } }\nprint(conflicts(\"ok\"))",
         ] {
             assert_eq!(compile_to_assembly(source, "ai").unwrap_err().code, 4004, "{source}");
+        }
+    }
+
+    #[test]
+    fn native_unannotated_string_assignment_infers_text_parameters() {
+        let source = "fn replace(word) { word = \"Život\" return word }\nprint(replace(\"old\"))";
+        let asm = compile_to_assembly(source, "ai").unwrap();
+        assert!(asm.contains("call nobody_print_text"));
+        for source in [
+            "fn replace(word) { word = \"ok\" return word }\nprint(replace(3))",
+            "fn replace(word) { word = \"ok\" return word }\nprint(replace(true))",
+            "fn replace(word) { word = 4 word = \"ok\" return word }\nprint(replace(4))",
+        ] {
+            assert_eq!(
+                compile_to_assembly(source, "ai").unwrap_err().code,
+                4004,
+                "{source}"
+            );
         }
     }
 
