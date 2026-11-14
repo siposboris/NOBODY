@@ -1,3 +1,4 @@
+pub mod diagnostics;
 //! Nobody's Rust-native lexer foundation.
 //! Source offsets are UTF-8 byte offsets and line/column positions use Unicode
 //! scalar values. This is an experimental migration, not yet a full compiler.
