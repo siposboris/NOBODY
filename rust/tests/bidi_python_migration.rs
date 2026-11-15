@@ -57,8 +57,8 @@ fn rtl_translation_roundtrip_preserves_logical_source_and_string_bytes() {
     // Port of tests/test_bidi.py::test_no_reordering_round_trip.
     let source = "nech pocet = 3\nak pocet > 1 {\n vypis(\"Ahoj (3) مرحبا\")\n}\n";
     for language in ["ar", "ur"] {
-        let translated = nobody::translate_source(source, "sk", language)
-            .expect("translation into RTL syntax");
+        let translated =
+            nobody::translate_source(source, "sk", language).expect("translation into RTL syntax");
         assert!(translated.contains("\"Ahoj (3) مرحبا\""));
         assert_eq!(
             nobody::translate_source(&translated, language, "sk")
