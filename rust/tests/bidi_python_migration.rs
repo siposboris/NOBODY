@@ -1,7 +1,7 @@
 //! Rust-native regression coverage for the legacy Python bidi safety contract.
 //! This does not invoke Python or change source character order.
-use nobody_rs::{is_bidi_control, scan};
-use nobody_rs::profiles::{direction, PROFILES};
+use nobody::{is_bidi_control, scan};
+use nobody::profiles::{direction, PROFILES};
 
 #[test]
 fn all_profiles_have_direction_and_unknown_profiles_fail() {
@@ -45,7 +45,7 @@ fn native_rtl_letters_and_diacritics_keep_logical_token_order() {
     let names: Vec<_> = scan(source)
         .unwrap()
         .into_iter()
-        .filter(|token| token.kind == nobody_rs::TokenKind::Name)
+        .filter(|token| token.kind == nobody::TokenKind::Name)
         .map(|token| token.value)
         .collect();
     assert_eq!(names, ["إذا", "صحيح", "اطبع"]);
