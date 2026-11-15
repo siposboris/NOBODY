@@ -1,7 +1,7 @@
 //! Rust-native regression coverage for the legacy Python bidi safety contract.
 //! This does not invoke Python or change source character order.
-use nobody::{is_bidi_control, scan};
 use nobody::profiles::{direction, PROFILES};
+use nobody::{is_bidi_control, scan};
 
 #[test]
 fn all_profiles_have_direction_and_unknown_profiles_fail() {
@@ -19,8 +19,8 @@ fn all_profiles_have_direction_and_unknown_profiles_fail() {
 #[test]
 fn every_forbidden_bidi_control_is_rejected_in_code_comments_and_strings() {
     let controls = [
-        0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d,
-        0x202e, 0x2066, 0x2067, 0x2068, 0x2069,
+        0x061c, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068,
+        0x2069,
     ];
     for scalar in controls {
         let ch = char::from_u32(scalar).unwrap();
