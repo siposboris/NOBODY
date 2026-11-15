@@ -37,14 +37,22 @@ fn run(mut command: Command) -> Result<Output, String> {
             None => thread::sleep(Duration::from_millis(10)),
         }
     };
-    let stdout = stdout.join().map_err(|_| "stdout reader panicked")?
+    let stdout = stdout
+        .join()
+        .map_err(|_| "stdout reader panicked")?
         .map_err(|e| e.to_string())?;
-    let stderr = stderr.join().map_err(|_| "stderr reader panicked")?
+    let stderr = stderr
+        .join()
+        .map_err(|_| "stderr reader panicked")?
         .map_err(|e| e.to_string())?;
     if timed_out {
         return Err("process timed out after 15 seconds".into());
     }
-    Ok(Output { status, stdout, stderr })
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
 }
 
 fn equal(reference: &Output, rust: &Output) -> bool {
@@ -133,7 +141,10 @@ mod tests {
     #[test]
     fn drains_large_stdout_and_stderr_without_deadlock() {
         let mut command = Command::new("sh");
-        command.args(["-c", "head -c 262144 /dev/zero; head -c 262144 /dev/zero >&2"]);
+        command.args([
+            "-c",
+            "head -c 262144 /dev/zero; head -c 262144 /dev/zero >&2",
+        ]);
         let output = run(command).unwrap();
         assert!(output.status.success());
         assert_eq!(output.stdout.len(), 262144);
