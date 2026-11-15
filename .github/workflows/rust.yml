@@ -7,8 +7,6 @@ on:
       - 'rust/**'
       - '.github/workflows/rust.yml'
       - 'scripts/verify-rust.sh'
-      - 'scripts/check-python-rust-parity.py'
-      - 'scripts/check-ast-json-parity.py'
       - 'tests/fixtures/ast_json_parity/**'
       - 'tests/fixtures/runtime_parity/**'
   pull_request:
