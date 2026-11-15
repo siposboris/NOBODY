@@ -1,5 +1,6 @@
 //! Transitional differential harness: Rust owns fixture discovery, invocation and comparison.
 //! The Python reference remains test-only until checked-in golden outputs replace it.
+use std::io::Read;
 use std::process::Stdio;
 use std::thread;
 use std::{
@@ -9,21 +10,41 @@ use std::{
     time::Duration,
 };
 
+fn drain<R: Read + Send + 'static>(mut stream: R) -> thread::JoinHandle<std::io::Result<Vec<u8>>> {
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes)?;
+        Ok(bytes)
+    })
+}
+
 fn run(mut command: Command) -> Result<Output, String> {
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn().map_err(|e| e.to_string())?;
+    // Drain both pipes concurrently while the process runs. Waiting before reading
+    // deadlocks when either pipe fills its OS buffer.
+    let stdout = drain(child.stdout.take().ok_or("missing stdout pipe")?);
+    let stderr = drain(child.stderr.take().ok_or("missing stderr pipe")?);
     let start = std::time::Instant::now();
-    loop {
+    let (status, timed_out) = loop {
         match child.try_wait().map_err(|e| e.to_string())? {
-            Some(_) => return child.wait_with_output().map_err(|e| e.to_string()),
-            None if start.elapsed() > Duration::from_secs(15) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err("process timed out after 15 seconds".into());
+            Some(status) => break (status, false),
+            None if start.elapsed() >= Duration::from_secs(15) => {
+                child.kill().map_err(|e| e.to_string())?;
+                let status = child.wait().map_err(|e| e.to_string())?;
+                break (status, true);
             }
             None => thread::sleep(Duration::from_millis(10)),
         }
+    };
+    let stdout = stdout.join().map_err(|_| "stdout reader panicked")?
+        .map_err(|e| e.to_string())?;
+    let stderr = stderr.join().map_err(|_| "stderr reader panicked")?
+        .map_err(|e| e.to_string())?;
+    if timed_out {
+        return Err("process timed out after 15 seconds".into());
     }
+    Ok(Output { status, stdout, stderr })
 }
 
 fn equal(reference: &Output, rust: &Output) -> bool {
@@ -106,6 +127,17 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         assert!(fixtures(&dir, 1).unwrap_err().contains("found 0"));
         fs::remove_dir(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn drains_large_stdout_and_stderr_without_deadlock() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "head -c 262144 /dev/zero; head -c 262144 /dev/zero >&2"]);
+        let output = run(command).unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout.len(), 262144);
+        assert_eq!(output.stderr.len(), 262144);
     }
 
     #[test]
