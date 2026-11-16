@@ -39,7 +39,7 @@ pub use ir::{
     lower_source, same_ir, IrExpr, IrStatement, Module as IrModule, Name as IrName, IR_VERSION,
 };
 pub use return_types::{infer_function_return, ReturnType};
-pub use typecheck::{check_ir, check_source, Type as StaticType};
+pub use typecheck::{check_ir, check_source, check_source_with_return_types, Type as StaticType};
 pub mod translator;
 pub use translator::translate_source;
 pub mod ai_migration;
