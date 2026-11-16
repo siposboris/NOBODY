@@ -554,8 +554,49 @@ pub fn check_ir(module: &Module) -> Result<(), Diagnostic> {
 pub fn check_source(source: &str, language: &str) -> Result<(), Diagnostic> {
     check_ir(&lower_source(source, language)?)
 }
+
+/// Run the existing IR checks, then conservatively infer return types for
+/// top-level functions using the Rust syntax tree. Unknown is a valid result:
+/// no new rejection is based on incomplete control-flow inference.
+pub fn check_source_with_return_types(
+    source: &str,
+    language: &str,
+) -> Result<BTreeMap<String, crate::return_types::ReturnType>, Diagnostic> {
+    check_source(source, language)?;
+    let program = crate::parse(source, language)?;
+    let mut returns = BTreeMap::new();
+    for statement in &program.statements {
+        if let crate::Statement::Function { name, .. } = statement {
+            returns.insert(name.clone(), crate::return_types::infer_function_return(statement));
+        }
+    }
+    Ok(returns)
+}
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn typecheck_integrates_native_return_inference_for_ai_and_slovak() {
+        use crate::return_types::ReturnType;
+        for (profile, source) in [
+            ("ai", "fn answer() { return 42 }"),
+            ("sk", "funkcia answer() { vrat 42 }"),
+        ] {
+            let types = check_source_with_return_types(source, profile).unwrap();
+            assert_eq!(types.get("answer"), Some(&ReturnType::Int));
+        }
+        let unknown = check_source_with_return_types(
+            "fn maybe(x) { if x { return 1 } }",
+            "ai",
+        ).unwrap();
+        assert_eq!(unknown.get("maybe"), Some(&ReturnType::Unknown));
+    }
+
+    #[test]
+    fn integrated_return_inference_preserves_typecheck_errors() {
+        let source = "fn wrong() { let x: int = \"text\" return x }";
+        assert_eq!(check_source_with_return_types(source, "ai").unwrap_err().code, 1001);
+    }
     use super::*;
     #[test]
     fn range_builtin_rejects_invalid_arity_and_known_noninteger_arguments() {
