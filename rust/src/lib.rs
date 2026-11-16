@@ -34,6 +34,8 @@ pub mod project;
 mod project_namespaces;
 pub use project::{load_project, Project};
 pub mod typecheck;
+pub mod return_types;
+pub use return_types::{infer_function_return, ReturnType};
 pub use ir::{
     lower_source, same_ir, IrExpr, IrStatement, Module as IrModule, Name as IrName, IR_VERSION,
 };
