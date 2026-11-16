@@ -51,3 +51,32 @@ fn legacy_ast_run_rejects_unsupported_step_limit_instead_of_ignoring_it() {
         "must not silently ignore legacy step limits"
     );
 }
+
+#[test]
+fn legacy_ast_run_ai_profile_matches_native_rust_execution() {
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_ai.nbd");
+    let positional = run(&["run", "ai", source]);
+    let legacy = run(&["ast-run", source, "--lang", "ai"]);
+    assert!(
+        positional.status.success(),
+        "native AI execution failed: {}",
+        String::from_utf8_lossy(&positional.stderr)
+    );
+    assert!(
+        legacy.status.success(),
+        "legacy AI execution failed: {}",
+        String::from_utf8_lossy(&legacy.stderr)
+    );
+    assert_eq!(legacy.stdout, positional.stdout);
+    assert_eq!(legacy.stderr, positional.stderr);
+}
+
+#[test]
+fn legacy_ast_run_rejects_mixed_source_profile() {
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
+    let legacy = run(&["ast-run", source, "--lang", "ai"]);
+    let native = run(&["run", "ai", source]);
+    assert!(!legacy.status.success(), "mixed source profile must be rejected");
+    assert_eq!(legacy.status, native.status);
+    assert_eq!(legacy.stderr, native.stderr);
+}
