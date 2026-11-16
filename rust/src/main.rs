@@ -36,10 +36,7 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
 // already implemented natively in Rust. Execution stays inside the Rust CLI.
 fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     if arguments.len() == 5
-        && matches!(
-            arguments[1].as_str(),
-            "parse" | "ast-json" | "type-check"
-        )
+        && matches!(arguments[1].as_str(), "parse" | "ast-json" | "type-check")
         && arguments[3] == "--lang"
     {
         let command = if arguments[1] == "type-check" {
