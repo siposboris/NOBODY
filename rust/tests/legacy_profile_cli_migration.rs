@@ -46,5 +46,8 @@ fn malformed_legacy_profile_flags_are_rejected() {
 fn legacy_ast_run_rejects_unsupported_step_limit_instead_of_ignoring_it() {
     let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
     let result = run(&["ast-run", source, "--lang", "sk", "--max-steps", "1"]);
-    assert!(!result.status.success(), "must not silently ignore legacy step limits");
+    assert!(
+        !result.status.success(),
+        "must not silently ignore legacy step limits"
+    );
 }
