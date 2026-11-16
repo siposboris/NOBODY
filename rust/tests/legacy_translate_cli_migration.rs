@@ -12,8 +12,16 @@ fn python_translate_flags_match_native_rust_translation() {
     let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
     let native = run(&["translate", "sk", "ai", source]);
     let legacy = run(&["translate", source, "--from-lang", "sk", "--to", "ai"]);
-    assert!(native.status.success(), "native stderr: {}", String::from_utf8_lossy(&native.stderr));
-    assert!(legacy.status.success(), "legacy stderr: {}", String::from_utf8_lossy(&legacy.stderr));
+    assert!(
+        native.status.success(),
+        "native stderr: {}",
+        String::from_utf8_lossy(&native.stderr)
+    );
+    assert!(
+        legacy.status.success(),
+        "legacy stderr: {}",
+        String::from_utf8_lossy(&legacy.stderr)
+    );
     assert_eq!(legacy.stdout, native.stdout);
     assert_eq!(legacy.stderr, native.stderr);
 }
