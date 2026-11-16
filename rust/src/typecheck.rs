@@ -574,6 +574,7 @@ pub fn check_source_with_return_types(
 }
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn typecheck_integrates_native_return_inference_for_ai_and_slovak() {
@@ -597,7 +598,6 @@ mod tests {
         let source = "fn wrong() { let x: int = \"text\" return x }";
         assert_eq!(check_source_with_return_types(source, "ai").unwrap_err().code, 1001);
     }
-    use super::*;
     #[test]
     fn range_builtin_rejects_invalid_arity_and_known_noninteger_arguments() {
         for source in [
