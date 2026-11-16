@@ -31,30 +31,58 @@ fn annotation(name: &str) -> ReturnType {
 fn expression(expr: &Expr, env: &Environment) -> ReturnType {
     use ReturnType::*;
     match expr {
-        Expr::Number(value) => if value.contains('.') { Float } else { Int },
+        Expr::Number(value) => {
+            if value.contains('.') {
+                Float
+            } else {
+                Int
+            }
+        }
         Expr::String(_) => Str,
         Expr::Boolean(_) => Bool,
         Expr::Null => None,
         Expr::Name(name) => *env.get(name).unwrap_or(&Unknown),
         Expr::Unary { op, value } => {
-            if op == "not" { Bool } else {
+            if op == "not" {
+                Bool
+            } else {
                 let operand = expression(value, env);
-                if matches!(operand, Int | Float) { operand } else { Unknown }
+                if matches!(operand, Int | Float) {
+                    operand
+                } else {
+                    Unknown
+                }
             }
         }
         Expr::Binary { op, lhs, rhs } => {
             let a = expression(lhs, env);
             let b = expression(rhs, env);
             match op.as_str() {
-                "==" | "!=" | "<" | "<=" | ">" | ">=" =>
-                    if a != Unknown && b != Unknown { Bool } else { Unknown },
-                "and" | "or" => if a == b { a } else { Unknown },
+                "==" | "!=" | "<" | "<=" | ">" | ">=" => {
+                    if a != Unknown && b != Unknown {
+                        Bool
+                    } else {
+                        Unknown
+                    }
+                }
+                "and" | "or" => {
+                    if a == b {
+                        a
+                    } else {
+                        Unknown
+                    }
+                }
                 "+" if a == Str && b == Str => Str,
                 _ if matches!(a, Int | Float) && matches!(b, Int | Float) => {
-                    if op == "/" { Float }
-                    else if op == "**" { Unknown }
-                    else if a == Float || b == Float { Float }
-                    else { Int }
+                    if op == "/" {
+                        Float
+                    } else if op == "**" {
+                        Unknown
+                    } else if a == Float || b == Float {
+                        Float
+                    } else {
+                        Int
+                    }
                 }
                 _ => Unknown,
             }
@@ -71,21 +99,37 @@ fn walk(statements: &[Statement], start: &Environment) -> (Vec<ReturnType>, Vec<
         let mut future = Vec::new();
         for env in active {
             match statement {
-                Statement::Let { name, type_name, expr } => {
-                    if env.contains_key(name) { return (vec![Unknown], vec![]); }
+                Statement::Let {
+                    name,
+                    type_name,
+                    expr,
+                } => {
+                    if env.contains_key(name) {
+                        return (vec![Unknown], vec![]);
+                    }
                     let mut next = env.clone();
-                    next.insert(name.clone(), type_name.as_deref().map(annotation)
-                        .unwrap_or_else(|| expression(expr, &env)));
+                    next.insert(
+                        name.clone(),
+                        type_name
+                            .as_deref()
+                            .map(annotation)
+                            .unwrap_or_else(|| expression(expr, &env)),
+                    );
                     future.push(next);
                 }
                 Statement::Assign { name, expr } => {
-                    if !env.contains_key(name) { return (vec![Unknown], vec![]); }
+                    if !env.contains_key(name) {
+                        return (vec![Unknown], vec![]);
+                    }
                     let mut next = env.clone();
                     next.insert(name.clone(), expression(expr, &env));
                     future.push(next);
                 }
                 Statement::Return(expr) => returns.push(expression(expr, &env)),
-                Statement::If { branches, otherwise } => {
+                Statement::If {
+                    branches,
+                    otherwise,
+                } => {
                     for (_, body) in branches {
                         let (r, fallthrough) = walk(body, &env);
                         returns.extend(r);
@@ -111,7 +155,9 @@ fn walk(statements: &[Statement], start: &Environment) -> (Vec<ReturnType>, Vec<
         if active.len() + returns.len() > MAX_PATHS {
             return (vec![Unknown], vec![]);
         }
-        if active.is_empty() { break; }
+        if active.is_empty() {
+            break;
+        }
     }
     (returns, active)
 }
@@ -120,13 +166,20 @@ fn walk(statements: &[Statement], start: &Environment) -> (Vec<ReturnType>, Vec<
 /// The original Python API raises for a non-function node; this typed Rust API
 /// instead returns Unknown for that input.
 pub fn infer_function_return(statement: &Statement) -> ReturnType {
-    let Statement::Function { parameters, body, .. } = statement else {
+    let Statement::Function {
+        parameters, body, ..
+    } = statement
+    else {
         return ReturnType::Unknown;
     };
-    let initial: Environment = parameters.iter()
-        .map(|p| (p.clone(), ReturnType::Unknown)).collect();
+    let initial: Environment = parameters
+        .iter()
+        .map(|p| (p.clone(), ReturnType::Unknown))
+        .collect();
     let (mut returns, fallthrough) = walk(body, &initial);
-    if !fallthrough.is_empty() { returns.push(ReturnType::None); }
+    if !fallthrough.is_empty() {
+        returns.push(ReturnType::None);
+    }
     let Some(first) = returns.first().copied() else {
         return ReturnType::Unknown;
     };
@@ -142,19 +195,33 @@ mod tests {
     use super::*;
     fn function(body: Vec<Statement>) -> Statement {
         Statement::Function {
-            name: "f".into(), parameters: vec![], parameter_types: vec![],
-            return_type: None, body,
+            name: "f".into(),
+            parameters: vec![],
+            parameter_types: vec![],
+            return_type: None,
+            body,
         }
     }
-    fn number(value: &str) -> Expr { Expr::Number(value.into()) }
+    fn number(value: &str) -> Expr {
+        Expr::Number(value.into())
+    }
     fn declaration(name: &str, expr: Expr) -> Statement {
-        Statement::Let { name: name.into(), type_name: None, expr }
+        Statement::Let {
+            name: name.into(),
+            type_name: None,
+            expr,
+        }
     }
     #[test]
     fn infers_literal_and_assigned_variable() {
-        let f = function(vec![declaration("x", number("2")),
-            Statement::Assign { name: "x".into(), expr: number("3") },
-            Statement::Return(Expr::Name("x".into()))]);
+        let f = function(vec![
+            declaration("x", number("2")),
+            Statement::Assign {
+                name: "x".into(),
+                expr: number("3"),
+            },
+            Statement::Return(Expr::Name("x".into())),
+        ]);
         assert_eq!(infer_function_return(&f), ReturnType::Int);
     }
     #[test]
@@ -172,23 +239,37 @@ mod tests {
     }
     #[test]
     fn refuses_unsupported_loops_and_duplicate_declarations() {
-        let loop_body = function(vec![Statement::While {
-            condition: Expr::Boolean(false), body: vec![],
-        }, Statement::Return(number("1"))]);
+        let loop_body = function(vec![
+            Statement::While {
+                condition: Expr::Boolean(false),
+                body: vec![],
+            },
+            Statement::Return(number("1")),
+        ]);
         assert_eq!(infer_function_return(&loop_body), ReturnType::Unknown);
-        let duplicate = function(vec![declaration("x", number("1")),
-            declaration("x", number("2")), Statement::Return(number("3"))]);
+        let duplicate = function(vec![
+            declaration("x", number("1")),
+            declaration("x", number("2")),
+            Statement::Return(number("3")),
+        ]);
         assert_eq!(infer_function_return(&duplicate), ReturnType::Unknown);
     }
     #[test]
     fn respects_annotation_and_unknown_parameters() {
-        let annotated = function(vec![Statement::Let {
-            name: "x".into(), type_name: Some("str".into()), expr: number("1"),
-        }, Statement::Return(Expr::Name("x".into()))]);
+        let annotated = function(vec![
+            Statement::Let {
+                name: "x".into(),
+                type_name: Some("str".into()),
+                expr: number("1"),
+            },
+            Statement::Return(Expr::Name("x".into())),
+        ]);
         assert_eq!(infer_function_return(&annotated), ReturnType::Str);
         let f = Statement::Function {
-            name: "f".into(), parameters: vec!["x".into()],
-            parameter_types: vec![None], return_type: None,
+            name: "f".into(),
+            parameters: vec!["x".into()],
+            parameter_types: vec![None],
+            return_type: None,
             body: vec![Statement::Return(Expr::Name("x".into()))],
         };
         assert_eq!(infer_function_return(&f), ReturnType::Unknown);
@@ -196,11 +277,15 @@ mod tests {
     #[test]
     fn matches_conservative_binary_rules() {
         let divide = function(vec![Statement::Return(Expr::Binary {
-            op: "/".into(), lhs: Box::new(number("2")), rhs: Box::new(number("1")),
+            op: "/".into(),
+            lhs: Box::new(number("2")),
+            rhs: Box::new(number("1")),
         })]);
         assert_eq!(infer_function_return(&divide), ReturnType::Float);
         let exponent = function(vec![Statement::Return(Expr::Binary {
-            op: "**".into(), lhs: Box::new(number("2")), rhs: Box::new(number("3")),
+            op: "**".into(),
+            lhs: Box::new(number("2")),
+            rhs: Box::new(number("3")),
         })]);
         assert_eq!(infer_function_return(&exponent), ReturnType::Unknown);
     }
