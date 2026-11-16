@@ -15,7 +15,10 @@ fn inference_uses_real_ai_parser() {
         ReturnType::Int
     );
     assert_eq!(
-        inferred("fn result() { if true { return 1 } else { return 2 } }", "ai"),
+        inferred(
+            "fn result() { if true { return 1 } else { return 2 } }",
+            "ai"
+        ),
         ReturnType::Int
     );
 }
@@ -47,5 +50,8 @@ fn inference_rejects_unsupported_loop_flow_conservatively() {
 #[test]
 fn inference_does_not_run_or_depend_on_python() {
     let program = parse("fn result(x) { return x }", "ai").unwrap();
-    assert_eq!(infer_function_return(&program.statements[0]), ReturnType::Unknown);
+    assert_eq!(
+        infer_function_return(&program.statements[0]),
+        ReturnType::Unknown
+    );
 }
