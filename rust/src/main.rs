@@ -2,7 +2,7 @@ use nobody::catalog;
 use nobody::diagnostics;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
-    check_source, compile_bytecode_source, emit_ast_json_v2, emit_program, evaluate_source,
+    check_source, check_source_with_return_types, compile_bytecode_source, emit_ast_json_v2, emit_program, evaluate_source,
     execute_bytecode_source, export_ast_json, export_ast_json_v2, import_ast_json_v2, lower_source,
     migrate_legacy_ai, normalize_ast_json_v2, parse, parse_validated, same_ast_json_v2, same_ir,
     scan, translate_source, TokenKind,
@@ -612,8 +612,8 @@ fn main() {
         return;
     }
     if command == "typecheck" {
-        match check_source(&source,&arguments[2]) {
-            Ok(())=>println!("Conservative Rust type check passed (known types only; unknown expressions deferred)."),
+        match check_source_with_return_types(&source,&arguments[2]) {
+            Ok(_returns)=>println!("Conservative Rust type check passed (known types only; unknown expressions deferred)."),
             Err(error)=>{eprintln!("{error}");process::exit(1);}
         }
         return;
