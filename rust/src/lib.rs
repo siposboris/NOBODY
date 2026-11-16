@@ -33,12 +33,12 @@ pub mod profiles;
 pub mod project;
 mod project_namespaces;
 pub use project::{load_project, Project};
-pub mod typecheck;
 pub mod return_types;
-pub use return_types::{infer_function_return, ReturnType};
+pub mod typecheck;
 pub use ir::{
     lower_source, same_ir, IrExpr, IrStatement, Module as IrModule, Name as IrName, IR_VERSION,
 };
+pub use return_types::{infer_function_return, ReturnType};
 pub use typecheck::{check_ir, check_source, Type as StaticType};
 pub mod translator;
 pub use translator::translate_source;
