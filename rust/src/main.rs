@@ -32,8 +32,30 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
     arguments
 }
 
+// Preserve the old Python frontend's file-first --lang interface for commands
+// already implemented natively in Rust. Execution stays inside the Rust CLI.
+fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
+    if arguments.len() == 5
+        && matches!(arguments[1].as_str(), "parse" | "ast-json" | "type-check")
+        && arguments[3] == "--lang"
+    {
+        let command = if arguments[1] == "type-check" {
+            "typecheck"
+        } else {
+            arguments[1].as_str()
+        };
+        return vec![
+            arguments[0].clone(),
+            command.to_string(),
+            arguments[4].clone(),
+            arguments[2].clone(),
+        ];
+    }
+    arguments
+}
+
 fn main() {
-    let arguments = normalize_translate_args(env::args().collect());
+    let arguments = normalize_legacy_profile_args(normalize_translate_args(env::args().collect()));
     let valid = match arguments.get(1).map(String::as_str) {
         Some(
             "lex"
