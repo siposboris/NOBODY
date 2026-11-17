@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build native Rust CLI
+        run: cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
       - name: Run standalone lexer and parser tests
         run: |
           python -m unittest discover -s tests -p 'test_lexer.py' -v
@@ -32,11 +35,15 @@ jobs:
           python -m unittest discover -s tests -p 'test_019_flow_types.py' -v
           python -m unittest discover -s tests -p 'test_020_errors.py' -v
           python -m unittest discover -s tests -p 'test_021_return_types.py' -v
-          python -m nobody errors 1001
-          python -m nobody type-check examples/hello_sk.nbd --lang sk
-          python -m nobody ast-json examples/hello_sk.nbd --lang sk > /dev/null
-          python -m nobody translate examples/hello_sk.nbd --from-lang sk --to ai > /dev/null
-          python -m nobody audit-languages
-          python -m nobody info
-          python -m nobody languages --json > /dev/null
-          python -m nobody ast-run examples/hello_sk.nbd --lang sk
+      - name: Native Rust CLI compatibility smoke
+        run: |
+          set -euo pipefail
+          cli=rust/target/debug/nobody-rs
+          "$cli" errors 1001
+          "$cli" type-check examples/hello_sk.nbd --lang sk
+          "$cli" ast-json examples/hello_sk.nbd --lang sk > /dev/null
+          "$cli" translate examples/hello_sk.nbd --from-lang sk --to ai > /dev/null
+          "$cli" audit-languages
+          "$cli" info
+          "$cli" languages --json > /dev/null
+          "$cli" ast-run examples/hello_sk.nbd --lang sk
