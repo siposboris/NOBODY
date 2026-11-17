@@ -76,7 +76,10 @@ fn legacy_ast_run_rejects_mixed_source_profile() {
     let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
     let legacy = run(&["ast-run", source, "--lang", "ai"]);
     let native = run(&["run", "ai", source]);
-    assert!(!legacy.status.success(), "mixed source profile must be rejected");
+    assert!(
+        !legacy.status.success(),
+        "mixed source profile must be rejected"
+    );
     assert_eq!(legacy.status, native.status);
     assert_eq!(legacy.stderr, native.stderr);
 }
