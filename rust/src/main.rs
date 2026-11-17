@@ -1,4 +1,5 @@
 use nobody::catalog;
+use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::diagnostics;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
@@ -35,6 +36,20 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
 // Preserve the old Python frontend's file-first --lang interface for commands
 // already implemented natively in Rust. Execution stays inside the Rust CLI.
 fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
+    if arguments.len() == 7
+        && arguments[1] == "ast-run"
+        && arguments[3] == "--lang"
+        && arguments[5] == "--max-steps"
+    {
+        return vec![
+            arguments[0].clone(),
+            "run".into(),
+            arguments[4].clone(),
+            arguments[2].clone(),
+            "--max-steps".into(),
+            arguments[6].clone(),
+        ];
+    }
     if arguments.len() == 5
         && matches!(
             arguments[1].as_str(),
@@ -78,6 +93,10 @@ fn main() {
             | "bytecode" | "native-asm" | "run-bytecode" | "emit-ast-v2" | "format-source"
             | "format-check",
         ) if arguments.len() == 4 => true,
+        Some("run")
+            if arguments.len() == 6
+                && arguments[4] == "--max-steps"
+                && arguments[5].parse::<usize>().is_ok() => true,
         Some("compile-project-bytecode" | "compile-project-native") if arguments.len() == 4 => true,
         Some("check-project" | "run-project") if arguments.len() == 3 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
@@ -508,7 +527,11 @@ fn main() {
         );
         return;
     }
-    let filename = arguments.last().expect("validated CLI args");
+    let filename = if command == "run" && arguments.len() == 6 {
+        &arguments[3]
+    } else {
+        arguments.last().expect("validated CLI args")
+    };
     let source = match fs::read_to_string(filename) {
         Ok(x) => x,
         Err(e) => {
@@ -540,7 +563,12 @@ fn main() {
         return;
     }
     if command == "run" {
-        match evaluate_source(&source, &arguments[2]) {
+        let result = if arguments.len() == 6 {
+            evaluate_source_with_max_steps(&source, &arguments[2], arguments[5].parse().expect("validated step limit"))
+        } else {
+            evaluate_source(&source, &arguments[2])
+        };
+        match result {
             Ok(output) => print!("{output}"),
             Err(error) => {
                 eprintln!("{error}");
