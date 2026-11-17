@@ -119,12 +119,13 @@ struct Evaluator {
     functions: BTreeMap<String, Function>,
     active_calls: Vec<String>,
     steps: usize,
+    max_steps: usize,
     output: String,
 }
 impl Evaluator {
     fn tick(&mut self, depth: usize) -> Result<(), Diagnostic> {
         self.steps += 1;
-        if self.steps > MAX_STEPS || depth > MAX_DEPTH {
+        if self.steps > self.max_steps || depth > MAX_DEPTH {
             return Err(error(
                 4005,
                 "Evaluator step or expression-depth budget exhausted",
@@ -413,7 +414,7 @@ impl Evaluator {
         match stmt {
             IrStatement::Let {
                 name,
-                type_name: None,
+                type_name,
                 expr,
             } => {
                 if self
@@ -424,6 +425,14 @@ impl Evaluator {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 let value = self.eval(expr, 1)?;
+                if type_name
+                    .as_deref()
+                    .is_some_and(|annotation| !matches_explicit_type(&value, annotation))
+                {
+                    return Err(unsupported(format!(
+                        "Declaration {name:?} violates its explicit type annotation"
+                    )));
+                }
                 self.scopes
                     .last_mut()
                     .expect("root scope exists")
@@ -588,19 +597,21 @@ impl Evaluator {
             IrStatement::Return(expr) => Ok(Flow::Return(self.eval(expr, 1)?)),
             IrStatement::Break => Ok(Flow::Break),
             IrStatement::Continue => Ok(Flow::Continue),
-            _ => Err(unsupported(
-                "This statement is not supported by the first Rust evaluator slice",
-            )),
         }
     }
 }
 /// Explicit execution entrypoint. Parsing and type-checking never invoke this.
 pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
+    evaluate_ir_with_max_steps(module, MAX_STEPS)
+}
+
+pub fn evaluate_ir_with_max_steps(module: &Module, max_steps: usize) -> Result<String, Diagnostic> {
     let mut evaluator = Evaluator {
         scopes: vec![BTreeMap::new()],
         functions: BTreeMap::new(),
         active_calls: Vec::new(),
         steps: 0,
+        max_steps,
         output: String::new(),
     };
     match evaluator.statements(&module.statements)? {
@@ -611,7 +622,15 @@ pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
     }
 }
 pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic> {
-    evaluate_ir(&lower_source(source, profile)?)
+    evaluate_source_with_max_steps(source, profile, MAX_STEPS)
+}
+
+pub fn evaluate_source_with_max_steps(
+    source: &str,
+    profile: &str,
+    max_steps: usize,
+) -> Result<String, Diagnostic> {
+    evaluate_ir_with_max_steps(&lower_source(source, profile)?, max_steps)
 }
 
 #[cfg(test)]
