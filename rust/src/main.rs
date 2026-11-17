@@ -1,6 +1,6 @@
 use nobody::catalog;
-use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::diagnostics;
+use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source_with_return_types, compile_bytecode_source, emit_ast_json_v2, emit_program,
@@ -96,7 +96,10 @@ fn main() {
         Some("run")
             if arguments.len() == 6
                 && arguments[4] == "--max-steps"
-                && arguments[5].parse::<usize>().is_ok() => true,
+                && arguments[5].parse::<usize>().is_ok() =>
+        {
+            true
+        }
         Some("compile-project-bytecode" | "compile-project-native") if arguments.len() == 4 => true,
         Some("check-project" | "run-project") if arguments.len() == 3 => true,
         Some("compare-ir") if arguments.len() == 6 => true,
