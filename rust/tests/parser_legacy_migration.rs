@@ -8,8 +8,12 @@ fn legacy_slovak_function_and_condition() {
     let program = parse(src, "sk").unwrap();
     assert_eq!(program.statements.len(), 3);
     assert!(matches!(&program.statements[0], Statement::Let { name, .. } if name == "cislo"));
-    assert!(matches!(&program.statements[1], Statement::Function { name, parameters, .. } if name == "dvoj" && parameters == &["x"]));
-    assert!(matches!(&program.statements[2], Statement::If { branches, otherwise } if branches.len() == 1 && otherwise.is_some()));
+    assert!(
+        matches!(&program.statements[1], Statement::Function { name, parameters, .. } if name == "dvoj" && parameters == &["x"])
+    );
+    assert!(
+        matches!(&program.statements[2], Statement::If { branches, otherwise } if branches.len() == 1 && otherwise.is_some())
+    );
 }
 
 #[test]
@@ -42,7 +46,9 @@ fn legacy_loop_constructs() {
 #[test]
 fn legacy_operator_precedence() {
     let program = parse("nech x = 1 + 2 * 3", "sk").unwrap();
-    assert!(matches!(&program.statements[0], Statement::Let { expr: Expr::Binary { op, rhs, .. }, .. } if op == "+" && matches!(rhs.as_ref(), Expr::Binary { op, .. } if op == "*")));
+    assert!(
+        matches!(&program.statements[0], Statement::Let { expr: Expr::Binary { op, rhs, .. }, .. } if op == "+" && matches!(rhs.as_ref(), Expr::Binary { op, .. } if op == "*"))
+    );
 }
 
 #[test]
@@ -53,12 +59,7 @@ fn legacy_mixed_profile_and_uppercase_rejected() {
 
 #[test]
 fn legacy_unbalanced_delimiters_and_invalid_binding() {
-    for source in [
-        "ak pravda { vypis(1)",
-        "nech x = (1 + 2",
-        "}",
-        "nech = 2",
-    ] {
+    for source in ["ak pravda { vypis(1)", "nech x = (1 + 2", "}", "nech = 2"] {
         assert!(parse(source, "sk").is_err(), "{source}");
     }
 }
@@ -66,5 +67,7 @@ fn legacy_unbalanced_delimiters_and_invalid_binding() {
 #[test]
 fn legacy_typed_declaration() {
     let program = parse("nech n: cele = 1", "sk").unwrap();
-    assert!(matches!(&program.statements[0], Statement::Let { type_name: Some(ty), .. } if ty == "int"));
+    assert!(
+        matches!(&program.statements[0], Statement::Let { type_name: Some(ty), .. } if ty == "int")
+    );
 }
