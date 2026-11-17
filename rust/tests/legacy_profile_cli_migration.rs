@@ -83,3 +83,15 @@ fn legacy_ast_run_rejects_mixed_source_profile() {
     assert_eq!(legacy.status, native.status);
     assert_eq!(legacy.stderr, native.stderr);
 }
+
+#[test]
+fn native_rust_typed_declaration_checks_annotation() {
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/basic_ai.nbd");
+    let result = run(&["run", "ai", source]);
+    assert!(
+        result.status.success(),
+        "typed declaration should execute: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(result.stdout, b"31\n");
+}
