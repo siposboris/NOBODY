@@ -628,7 +628,11 @@ pub fn evaluate_source(source: &str, profile: &str) -> Result<String, Diagnostic
     evaluate_source_with_max_steps(source, profile, MAX_STEPS)
 }
 
-pub fn evaluate_source_with_max_steps(source: &str, profile: &str, max_steps: usize) -> Result<String, Diagnostic> {
+pub fn evaluate_source_with_max_steps(
+    source: &str,
+    profile: &str,
+    max_steps: usize,
+) -> Result<String, Diagnostic> {
     evaluate_ir_with_max_steps(&lower_source(source, profile)?, max_steps)
 }
 
