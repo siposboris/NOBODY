@@ -1,7 +1,7 @@
 //! Rust-native regression coverage for the legacy Python bidi safety tests.
 //! This verifies source behavior without invoking the Python frontend.
-use nobody::{is_bidi_control, scan, translate_source, TokenKind};
 use nobody::profiles::direction;
+use nobody::{is_bidi_control, scan, translate_source, TokenKind};
 
 #[test]
 fn native_direction_metadata_matches_legacy_profiles() {
@@ -28,8 +28,11 @@ fn native_rtl_translation_preserves_logical_source_order() {
 #[test]
 fn native_arabic_tokens_retain_logical_order() {
     let tokens = scan("إذا صحيح { اطبع(\"مرحبا\") }").expect("Arabic tokens");
-    let names: Vec<&str> = tokens.iter().filter(|t| t.kind == TokenKind::Name)
-        .map(|t| t.value.as_str()).collect();
+    let names: Vec<&str> = tokens
+        .iter()
+        .filter(|t| t.kind == TokenKind::Name)
+        .map(|t| t.value.as_str())
+        .collect();
     assert_eq!(names, ["إذا", "صحيح", "اطبع"]);
 }
 
