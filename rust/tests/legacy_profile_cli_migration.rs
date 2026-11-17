@@ -54,7 +54,7 @@ fn legacy_ast_run_rejects_unsupported_step_limit_instead_of_ignoring_it() {
 
 #[test]
 fn legacy_ast_run_ai_profile_matches_native_rust_execution() {
-    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_ai.nbd");
+    let source = concat!(env!("CARGO_MANIFEST_DIR"), "/examples/basic_ai.nbd");
     let positional = run(&["run", "ai", source]);
     let legacy = run(&["ast-run", source, "--lang", "ai"]);
     assert!(
