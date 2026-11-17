@@ -597,9 +597,6 @@ impl Evaluator {
             IrStatement::Return(expr) => Ok(Flow::Return(self.eval(expr, 1)?)),
             IrStatement::Break => Ok(Flow::Break),
             IrStatement::Continue => Ok(Flow::Continue),
-            _ => Err(unsupported(
-                "This statement is not supported by the first Rust evaluator slice",
-            )),
         }
     }
 }
