@@ -27,7 +27,11 @@ fn frontend_ci_legacy_smoke_commands_are_native() {
             args,
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(!output.stdout.is_empty(), "Rust CLI {:?} returned empty stdout", args);
+        assert!(
+            !output.stdout.is_empty(),
+            "Rust CLI {:?} returned empty stdout",
+            args
+        );
     }
 }
 
@@ -35,5 +39,8 @@ fn frontend_ci_legacy_smoke_commands_are_native() {
 fn native_cli_rejects_mixed_language_source() {
     let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
     let output = cli(&["ast-run", source, "--lang", "ai"]);
-    assert!(!output.status.success(), "mixed syntax profiles must be rejected");
+    assert!(
+        !output.status.success(),
+        "mixed syntax profiles must be rejected"
+    );
 }
