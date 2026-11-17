@@ -1,5 +1,5 @@
 //! Legacy Python parser regression cases ported to native Rust.
- //! Keep tests/test_parser.py until all consumers are migrated and CI is green.
+//! Keep tests/test_parser.py until all consumers are migrated and CI is green.
 use nobody::{parse, Expr, Statement};
 
 #[test]
@@ -14,13 +14,27 @@ fn legacy_slovak_function_and_condition() {
 
 #[test]
 fn legacy_english_and_czech_conditionals() {
-    assert!(matches!(&parse("let n = 1\nif n < 2 { print(n) }", "en").unwrap().statements[1], Statement::If { .. }));
-    assert!(matches!(&parse("necht n = 1\npokud pravda { vypis(n) }", "cs").unwrap().statements[1], Statement::If { .. }));
+    assert!(matches!(
+        &parse("let n = 1\nif n < 2 { print(n) }", "en")
+            .unwrap()
+            .statements[1],
+        Statement::If { .. }
+    ));
+    assert!(matches!(
+        &parse("necht n = 1\npokud pravda { vypis(n) }", "cs")
+            .unwrap()
+            .statements[1],
+        Statement::If { .. }
+    ));
 }
 
 #[test]
 fn legacy_loop_constructs() {
-    let program = parse("pre n v rozsah(4) { vypis(n) }\npokial nepravda { prerus }", "sk").unwrap();
+    let program = parse(
+        "pre n v rozsah(4) { vypis(n) }\npokial nepravda { prerus }",
+        "sk",
+    )
+    .unwrap();
     assert!(matches!(&program.statements[0], Statement::For { .. }));
     assert!(matches!(&program.statements[1], Statement::While { .. }));
 }
@@ -39,7 +53,12 @@ fn legacy_mixed_profile_and_uppercase_rejected() {
 
 #[test]
 fn legacy_unbalanced_delimiters_and_invalid_binding() {
-    for source in ["ak pravda { vypis(1)", "nech x = (1 + 2", "}", "nech = 2"] {
+    for source in [
+        "ak pravda { vypis(1)",
+        "nech x = (1 + 2",
+        "}",
+        "nech = 2",
+    ] {
         assert!(parse(source, "sk").is_err(), "{source}");
     }
 }
