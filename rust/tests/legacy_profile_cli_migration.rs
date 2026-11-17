@@ -43,13 +43,22 @@ fn malformed_legacy_profile_flags_are_rejected() {
 }
 
 #[test]
-fn legacy_ast_run_rejects_unsupported_step_limit_instead_of_ignoring_it() {
+fn legacy_ast_run_enforces_configurable_step_budget() {
     let source = concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/hello_sk.nbd");
-    let result = run(&["ast-run", source, "--lang", "sk", "--max-steps", "1"]);
-    assert!(
-        !result.status.success(),
-        "must not silently ignore legacy step limits"
-    );
+    let bounded = run(&["ast-run", source, "--lang", "sk", "--max-steps", "1"]);
+    assert!(!bounded.status.success(), "one step must not execute a full program");
+    assert!(String::from_utf8_lossy(&bounded.stderr).contains("N4005"));
+
+    let generous = run(&["ast-run", source, "--lang", "sk", "--max-steps", "10000"]);
+    let unbounded_cli = run(&["run", "sk", source]);
+    assert!(generous.status.success(), "{}", String::from_utf8_lossy(&generous.stderr));
+    assert_eq!(generous.stdout, unbounded_cli.stdout);
+    assert_eq!(generous.stderr, unbounded_cli.stderr);
+
+    for invalid in ["abc", "-1", "1.5"] {
+        let result = run(&["ast-run", source, "--lang", "sk", "--max-steps", invalid]);
+        assert!(!result.status.success(), "accepted invalid budget {invalid}");
+    }
 }
 
 #[test]
