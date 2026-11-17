@@ -564,7 +564,11 @@ fn main() {
     }
     if command == "run" {
         let result = if arguments.len() == 6 {
-            evaluate_source_with_max_steps(&source, &arguments[2], arguments[5].parse().expect("validated step limit"))
+            evaluate_source_with_max_steps(
+                &source,
+                &arguments[2],
+                arguments[5].parse().expect("validated step limit"),
+            )
         } else {
             evaluate_source(&source, &arguments[2])
         };
