@@ -413,7 +413,7 @@ impl Evaluator {
         match stmt {
             IrStatement::Let {
                 name,
-                type_name: None,
+                type_name,
                 expr,
             } => {
                 if self
@@ -424,6 +424,14 @@ impl Evaluator {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 let value = self.eval(expr, 1)?;
+                if type_name
+                    .as_deref()
+                    .is_some_and(|annotation| !matches_explicit_type(&value, annotation))
+                {
+                    return Err(unsupported(format!(
+                        "Declaration {name:?} violates its explicit type annotation"
+                    )));
+                }
                 self.scopes
                     .last_mut()
                     .expect("root scope exists")
