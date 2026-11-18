@@ -3,7 +3,7 @@ use nobody::diagnostics;
 use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
-    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v2, emit_program,
+    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v1, emit_ast_json_v2, emit_program,
     evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
     import_ast_json_v1, import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2, parse,
     parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
@@ -12,7 +12,7 @@ use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs catalog [--json]\n  nobody-rs errors [number]\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs catalog [--json]\n  nobody-rs errors [number]\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-emit <file.json> --lang <profile>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 // Accept the legacy Python frontend's translation flags while keeping the
 // native Rust positional CLI as the canonical interface.
@@ -130,7 +130,7 @@ fn main() {
         Some("errors") if arguments.len() == 3 && arguments[2].parse::<u16>().is_ok() => true,
         Some("errors") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
-        Some("translate") if arguments.len() == 5 => true,
+        Some("ast-emit") if arguments.len() == 5 && arguments[3] == "--lang" => true,\n        Some("translate") if arguments.len() == 5 => true,
         _ => false,
     };
     if !valid {
@@ -344,6 +344,21 @@ fn main() {
             Ok(()) => println!(
                 "Created standalone Linux x86-64 ELF executable: {output_path} (experimental i64 subset)"
             ),
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "ast-emit" {
+        let path = &arguments[2];
+        let source = fs::read_to_string(path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        match emit_ast_json_v1(&source, &arguments[4]) {
+            Ok(emitted) => print!("{emitted}"),
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
