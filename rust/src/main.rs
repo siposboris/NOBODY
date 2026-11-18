@@ -130,7 +130,8 @@ fn main() {
         Some("errors") if arguments.len() == 3 && arguments[2].parse::<u16>().is_ok() => true,
         Some("errors") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
-        Some("ast-emit") if arguments.len() == 5 && arguments[3] == "--lang" => true,\n        Some("translate") if arguments.len() == 5 => true,
+        Some("ast-emit") if arguments.len() == 5 && arguments[3] == "--lang" => true,
+        Some("translate") if arguments.len() == 5 => true,
         _ => false,
     };
     if !valid {
