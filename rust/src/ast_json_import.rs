@@ -620,6 +620,31 @@ mod tests {
     use crate::export_ast_json_v2;
 
     #[test]
+    fn imports_legacy_v1_ast_with_untyped_function_signature() {
+        let exported = crate::export_ast_json("fn f(x) { return x }", "ai").unwrap();
+        let document = import_ast_json_v1(&exported).unwrap();
+        assert_eq!(document.root.kind, "module");
+        assert!(matches!(&document.root.children[0].value, AstValue::Function {
+            parameters, parameter_types, return_type, ..
+        } if parameters == &vec!["x".to_string()]
+            && parameter_types == &vec![None] && return_type.is_none()));
+        assert!(import_ast_json_v2(&exported).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_legacy_ast_v1_documents() {
+        let exported = crate::export_ast_json("let x = 1", "ai").unwrap();
+        for invalid in [
+            exported.replace("nobody.ast.v1", "nobody.ast.v2"),
+            exported.replace(r#""line":1"#, r#""line":0"#),
+            exported.replace(r#""kind":"let""#, r#""kind":"unknown""#),
+            format!("{exported} trailing"),
+        ] {
+            assert!(import_ast_json_v1(&invalid).is_err());
+        }
+    }
+
+    #[test]
     fn preserves_typed_signatures_from_exporter() {
         for (profile, source) in [
             ("ai", "fn same(flag: bool, n: int): bool { return flag }"),
