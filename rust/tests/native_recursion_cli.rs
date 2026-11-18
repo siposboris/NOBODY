@@ -125,3 +125,16 @@ fn multi_hop_forward_calls_preserve_integer_results_in_standalone_elf() {
     assert_eq!(native.stdout, evaluated.stdout);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn mutual_recursion_exits_at_shared_native_depth_budget() {
+    // Alternating calls must share the same bounded native call-depth
+    // counter, rather than resetting the budget on each function entry.
+    // This verifies that forward-declared recursive functions cannot
+    // bypass the standalone executable's stack safety guard.
+    let source = "fn even(n: int): bool { return odd(n + 1) }\nfn odd(n: int): bool { return even(n + 1) }\nprint(even(0))\n";
+    let (dir, binary) = build(source, "mutual-depth-limit");
+    let native = Command::new(&binary).output().unwrap();
+    assert_eq!(native.status.code(), Some(5), "{native:?}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
