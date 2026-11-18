@@ -25,6 +25,7 @@ jobs:
           cargo test --locked --manifest-path rust/Cargo.toml --test parser_legacy_migration
           cargo test --locked --manifest-path rust/Cargo.toml --test numbered_errors_legacy_migration
           cargo test --locked --manifest-path rust/Cargo.toml --test bidi_legacy_migration
+          cargo test --locked --manifest-path rust/Cargo.toml --test return_types_legacy_migration
       - name: Run remaining Python frontend suites
         run: |
           python -m unittest discover -s tests -p 'test_native_scripts.py' -v
