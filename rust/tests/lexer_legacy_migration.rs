@@ -46,9 +46,8 @@ fn legacy_multiline_triple_string() {
 
 #[test]
 fn legacy_invalid_names_and_unterminated_strings() {
-    for source in ["Vypis(1)", "vypis(1) × 2"] {
-        assert!(scan(source).is_err(), "{source}");
-    }
+    assert_eq!(scan("Vypis(1)").unwrap_err().code, 2002);
+    assert_eq!(scan("vypis(1) × 2").unwrap_err().code, 2004);
     assert_eq!(scan("vypis(\"ahoj)").unwrap_err().code, 2001);
 }
 
