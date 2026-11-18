@@ -5,7 +5,7 @@ use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
     check_source_with_return_types, compile_bytecode_source, emit_ast_json_v2, emit_program,
     evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
-    import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2, parse,
+    import_ast_json_v1, import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2, parse,
     parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
@@ -101,7 +101,7 @@ fn main() {
             | "inspect-bytecode"
             | "run-compiled"
             | "verify-ast-json-v2"
-            | "normalize-ast-json-v2",
+            | "normalize-ast-json-v2" | "ast-validate",
         ) if arguments.len() == 3 => true,
         Some("compile-bytecode" | "compile-native" | "compare-ast-v2") if arguments.len() == 5 => {
             true
@@ -344,6 +344,21 @@ fn main() {
             Ok(()) => println!(
                 "Created standalone Linux x86-64 ELF executable: {output_path} (experimental i64 subset)"
             ),
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "ast-validate" {
+        let path = &arguments[2];
+        let source = fs::read_to_string(path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        match import_ast_json_v1(&source) {
+            Ok(_) => println!("Valid nobody.ast.v1"),
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
