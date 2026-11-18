@@ -36,40 +36,58 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
 // Preserve the old Python frontend's file-first --lang interface for commands
 // already implemented natively in Rust. Execution stays inside the Rust CLI.
 fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
-    if arguments.len() == 7
-        && arguments[1] == "ast-run"
-        && arguments[3] == "--lang"
-        && arguments[5] == "--max-steps"
-    {
-        return vec![
-            arguments[0].clone(),
-            "run".into(),
-            arguments[4].clone(),
-            arguments[2].clone(),
-            "--max-steps".into(),
-            arguments[6].clone(),
-        ];
+    if arguments.len() < 2 {
+        return arguments;
     }
-    if arguments.len() == 5
-        && matches!(
-            arguments[1].as_str(),
-            "parse" | "ast-json" | "type-check" | "ast-run"
-        )
-        && arguments[3] == "--lang"
-    {
-        let command = match arguments[1].as_str() {
-            "type-check" => "typecheck",
-            "ast-run" => "run",
-            other => other,
-        };
-        return vec![
-            arguments[0].clone(),
-            command.to_string(),
-            arguments[4].clone(),
-            arguments[2].clone(),
-        ];
+    let command = match arguments[1].as_str() {
+        "type-check" => "typecheck",
+        "ast-run" => "run",
+        "parse" => "parse",
+        "ast-json" => "ast-json",
+        _ => return arguments,
+    };
+    // argparse accepts --lang before or after the file and --max-steps
+    // in either position. Normalize all supported legacy spellings to
+    // the native Rust CLI; never delegate execution to Python.
+    let mut profile = None;
+    let mut file = None;
+    let mut max_steps = None;
+    let mut index = 2;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--lang" if profile.is_none() && index + 1 < arguments.len() => {
+                profile = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            "--max-steps" if command == "run" && max_steps.is_none()
+                && index + 1 < arguments.len() =>
+            {
+                max_steps = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            arg if !arg.starts_with('-') && file.is_none() => {
+                file = Some(arg.to_owned());
+                index += 1;
+            }
+            _ => return arguments,
+        }
     }
-    arguments
+    match (profile, file) {
+        (Some(profile), Some(file)) => {
+            let mut normalized = vec![
+                arguments[0].clone(),
+                command.to_owned(),
+                profile,
+                file,
+            ];
+            if let Some(limit) = max_steps {
+                normalized.push("--max-steps".to_owned());
+                normalized.push(limit);
+            }
+            normalized
+        }
+        _ => arguments,
+    }
 }
 
 fn main() {
@@ -714,5 +732,45 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+// Legacy Python argparse accepted options in either order. The Rust CLI
+// must preserve those invocation shapes without spawning a Python runtime.
+#[cfg(test)]
+mod legacy_cli_migration_tests {
+    use super::normalize_legacy_profile_args;
+
+    fn normalize(args: &[&str]) -> Vec<String> {
+        normalize_legacy_profile_args(args.iter().map(|arg| (*arg).to_owned()).collect())
+    }
+
+    #[test]
+    fn accepts_profile_before_or_after_source() {
+        for command in ["parse", "ast-json", "type-check", "ast-run"] {
+            let native = match command {
+                "type-check" => "typecheck",
+                "ast-run" => "run",
+                other => other,
+            };
+            let expected = vec!["nobody-rs", native, "sk", "hello.nbd"];
+            assert_eq!(normalize(&["nobody-rs", command, "hello.nbd", "--lang", "sk"]), expected);
+            assert_eq!(normalize(&["nobody-rs", command, "--lang", "sk", "hello.nbd"]), expected);
+        }
+    }
+
+    #[test]
+    fn accepts_step_limit_in_both_positions() {
+        let expected = vec!["nobody-rs", "run", "sk", "hello.nbd", "--max-steps", "42"];
+        assert_eq!(normalize(&["nobody-rs", "ast-run", "--max-steps", "42", "--lang", "sk", "hello.nbd"]), expected);
+        assert_eq!(normalize(&["nobody-rs", "ast-run", "hello.nbd", "--lang", "sk", "--max-steps", "42"]), expected);
+    }
+
+    #[test]
+    fn rejects_duplicate_or_unrelated_flags_without_rewriting() {
+        let invalid = ["nobody-rs", "parse", "hello.nbd", "--lang", "sk", "--lang", "en"];
+        assert_eq!(normalize(&invalid), invalid);
+        let invalid = ["nobody-rs", "parse", "hello.nbd", "--lang", "sk", "--max-steps", "3"];
+        assert_eq!(normalize(&invalid), invalid);
     }
 }
