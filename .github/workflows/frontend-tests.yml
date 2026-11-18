@@ -19,10 +19,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Build native Rust CLI
         run: cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
-      - name: Run standalone lexer and parser tests
+      - name: Run migrated lexer, parser and numbered-error regressions in Rust
         run: |
-          python -m unittest discover -s tests -p 'test_lexer.py' -v
-          python -m unittest discover -s tests -p 'test_parser.py' -v
+          cargo test --locked --manifest-path rust/Cargo.toml --test lexer_legacy_migration
+          cargo test --locked --manifest-path rust/Cargo.toml --test parser_legacy_migration
+          cargo test --locked --manifest-path rust/Cargo.toml --test numbered_errors_legacy_migration
+      - name: Run remaining Python frontend suites
+        run: |
           python -m unittest discover -s tests -p 'test_native_scripts.py' -v
           python -m unittest discover -s tests -p 'test_bidi.py' -v
           python -m unittest discover -s tests -p 'test_013_catalog_vm.py' -v
@@ -33,7 +36,6 @@ jobs:
           python -m unittest discover -s tests -p 'test_017_scopes.py' -v
           python -m unittest discover -s tests -p 'test_018_static_types.py' -v
           python -m unittest discover -s tests -p 'test_019_flow_types.py' -v
-          python -m unittest discover -s tests -p 'test_020_errors.py' -v
           python -m unittest discover -s tests -p 'test_021_return_types.py' -v
       - name: Native Rust CLI compatibility smoke
         run: |
