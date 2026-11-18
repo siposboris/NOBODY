@@ -326,7 +326,7 @@ fn block_at(children: &[AstNode], at: usize) -> bool {
     children.get(at).is_some_and(|x| x.kind == "block")
 }
 
-fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnostic> {
+fn node(value: Json, depth: usize, count: &mut usize, version: u8) -> Result<AstNode, Diagnostic> {
     if depth > MAX_DEPTH || *count >= MAX_NODES {
         return Err(invalid("AST depth or node budget exceeded"));
     }
@@ -342,7 +342,7 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
     no_other_fields(&map)?;
     let mut children = Vec::with_capacity(raw_children.len());
     for child in raw_children {
-        children.push(node(child, depth + 1, count)?);
+        children.push(node(child, depth + 1, count, version)?);
     }
 
     let data = match kind.as_str() {
@@ -365,8 +365,8 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
         }
         "function" => {
             let parts = array(raw_value)?;
-            if parts.len() != 4 {
-                return Err(invalid("V2 function value requires four fields"));
+            if parts.len() != if version == 1 { 2 } else { 4 } {
+                return Err(invalid("Function value has wrong field count"));
             }
             let mut parts = parts.into_iter();
             let name = text(
@@ -379,16 +379,14 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
                 .into_iter()
                 .map(text)
                 .collect::<Result<Vec<_>, _>>()?;
-            let types = array(
-                parts
-                    .next()
-                    .ok_or_else(|| invalid("Missing parameter types"))?,
-            )?
-            .into_iter()
-            .map(primitive)
-            .collect::<Result<Vec<_>, _>>()?;
-            let return_type =
-                primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
+            let (types, return_type) = if version == 1 {
+                (vec![None; parameters.len()], None)
+            } else {
+                let types = array(parts.next().ok_or_else(|| invalid("Missing parameter types"))?)?
+                    .into_iter().map(primitive).collect::<Result<Vec<_>, _>>()?;
+                let return_type = primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
+                (types, return_type)
+            };
             if parameters.len() != types.len() || parameters.len() > 256 {
                 return Err(invalid("Function parameter names and type counts differ"));
             }
@@ -510,7 +508,33 @@ pub fn import_ast_json_v2(source: &str) -> Result<AstDocument, Diagnostic> {
     let ast = field(&mut outer, "ast")?;
     no_other_fields(&outer)?;
     let mut node_count = 0;
-    let root = node(ast, 0, &mut node_count)?;
+    let root = node(ast, 0, &mut node_count, 2)?;
+    if root.kind != "module" {
+        return Err(invalid("AST root must be a module node"));
+    }
+    Ok(AstDocument { root, node_count })
+}
+
+/// Import the legacy Python nobody.ast.v1 tree without executing source.
+/// Uses the same bounded JSON parser and structural checks as the v2 importer.
+pub fn import_ast_json_v1(source: &str) -> Result<AstDocument, Diagnostic> {
+    if source.len() > MAX_DOCUMENT_BYTES {
+        return Err(invalid("AST JSON input exceeds 1 MiB"));
+    }
+    let mut reader = Reader { source, at: 0 };
+    let parsed = reader.value(0)?;
+    reader.whitespace();
+    if reader.at != source.len() {
+        return Err(invalid("Trailing bytes after JSON document"));
+    }
+    let mut outer = object(parsed)?;
+    if text(field(&mut outer, "schema")?)? != "nobody.ast.v1" {
+        return Err(invalid("AST schema must be nobody.ast.v1"));
+    }
+    let ast = field(&mut outer, "ast")?;
+    no_other_fields(&outer)?;
+    let mut node_count = 0;
+    let root = node(ast, 0, &mut node_count, 1)?;
     if root.kind != "module" {
         return Err(invalid("AST root must be a module node"));
     }
