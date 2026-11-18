@@ -13,7 +13,10 @@ fn inferred(source: &str) -> ReturnType {
 #[test]
 fn known_scalar_returns_and_local_expressions() {
     assert_eq!(inferred("funkcia volba() { vrat 7 }"), ReturnType::Int);
-    assert_eq!(inferred("funkcia volba() { vrat \"ahoj\" }"), ReturnType::Str);
+    assert_eq!(
+        inferred("funkcia volba() { vrat \"ahoj\" }"),
+        ReturnType::Str
+    );
     assert_eq!(
         inferred("funkcia volba() { nech a = 2; vrat a * 3 }"),
         ReturnType::Int
