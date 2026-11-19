@@ -27,6 +27,19 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
     let mut to = None;
     let mut index = 2;
     while index < arguments.len() {
+        // argparse also accepts --option=value for every long option.
+        if let Some(value) = arguments[index].strip_prefix("--from-lang=") {
+            if from.is_some() { return arguments; }
+            from = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        if let Some(value) = arguments[index].strip_prefix("--to=") {
+            if to.is_some() { return arguments; }
+            to = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
         match arguments[index].as_str() {
             "--from-lang" if from.is_none() && index + 1 < arguments.len() => {
                 from = Some(arguments[index + 1].clone());
@@ -79,6 +92,18 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     let mut max_steps = None;
     let mut index = 2;
     while index < arguments.len() {
+        if let Some(value) = arguments[index].strip_prefix("--lang=") {
+            if profile.is_some() { return arguments; }
+            profile = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        if let Some(value) = arguments[index].strip_prefix("--max-steps=") {
+            if command != "run" || max_steps.is_some() { return arguments; }
+            max_steps = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
         match arguments[index].as_str() {
             "--lang" if profile.is_none() && index + 1 < arguments.len() => {
                 profile = Some(arguments[index + 1].clone());
@@ -871,6 +896,32 @@ mod legacy_cli_migration_tests {
             ]),
             expected
         );
+    }
+
+    #[test]
+    fn accepts_argparse_equals_syntax_for_legacy_production_commands() {
+        for command in ["parse", "ast-json", "type-check", "ast-run", "ast-emit"] {
+            let expected = match command {
+                "type-check" => vec!["nobody-rs", "typecheck", "sk", "hello.nbd"],
+                "ast-run" => vec!["nobody-rs", "run", "sk", "hello.nbd", "--max-steps", "42"],
+                "ast-emit" => vec!["nobody-rs", "ast-emit", "hello.nbd", "--lang", "sk"],
+                other => vec!["nobody-rs", other, "sk", "hello.nbd"],
+            };
+            let mut args = vec!["nobody-rs", command, "--lang=sk", "hello.nbd"];
+            if command == "ast-run" { args.push("--max-steps=42"); }
+            assert_eq!(normalize(&args), expected);
+        }
+        let input = ["nobody-rs", "parse", "hello.nbd", "--lang=sk", "--lang=en"];
+        assert_eq!(normalize(&input), input);
+    }
+
+    #[test]
+    fn accepts_equals_syntax_for_legacy_translation() {
+        let input = ["nobody-rs", "translate", "--to=ai", "hello.nbd", "--from-lang=sk"];
+        let normalized = super::normalize_translate_args(
+            input.iter().map(|value| (*value).to_owned()).collect()
+        );
+        assert_eq!(normalized, ["nobody-rs", "translate", "sk", "ai", "hello.nbd"]);
     }
 
     #[test]
