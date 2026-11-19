@@ -64,6 +64,7 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
         return arguments;
     }
     let command = match arguments[1].as_str() {
+        "ast-emit" => "ast-emit",
         "type-check" => "typecheck",
         "ast-run" => "run",
         "parse" => "parse",
@@ -98,6 +99,9 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     }
     match (profile, file) {
         (Some(profile), Some(file)) => {
+            if command == "ast-emit" {
+                return vec![arguments[0].clone(), command.to_owned(), file, "--lang".to_owned(), profile];
+            }
             let mut normalized = vec![arguments[0].clone(), command.to_owned(), profile, file];
             if let Some(limit) = max_steps {
                 normalized.push("--max-steps".to_owned());
@@ -814,6 +818,19 @@ mod legacy_cli_migration_tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn accepts_ast_emit_language_flag_before_or_after_json_file() {
+        let expected = vec!["nobody-rs", "ast-emit", "tree.json", "--lang", "sk"];
+        assert_eq!(
+            normalize(&["nobody-rs", "ast-emit", "tree.json", "--lang", "sk"]),
+            expected
+        );
+        assert_eq!(
+            normalize(&["nobody-rs", "ast-emit", "--lang", "sk", "tree.json"]),
+            expected
+        );
     }
 
     #[test]
