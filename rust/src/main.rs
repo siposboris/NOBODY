@@ -100,7 +100,13 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     match (profile, file) {
         (Some(profile), Some(file)) => {
             if command == "ast-emit" {
-                return vec![arguments[0].clone(), command.to_owned(), file, "--lang".to_owned(), profile];
+                return vec![
+                    arguments[0].clone(),
+                    command.to_owned(),
+                    file,
+                    "--lang".to_owned(),
+                    profile,
+                ];
             }
             let mut normalized = vec![arguments[0].clone(), command.to_owned(), profile, file];
             if let Some(limit) = max_steps {
