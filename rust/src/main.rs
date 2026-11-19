@@ -3,10 +3,10 @@ use nobody::diagnostics;
 use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
-    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v1, emit_ast_json_v2, emit_program,
-    evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
-    import_ast_json_v1, import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2, parse,
-    parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
+    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v1, emit_ast_json_v2,
+    emit_program, evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
+    import_ast_json_v1, import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2,
+    parse, parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
@@ -45,7 +45,13 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
     }
     match (source, from, to) {
         (Some(source), Some(from), Some(to)) => {
-            vec![arguments[0].clone(), "translate".to_owned(), from, to, source]
+            vec![
+                arguments[0].clone(),
+                "translate".to_owned(),
+                from,
+                to,
+                source,
+            ]
         }
         _ => arguments,
     }
@@ -77,8 +83,8 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
                 profile = Some(arguments[index + 1].clone());
                 index += 2;
             }
-            "--max-steps" if command == "run" && max_steps.is_none()
-                && index + 1 < arguments.len() =>
+            "--max-steps"
+                if command == "run" && max_steps.is_none() && index + 1 < arguments.len() =>
             {
                 max_steps = Some(arguments[index + 1].clone());
                 index += 2;
@@ -92,12 +98,7 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     }
     match (profile, file) {
         (Some(profile), Some(file)) => {
-            let mut normalized = vec![
-                arguments[0].clone(),
-                command.to_owned(),
-                profile,
-                file,
-            ];
+            let mut normalized = vec![arguments[0].clone(), command.to_owned(), profile, file];
             if let Some(limit) = max_steps {
                 normalized.push("--max-steps".to_owned());
                 normalized.push(limit);
@@ -119,7 +120,8 @@ fn main() {
             | "inspect-bytecode"
             | "run-compiled"
             | "verify-ast-json-v2"
-            | "normalize-ast-json-v2" | "ast-validate",
+            | "normalize-ast-json-v2"
+            | "ast-validate",
         ) if arguments.len() == 3 => true,
         Some("compile-bytecode" | "compile-native" | "compare-ast-v2") if arguments.len() == 5 => {
             true
@@ -803,23 +805,67 @@ mod legacy_cli_migration_tests {
                 other => other,
             };
             let expected = vec!["nobody-rs", native, "sk", "hello.nbd"];
-            assert_eq!(normalize(&["nobody-rs", command, "hello.nbd", "--lang", "sk"]), expected);
-            assert_eq!(normalize(&["nobody-rs", command, "--lang", "sk", "hello.nbd"]), expected);
+            assert_eq!(
+                normalize(&["nobody-rs", command, "hello.nbd", "--lang", "sk"]),
+                expected
+            );
+            assert_eq!(
+                normalize(&["nobody-rs", command, "--lang", "sk", "hello.nbd"]),
+                expected
+            );
         }
     }
 
     #[test]
     fn accepts_step_limit_in_both_positions() {
         let expected = vec!["nobody-rs", "run", "sk", "hello.nbd", "--max-steps", "42"];
-        assert_eq!(normalize(&["nobody-rs", "ast-run", "--max-steps", "42", "--lang", "sk", "hello.nbd"]), expected);
-        assert_eq!(normalize(&["nobody-rs", "ast-run", "hello.nbd", "--lang", "sk", "--max-steps", "42"]), expected);
+        assert_eq!(
+            normalize(&[
+                "nobody-rs",
+                "ast-run",
+                "--max-steps",
+                "42",
+                "--lang",
+                "sk",
+                "hello.nbd"
+            ]),
+            expected
+        );
+        assert_eq!(
+            normalize(&[
+                "nobody-rs",
+                "ast-run",
+                "hello.nbd",
+                "--lang",
+                "sk",
+                "--max-steps",
+                "42"
+            ]),
+            expected
+        );
     }
 
     #[test]
     fn rejects_duplicate_or_unrelated_flags_without_rewriting() {
-        let invalid = ["nobody-rs", "parse", "hello.nbd", "--lang", "sk", "--lang", "en"];
+        let invalid = [
+            "nobody-rs",
+            "parse",
+            "hello.nbd",
+            "--lang",
+            "sk",
+            "--lang",
+            "en",
+        ];
         assert_eq!(normalize(&invalid), invalid);
-        let invalid = ["nobody-rs", "parse", "hello.nbd", "--lang", "sk", "--max-steps", "3"];
+        let invalid = [
+            "nobody-rs",
+            "parse",
+            "hello.nbd",
+            "--lang",
+            "sk",
+            "--max-steps",
+            "3",
+        ];
         assert_eq!(normalize(&invalid), invalid);
     }
 }

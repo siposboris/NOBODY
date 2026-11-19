@@ -382,9 +382,16 @@ fn node(value: Json, depth: usize, count: &mut usize, version: u8) -> Result<Ast
             let (types, return_type) = if version == 1 {
                 (vec![None; parameters.len()], None)
             } else {
-                let types = array(parts.next().ok_or_else(|| invalid("Missing parameter types"))?)?
-                    .into_iter().map(primitive).collect::<Result<Vec<_>, _>>()?;
-                let return_type = primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
+                let types = array(
+                    parts
+                        .next()
+                        .ok_or_else(|| invalid("Missing parameter types"))?,
+                )?
+                .into_iter()
+                .map(primitive)
+                .collect::<Result<Vec<_>, _>>()?;
+                let return_type =
+                    primitive(parts.next().ok_or_else(|| invalid("Missing return type"))?)?;
                 (types, return_type)
             };
             if parameters.len() != types.len() || parameters.len() > 256 {
@@ -624,10 +631,12 @@ mod tests {
         let exported = crate::export_ast_json("fn f(x) { return x }", "ai").unwrap();
         let document = import_ast_json_v1(&exported).unwrap();
         assert_eq!(document.root.kind, "module");
-        assert!(matches!(&document.root.children[0].value, AstValue::Function {
+        assert!(
+            matches!(&document.root.children[0].value, AstValue::Function {
             parameters, parameter_types, return_type, ..
         } if parameters == &vec!["x".to_string()]
-            && parameter_types == &vec![None] && return_type.is_none()));
+            && parameter_types == &vec![None] && return_type.is_none())
+        );
         assert!(import_ast_json_v2(&exported).is_err());
     }
 
