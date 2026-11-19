@@ -17,20 +17,38 @@ fn usage() {
 // Accept the legacy Python frontend's translation flags while keeping the
 // native Rust positional CLI as the canonical interface.
 fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
-    if arguments.len() == 7
-        && arguments[1] == "translate"
-        && arguments[3] == "--from-lang"
-        && arguments[5] == "--to"
-    {
-        return vec![
-            arguments[0].clone(),
-            "translate".to_string(),
-            arguments[4].clone(),
-            arguments[6].clone(),
-            arguments[2].clone(),
-        ];
+    if arguments.get(1).map(String::as_str) != Some("translate") {
+        return arguments;
     }
-    arguments
+    // Python argparse accepts these options in either order, before or
+    // after the source file. Preserve that behavior without invoking Python.
+    let mut source = None;
+    let mut from = None;
+    let mut to = None;
+    let mut index = 2;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--from-lang" if from.is_none() && index + 1 < arguments.len() => {
+                from = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            "--to" if to.is_none() && index + 1 < arguments.len() => {
+                to = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            value if !value.starts_with('-') && source.is_none() => {
+                source = Some(value.to_owned());
+                index += 1;
+            }
+            _ => return arguments,
+        }
+    }
+    match (source, from, to) {
+        (Some(source), Some(from), Some(to)) => {
+            vec![arguments[0].clone(), "translate".to_owned(), from, to, source]
+        }
+        _ => arguments,
+    }
 }
 
 // Preserve the old Python frontend's file-first --lang interface for commands
