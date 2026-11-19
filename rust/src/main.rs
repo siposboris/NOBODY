@@ -29,13 +29,17 @@ fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
     while index < arguments.len() {
         // argparse also accepts --option=value for every long option.
         if let Some(value) = arguments[index].strip_prefix("--from-lang=") {
-            if from.is_some() { return arguments; }
+            if from.is_some() {
+                return arguments;
+            }
             from = Some(value.to_owned());
             index += 1;
             continue;
         }
         if let Some(value) = arguments[index].strip_prefix("--to=") {
-            if to.is_some() { return arguments; }
+            if to.is_some() {
+                return arguments;
+            }
             to = Some(value.to_owned());
             index += 1;
             continue;
@@ -93,13 +97,17 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
     let mut index = 2;
     while index < arguments.len() {
         if let Some(value) = arguments[index].strip_prefix("--lang=") {
-            if profile.is_some() { return arguments; }
+            if profile.is_some() {
+                return arguments;
+            }
             profile = Some(value.to_owned());
             index += 1;
             continue;
         }
         if let Some(value) = arguments[index].strip_prefix("--max-steps=") {
-            if command != "run" || max_steps.is_some() { return arguments; }
+            if command != "run" || max_steps.is_some() {
+                return arguments;
+            }
             max_steps = Some(value.to_owned());
             index += 1;
             continue;
@@ -908,7 +916,9 @@ mod legacy_cli_migration_tests {
                 other => vec!["nobody-rs", other, "sk", "hello.nbd"],
             };
             let mut args = vec!["nobody-rs", command, "--lang=sk", "hello.nbd"];
-            if command == "ast-run" { args.push("--max-steps=42"); }
+            if command == "ast-run" {
+                args.push("--max-steps=42");
+            }
             assert_eq!(normalize(&args), expected);
         }
         let input = ["nobody-rs", "parse", "hello.nbd", "--lang=sk", "--lang=en"];
@@ -917,11 +927,20 @@ mod legacy_cli_migration_tests {
 
     #[test]
     fn accepts_equals_syntax_for_legacy_translation() {
-        let input = ["nobody-rs", "translate", "--to=ai", "hello.nbd", "--from-lang=sk"];
+        let input = [
+            "nobody-rs",
+            "translate",
+            "--to=ai",
+            "hello.nbd",
+            "--from-lang=sk",
+        ];
         let normalized = super::normalize_translate_args(
-            input.iter().map(|value| (*value).to_owned()).collect()
+            input.iter().map(|value| (*value).to_owned()).collect(),
         );
-        assert_eq!(normalized, ["nobody-rs", "translate", "sk", "ai", "hello.nbd"]);
+        assert_eq!(
+            normalized,
+            ["nobody-rs", "translate", "sk", "ai", "hello.nbd"]
+        );
     }
 
     #[test]
