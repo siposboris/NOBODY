@@ -109,9 +109,11 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
                 ];
             }
             let mut normalized = vec![arguments[0].clone(), command.to_owned(), profile, file];
-            if let Some(limit) = max_steps {
+            if command == "run" {
+                // Python ast-run defaults to 10_000 steps. Preserve that
+                // legacy contract without changing the native Rust run default.
                 normalized.push("--max-steps".to_owned());
-                normalized.push(limit);
+                normalized.push(max_steps.unwrap_or_else(|| "10000".to_owned()));
             }
             normalized
         }
@@ -814,7 +816,10 @@ mod legacy_cli_migration_tests {
                 "ast-run" => "run",
                 other => other,
             };
-            let expected = vec!["nobody-rs", native, "sk", "hello.nbd"];
+            let mut expected = vec!["nobody-rs", native, "sk", "hello.nbd"];
+            if command == "ast-run" {
+                expected.extend(["--max-steps", "10000"]);
+            }
             assert_eq!(
                 normalize(&["nobody-rs", command, "hello.nbd", "--lang", "sk"]),
                 expected
