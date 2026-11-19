@@ -3,73 +3,155 @@ use nobody::diagnostics;
 use nobody::evaluator::evaluate_source_with_max_steps;
 use nobody::profiles::{audit_profiles, direction, PROFILES};
 use nobody::{
-    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v2, emit_program,
-    evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
-    import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2, parse,
-    parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
+    check_source_with_return_types, compile_bytecode_source, emit_ast_json_v1, emit_ast_json_v2,
+    emit_program, evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
+    import_ast_json_v1, import_ast_json_v2, lower_source, migrate_legacy_ai, normalize_ast_json_v2,
+    parse, parse_validated, same_ast_json_v2, same_ir, scan, translate_source, TokenKind,
 };
 use std::io::{Read, Write};
 use std::{env, fs, process};
 
 fn usage() {
-    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs catalog [--json]\n  nobody-rs errors [number]\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
+    eprintln!("N9001: Wrong command or arguments. Repair: use one of:\n  nobody-rs lex <file.nbd>\n  nobody-rs check <file.nbd>\n  nobody-rs parse <profile> <file.nbd>\n  nobody-rs validate <profile> <file.nbd>\n  nobody-rs list-languages\n  nobody-rs catalog [--json]\n  nobody-rs errors [number]\n  nobody-rs direction <profile>\n  nobody-rs ast-json <profile> <file.nbd>\n  nobody-rs ast-emit <file.json> --lang <profile>\n  nobody-rs ast-json-v2 <profile> <file.nbd>\n  nobody-rs verify-ast-json-v2 <file.json>\n  nobody-rs normalize-ast-json-v2 <file.json>\n  nobody-rs compare-ast-v2 <profile> <file.nbd> <file.json>\n  nobody-rs emit-ast-v2 <profile> <file.json>\n  nobody-rs format-source <profile> <file.nbd>\n  nobody-rs format-check <profile> <file.nbd>\n  nobody-rs bytecode <profile> <file.nbd>\n  nobody-rs run-bytecode <profile> <file.nbd>\n  nobody-rs compile-bytecode <profile> <file.nbd> <output.nbc>\n  nobody-rs verify-bytecode <file.nbc>\n  nobody-rs inspect-bytecode <file.nbc>\n  nobody-rs run-compiled <file.nbc>\n  nobody-rs native-asm <profile> <file.nbd>\n  nobody-rs compile-native <profile> <file.nbd> <output-elf>\n  nobody-rs check-project <manifest.nbproj>\n  nobody-rs run-project <manifest.nbproj>\n  nobody-rs compile-project-bytecode <manifest.nbproj> <output.nbc>\n  nobody-rs compile-project-native <manifest.nbproj> <output-elf>\n  nobody-rs audit-languages\n  nobody-rs migrate-ai <legacy.nbd>\n  nobody-rs translate <from> <to> <file.nbd>\n  nobody-rs ir <profile> <file.nbd>\n  nobody-rs typecheck <profile> <file.nbd>\n  nobody-rs run <profile> <file.nbd>\n  nobody-rs compare-ir <profile-a> <file-a.nbd> <profile-b> <file-b.nbd>");
 }
 // Accept the legacy Python frontend's translation flags while keeping the
 // native Rust positional CLI as the canonical interface.
 fn normalize_translate_args(arguments: Vec<String>) -> Vec<String> {
-    if arguments.len() == 7
-        && arguments[1] == "translate"
-        && arguments[3] == "--from-lang"
-        && arguments[5] == "--to"
-    {
-        return vec![
-            arguments[0].clone(),
-            "translate".to_string(),
-            arguments[4].clone(),
-            arguments[6].clone(),
-            arguments[2].clone(),
-        ];
+    if arguments.get(1).map(String::as_str) != Some("translate") {
+        return arguments;
     }
-    arguments
+    // Python argparse accepts these options in either order, before or
+    // after the source file. Preserve that behavior without invoking Python.
+    let mut source = None;
+    let mut from = None;
+    let mut to = None;
+    let mut index = 2;
+    while index < arguments.len() {
+        // argparse also accepts --option=value for every long option.
+        if let Some(value) = arguments[index].strip_prefix("--from-lang=") {
+            if from.is_some() {
+                return arguments;
+            }
+            from = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        if let Some(value) = arguments[index].strip_prefix("--to=") {
+            if to.is_some() {
+                return arguments;
+            }
+            to = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        match arguments[index].as_str() {
+            "--from-lang" if from.is_none() && index + 1 < arguments.len() => {
+                from = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            "--to" if to.is_none() && index + 1 < arguments.len() => {
+                to = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            value if !value.starts_with('-') && source.is_none() => {
+                source = Some(value.to_owned());
+                index += 1;
+            }
+            _ => return arguments,
+        }
+    }
+    match (source, from, to) {
+        (Some(source), Some(from), Some(to)) => {
+            vec![
+                arguments[0].clone(),
+                "translate".to_owned(),
+                from,
+                to,
+                source,
+            ]
+        }
+        _ => arguments,
+    }
 }
 
 // Preserve the old Python frontend's file-first --lang interface for commands
 // already implemented natively in Rust. Execution stays inside the Rust CLI.
 fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
-    if arguments.len() == 7
-        && arguments[1] == "ast-run"
-        && arguments[3] == "--lang"
-        && arguments[5] == "--max-steps"
-    {
-        return vec![
-            arguments[0].clone(),
-            "run".into(),
-            arguments[4].clone(),
-            arguments[2].clone(),
-            "--max-steps".into(),
-            arguments[6].clone(),
-        ];
+    if arguments.len() < 2 {
+        return arguments;
     }
-    if arguments.len() == 5
-        && matches!(
-            arguments[1].as_str(),
-            "parse" | "ast-json" | "type-check" | "ast-run"
-        )
-        && arguments[3] == "--lang"
-    {
-        let command = match arguments[1].as_str() {
-            "type-check" => "typecheck",
-            "ast-run" => "run",
-            other => other,
-        };
-        return vec![
-            arguments[0].clone(),
-            command.to_string(),
-            arguments[4].clone(),
-            arguments[2].clone(),
-        ];
+    let command = match arguments[1].as_str() {
+        "ast-emit" => "ast-emit",
+        "type-check" => "typecheck",
+        "ast-run" => "run",
+        "parse" => "parse",
+        "ast-json" => "ast-json",
+        _ => return arguments,
+    };
+    // argparse accepts --lang before or after the file and --max-steps
+    // in either position. Normalize all supported legacy spellings to
+    // the native Rust CLI; never delegate execution to Python.
+    let mut profile = None;
+    let mut file = None;
+    let mut max_steps = None;
+    let mut index = 2;
+    while index < arguments.len() {
+        if let Some(value) = arguments[index].strip_prefix("--lang=") {
+            if profile.is_some() {
+                return arguments;
+            }
+            profile = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        if let Some(value) = arguments[index].strip_prefix("--max-steps=") {
+            if command != "run" || max_steps.is_some() {
+                return arguments;
+            }
+            max_steps = Some(value.to_owned());
+            index += 1;
+            continue;
+        }
+        match arguments[index].as_str() {
+            "--lang" if profile.is_none() && index + 1 < arguments.len() => {
+                profile = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            "--max-steps"
+                if command == "run" && max_steps.is_none() && index + 1 < arguments.len() =>
+            {
+                max_steps = Some(arguments[index + 1].clone());
+                index += 2;
+            }
+            arg if !arg.starts_with('-') && file.is_none() => {
+                file = Some(arg.to_owned());
+                index += 1;
+            }
+            _ => return arguments,
+        }
     }
-    arguments
+    match (profile, file) {
+        (Some(profile), Some(file)) => {
+            if command == "ast-emit" {
+                return vec![
+                    arguments[0].clone(),
+                    command.to_owned(),
+                    file,
+                    "--lang".to_owned(),
+                    profile,
+                ];
+            }
+            let mut normalized = vec![arguments[0].clone(), command.to_owned(), profile, file];
+            if command == "run" {
+                // Python ast-run defaults to 10_000 steps. Preserve that
+                // legacy contract without changing the native Rust run default.
+                normalized.push("--max-steps".to_owned());
+                normalized.push(max_steps.unwrap_or_else(|| "10000".to_owned()));
+            }
+            normalized
+        }
+        _ => arguments,
+    }
 }
 
 fn main() {
@@ -83,7 +165,8 @@ fn main() {
             | "inspect-bytecode"
             | "run-compiled"
             | "verify-ast-json-v2"
-            | "normalize-ast-json-v2",
+            | "normalize-ast-json-v2"
+            | "ast-validate",
         ) if arguments.len() == 3 => true,
         Some("compile-bytecode" | "compile-native" | "compare-ast-v2") if arguments.len() == 5 => {
             true
@@ -112,6 +195,7 @@ fn main() {
         Some("errors") if arguments.len() == 3 && arguments[2].parse::<u16>().is_ok() => true,
         Some("errors") if arguments.len() == 2 => true,
         Some("migrate-ai") if arguments.len() == 3 => true,
+        Some("ast-emit") if arguments.len() == 5 && arguments[3] == "--lang" => true,
         Some("translate") if arguments.len() == 5 => true,
         _ => false,
     };
@@ -326,6 +410,36 @@ fn main() {
             Ok(()) => println!(
                 "Created standalone Linux x86-64 ELF executable: {output_path} (experimental i64 subset)"
             ),
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "ast-emit" {
+        let path = &arguments[2];
+        let source = fs::read_to_string(path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        match emit_ast_json_v1(&source, &arguments[4]) {
+            Ok(emitted) => print!("{emitted}"),
+            Err(error) => {
+                eprintln!("{error}");
+                process::exit(1);
+            }
+        }
+        return;
+    }
+    if command == "ast-validate" {
+        let path = &arguments[2];
+        let source = fs::read_to_string(path).unwrap_or_else(|error| {
+            eprintln!("N9001: Cannot read AST JSON {path:?}: {error}");
+            process::exit(1);
+        });
+        match import_ast_json_v1(&source) {
+            Ok(_) => println!("Valid nobody.ast.v1"),
             Err(error) => {
                 eprintln!("{error}");
                 process::exit(1);
@@ -714,5 +828,142 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+// Legacy Python argparse accepted options in either order. The Rust CLI
+// must preserve those invocation shapes without spawning a Python runtime.
+#[cfg(test)]
+mod legacy_cli_migration_tests {
+    use super::normalize_legacy_profile_args;
+
+    fn normalize(args: &[&str]) -> Vec<String> {
+        normalize_legacy_profile_args(args.iter().map(|arg| (*arg).to_owned()).collect())
+    }
+
+    #[test]
+    fn accepts_profile_before_or_after_source() {
+        for command in ["parse", "ast-json", "type-check", "ast-run"] {
+            let native = match command {
+                "type-check" => "typecheck",
+                "ast-run" => "run",
+                other => other,
+            };
+            let mut expected = vec!["nobody-rs", native, "sk", "hello.nbd"];
+            if command == "ast-run" {
+                expected.extend(["--max-steps", "10000"]);
+            }
+            assert_eq!(
+                normalize(&["nobody-rs", command, "hello.nbd", "--lang", "sk"]),
+                expected
+            );
+            assert_eq!(
+                normalize(&["nobody-rs", command, "--lang", "sk", "hello.nbd"]),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_ast_emit_language_flag_before_or_after_json_file() {
+        let expected = vec!["nobody-rs", "ast-emit", "tree.json", "--lang", "sk"];
+        assert_eq!(
+            normalize(&["nobody-rs", "ast-emit", "tree.json", "--lang", "sk"]),
+            expected
+        );
+        assert_eq!(
+            normalize(&["nobody-rs", "ast-emit", "--lang", "sk", "tree.json"]),
+            expected
+        );
+    }
+
+    #[test]
+    fn accepts_step_limit_in_both_positions() {
+        let expected = vec!["nobody-rs", "run", "sk", "hello.nbd", "--max-steps", "42"];
+        assert_eq!(
+            normalize(&[
+                "nobody-rs",
+                "ast-run",
+                "--max-steps",
+                "42",
+                "--lang",
+                "sk",
+                "hello.nbd"
+            ]),
+            expected
+        );
+        assert_eq!(
+            normalize(&[
+                "nobody-rs",
+                "ast-run",
+                "hello.nbd",
+                "--lang",
+                "sk",
+                "--max-steps",
+                "42"
+            ]),
+            expected
+        );
+    }
+
+    #[test]
+    fn accepts_argparse_equals_syntax_for_legacy_production_commands() {
+        for command in ["parse", "ast-json", "type-check", "ast-run", "ast-emit"] {
+            let expected = match command {
+                "type-check" => vec!["nobody-rs", "typecheck", "sk", "hello.nbd"],
+                "ast-run" => vec!["nobody-rs", "run", "sk", "hello.nbd", "--max-steps", "42"],
+                "ast-emit" => vec!["nobody-rs", "ast-emit", "hello.nbd", "--lang", "sk"],
+                other => vec!["nobody-rs", other, "sk", "hello.nbd"],
+            };
+            let mut args = vec!["nobody-rs", command, "--lang=sk", "hello.nbd"];
+            if command == "ast-run" {
+                args.push("--max-steps=42");
+            }
+            assert_eq!(normalize(&args), expected);
+        }
+        let input = ["nobody-rs", "parse", "hello.nbd", "--lang=sk", "--lang=en"];
+        assert_eq!(normalize(&input), input);
+    }
+
+    #[test]
+    fn accepts_equals_syntax_for_legacy_translation() {
+        let input = [
+            "nobody-rs",
+            "translate",
+            "--to=ai",
+            "hello.nbd",
+            "--from-lang=sk",
+        ];
+        let normalized = super::normalize_translate_args(
+            input.iter().map(|value| (*value).to_owned()).collect(),
+        );
+        assert_eq!(
+            normalized,
+            ["nobody-rs", "translate", "sk", "ai", "hello.nbd"]
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_or_unrelated_flags_without_rewriting() {
+        let invalid = [
+            "nobody-rs",
+            "parse",
+            "hello.nbd",
+            "--lang",
+            "sk",
+            "--lang",
+            "en",
+        ];
+        assert_eq!(normalize(&invalid), invalid);
+        let invalid = [
+            "nobody-rs",
+            "parse",
+            "hello.nbd",
+            "--lang",
+            "sk",
+            "--max-steps",
+            "3",
+        ];
+        assert_eq!(normalize(&invalid), invalid);
     }
 }

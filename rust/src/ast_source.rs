@@ -2,7 +2,7 @@
 //! It never executes imported AST JSON. The final source is parsed back and
 //! structurally compared before being returned; unsupported shapes fail closed.
 //! Source comments, original whitespace and position metadata are not retained.
-use crate::ast_json_lower::lower_ast_json_v2;
+use crate::ast_json_lower::{lower_ast_json_v1, lower_ast_json_v2};
 use crate::profiles;
 use crate::syntax::{Expr, Program, Statement};
 use crate::{parse_validated, validate_program, Diagnostic};
@@ -237,6 +237,13 @@ pub fn emit_program(program: &Program, profile: &str) -> Result<String, Diagnost
     Ok(source)
 }
 
+/// Emit Nobody source from validated legacy nobody.ast.v1 JSON.
+/// Rejects unsupported shapes and re-parses the result before returning it.
+pub fn emit_ast_json_v1(json: &str, profile: &str) -> Result<String, Diagnostic> {
+    let program = lower_ast_json_v1(json, profile)?;
+    emit_program(&program, profile)
+}
+
 /// Parse nobody.ast.v2, lower it to Rust syntax and re-emit Nobody source.
 /// This does NOT run or compile the imported JSON.
 pub fn emit_ast_json_v2(json: &str, profile: &str) -> Result<String, Diagnostic> {
@@ -247,7 +254,7 @@ pub fn emit_ast_json_v2(json: &str, profile: &str) -> Result<String, Diagnostic>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::export_ast_json_v2;
+    use crate::{export_ast_json, export_ast_json_v2};
 
     fn assert_roundtrip(profile: &str, source: &str) {
         let json = export_ast_json_v2(source, profile).unwrap();
@@ -258,6 +265,24 @@ mod tests {
             "{profile}: {written}"
         );
         assert_eq!(written, emit_ast_json_v2(&json, profile).unwrap());
+    }
+
+    #[test]
+    fn legacy_v1_source_roundtrips_without_python() {
+        for (profile, source) in [
+            ("ai", "fn identity(x) { return x } print(identity(3))"),
+            ("sk", "nech cislo = 3\nvypis(cislo)"),
+        ] {
+            let json = export_ast_json(source, profile).unwrap();
+            let emitted = emit_ast_json_v1(&json, profile).unwrap();
+            assert_eq!(
+                parse_validated(source, profile).unwrap(),
+                parse_validated(&emitted, profile).unwrap()
+            );
+        }
+        let json = export_ast_json("let x = 3", "ai").unwrap();
+        assert!(emit_ast_json_v1(&json, "invalid-profile").is_err());
+        assert!(emit_ast_json_v1(&json.replace("nobody.ast.v1", "nobody.ast.v2"), "ai").is_err());
     }
 
     #[test]
