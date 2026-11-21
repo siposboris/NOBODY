@@ -57,8 +57,12 @@ jobs:
           cargo run --locked --manifest-path rust/Cargo.toml --bin parity-harness -- runtime
       - name: Python reference vs Rust AST JSON differential
         run: |
-          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody
+          cargo build --locked --manifest-path rust/Cargo.toml --bin nobody-rs
           cargo run --locked --manifest-path rust/Cargo.toml --bin parity-harness -- ast
+      - name: Native Rust legacy CLI help smoke
+        run: |
+          cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- --help
+          cargo run --locked --manifest-path rust/Cargo.toml --bin nobody-rs -- parse --help
       - name: CLI lex and parser subset smoke
         run: |
           cargo run --locked --manifest-path rust/Cargo.toml -- lex rust/examples/basic_sk.nbd
