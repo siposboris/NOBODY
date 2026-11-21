@@ -41,7 +41,7 @@ jobs:
       - name: Native Rust CLI compatibility smoke
         run: |
           set -euo pipefail
-          cli=rust/target/debug/nobody-rs
+          cli=./bin/nobody
           "$cli" errors 1001
           "$cli" type-check examples/hello_sk.nbd --lang sk
           "$cli" ast-json examples/hello_sk.nbd --lang sk > /dev/null
