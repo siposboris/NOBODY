@@ -159,7 +159,8 @@ fn main() {
     // The Python frontend used argparse: both global and subcommand help
     // exit successfully. Keep that production CLI contract in native Rust.
     if raw_arguments.len() >= 2
-        && (raw_arguments[1] == "--help" || raw_arguments[1] == "-h"
+        && (raw_arguments[1] == "--help"
+            || raw_arguments[1] == "-h"
             || (raw_arguments.len() == 3
                 && (raw_arguments[2] == "--help" || raw_arguments[2] == "-h")))
     {
