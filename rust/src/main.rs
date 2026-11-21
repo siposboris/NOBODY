@@ -155,7 +155,18 @@ fn normalize_legacy_profile_args(arguments: Vec<String>) -> Vec<String> {
 }
 
 fn main() {
-    let arguments = normalize_legacy_profile_args(normalize_translate_args(env::args().collect()));
+    let raw_arguments: Vec<String> = env::args().collect();
+    // The Python frontend used argparse: both global and subcommand help
+    // exit successfully. Keep that production CLI contract in native Rust.
+    if raw_arguments.len() >= 2
+        && (raw_arguments[1] == "--help" || raw_arguments[1] == "-h"
+            || (raw_arguments.len() == 3
+                && (raw_arguments[2] == "--help" || raw_arguments[2] == "-h")))
+    {
+        usage();
+        return;
+    }
+    let arguments = normalize_legacy_profile_args(normalize_translate_args(raw_arguments));
     let valid = match arguments.get(1).map(String::as_str) {
         Some(
             "lex"
