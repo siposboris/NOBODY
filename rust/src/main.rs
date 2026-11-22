@@ -219,6 +219,13 @@ fn main() {
     if command == "info" {
         println!("{{");
         println!(r#"  "name": "Nobody","#);
+        // Preserve the legacy frontend info fields for existing CLI consumers.
+        println!(r#"  "frontend_version": "0.20-experimental","#);
+        println!(r#"  "reference_entries": 249,"#);
+        println!(r#"  "syntax_profiles": {},"#, PROFILES.len());
+        println!(r#"  "native_compiler": true,"#);
+        println!(r#"  "runtime": "Rust","#);
+        println!(r#"  "all_249_syntax_implemented": false,"#);
         println!(r#"  "implementation": "Rust","#);
         println!(r#"  "compiler_version": "{}","#, env!("CARGO_PKG_VERSION"));
         println!(r#"  "implemented_syntax_profiles": {},"#, PROFILES.len());
