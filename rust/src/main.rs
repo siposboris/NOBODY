@@ -239,8 +239,11 @@ fn main() {
     }
     if command == "audit-languages" {
         let problems = audit_profiles();
+        // Match the legacy CLI's machine-readable summary before diagnostics.
+        // The Rust profile table has one canonical spelling per token, so
+        // alias notes are not applicable to this native representation.
         println!(
-            "Nobody Rust profile audit: {} active syntax profiles; {} structural errors",
+            "{{\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": 0,\n  \"notes\": 0\n}}",
             PROFILES.len(),
             problems.len()
         );
