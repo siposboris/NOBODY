@@ -80,56 +80,59 @@ pub fn direction(code: &str) -> Option<&'static str> {
         "ltr"
     })
 }
-/// Validate the 40 *implemented* syntax dictionaries without Python.
-/// This is a structural audit, not a native-speaker terminology review.
-pub fn audit_profiles() -> Vec<String> {
+/// Severity-preserving profile audit used by the production CLI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditSeverity {
+    Error,
+    Warning,
+    Note,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileAuditIssue {
+    pub language: &'static str,
+    pub severity: AuditSeverity,
+    pub detail: String,
+}
+pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
     use std::collections::BTreeSet;
     use unicode_normalization::UnicodeNormalization;
-
-    let mut errors = Vec::new();
+    let mut issues = Vec::new();
     let mut seen_codes = BTreeSet::new();
     for profile in PROFILES {
+        let mut report = |severity, detail: String| {
+            issues.push(ProfileAuditIssue { language: profile.code, severity, detail });
+        };
         if !seen_codes.insert(profile.code) {
-            errors.push(format!("{}: duplicate profile code", profile.code));
+            report(AuditSeverity::Error, "duplicate profile code".to_owned());
         }
         let words: Vec<_> = profile.words.split_whitespace().collect();
         if words.len() != CANONICAL.len() {
-            errors.push(format!(
-                "{}: expected {} keywords, got {}",
-                profile.code,
-                CANONICAL.len(),
-                words.len()
-            ));
+            report(AuditSeverity::Error, format!("expected {} keywords, got {}", CANONICAL.len(), words.len()));
         }
         let mut seen_words = BTreeSet::new();
         for word in words {
             if !seen_words.insert(word) {
-                errors.push(format!("{}: duplicate keyword {word:?}", profile.code));
+                report(AuditSeverity::Error, format!("duplicate keyword {word:?}"));
             }
-            if word.is_empty()
-                || word
-                    .chars()
-                    .any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
-            {
-                errors.push(format!("{}: invalid keyword {word:?}", profile.code));
+            if word.is_empty() || word.chars().any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace()) {
+                report(AuditSeverity::Error, format!("invalid keyword {word:?}"));
             }
             if word.nfc().collect::<String>() != word {
-                errors.push(format!("{}: non-NFC keyword {word:?}", profile.code));
+                report(AuditSeverity::Warning, format!("non-NFC keyword {word:?}"));
             }
-            if word.chars().any(|ch| {
-                matches!(
-                    ch as u32,
-                    0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069
-                )
-            }) {
-                errors.push(format!(
-                    "{}: forbidden bidi control in keyword",
-                    profile.code
-                ));
+            if word.chars().any(|ch| matches!(ch as u32, 0x061C | 0x200E | 0x200F | 0x202A..=0x202E | 0x2066..=0x2069)) {
+                report(AuditSeverity::Error, "forbidden bidi control in keyword".to_owned());
             }
         }
     }
-    errors
+    issues
+}
+/// Compatibility API for callers that only need structural failures.
+pub fn audit_profiles() -> Vec<String> {
+    audit_profile_issues().into_iter()
+        .filter(|issue| issue.severity == AuditSeverity::Error)
+        .map(|issue| format!("{}: {}", issue.language, issue.detail))
+        .collect()
 }
 pub fn is_reserved(code: &str, spelling: &str) -> bool {
     semantic(code, spelling).is_some()
