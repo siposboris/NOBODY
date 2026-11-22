@@ -93,6 +93,15 @@ pub struct ProfileAuditIssue {
     pub severity: AuditSeverity,
     pub detail: String,
 }
+// Reject punctuation and leading digits as Python's historical isidentifier
+// check did. Allow Unicode letters and combining marks after the first scalar.
+fn valid_keyword_identifier(word: &str) -> bool {
+    use unicode_normalization::char::canonical_combining_class;
+    let mut chars = word.chars();
+    let Some(first) = chars.next() else { return false; };
+    if first != '_' && !first.is_alphabetic() { return false; }
+    chars.all(|ch| ch == '_' || ch.is_alphanumeric() || canonical_combining_class(ch) != 0)
+}
 pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
     use std::collections::BTreeSet;
     use unicode_normalization::UnicodeNormalization;
@@ -121,7 +130,7 @@ pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
             if !seen_words.insert(word) {
                 report(AuditSeverity::Error, format!("duplicate keyword {word:?}"));
             }
-            if word.is_empty()
+            if !valid_keyword_identifier(word)
                 || word
                     .chars()
                     .any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
