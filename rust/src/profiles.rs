@@ -63,6 +63,13 @@ pub fn word(code: &str, semantic: &str) -> Option<&'static str> {
     p.words.split_whitespace().nth(index)
 }
 pub fn semantic(code: &str, spelling: &str) -> Option<&'static str> {
+    // Legacy Python ALIASES accepts these additional spellings while
+    // PREFERRED keeps the original spelling for generated source.
+    match (code, spelling) {
+        ("sk", "kym") => return Some("while"),
+        ("en", "def") => return Some("def"),
+        _ => {}
+    }
     let p = profile(code)?;
     p.words
         .split_whitespace()
@@ -121,6 +128,13 @@ pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
         };
         if !seen_codes.insert(profile.code) {
             report(AuditSeverity::Error, "duplicate profile code".to_owned());
+        }
+        // Python reports an informational issue for multiple aliases.
+        if matches!(profile.code, "sk" | "en") {
+            report(
+                AuditSeverity::Note,
+                "Some canonical tokens have multiple aliases".to_owned(),
+            );
         }
         let words: Vec<_> = profile.words.split_whitespace().collect();
         if words.len() != CANONICAL.len() {
@@ -200,6 +214,20 @@ mod tests {
             assert_eq!(direction(profile.code), Some(expected));
         }
         assert_eq!(direction("unknown"), None);
+    }
+    #[test]
+    fn legacy_aliases_are_accepted_without_changing_preferred_spelling() {
+        assert_eq!(semantic("sk", "kym"), Some("while"));
+        assert_eq!(semantic("en", "def"), Some("def"));
+        assert_eq!(word("sk", "while"), Some("pokial"));
+        assert_eq!(word("en", "def"), Some("function"));
+        assert!(is_reserved("sk", "kym"));
+        let notes: Vec<_> = audit_profile_issues()
+            .into_iter()
+            .filter(|issue| issue.severity == AuditSeverity::Note)
+            .map(|issue| issue.language)
+            .collect();
+        assert_eq!(notes, vec!["en", "sk"]);
     }
     #[test]
     fn native_script_words_are_preserved() {
