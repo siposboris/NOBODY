@@ -111,7 +111,14 @@ fn valid_keyword_identifier(word: &str) -> bool {
     if first != '_' && !first.is_alphabetic() {
         return false;
     }
-    chars.all(|ch| ch == '_' || ch.is_alphanumeric() || canonical_combining_class(ch) != 0)
+    chars.all(|ch| {
+        ch == '_'
+            || ch.is_alphanumeric()
+            || canonical_combining_class(ch) != 0
+            // Thai spacing-independent marks have Unicode combining class 0.
+            // Python str.isidentifier accepts these XID_Continue characters.
+            || matches!(ch as u32, 0x0E31 | 0x0E34..=0x0E3A | 0x0E47..=0x0E4E)
+    })
 }
 pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
     use std::collections::BTreeSet;
