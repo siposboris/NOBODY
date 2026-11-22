@@ -1,7 +1,7 @@
 use nobody::catalog;
 use nobody::diagnostics;
 use nobody::evaluator::evaluate_source_with_max_steps;
-use nobody::profiles::{audit_profiles, direction, PROFILES};
+use nobody::profiles::{audit_profile_issues, direction, AuditSeverity, PROFILES};
 use nobody::{
     check_source_with_return_types, compile_bytecode_source, emit_ast_json_v1, emit_ast_json_v2,
     emit_program, evaluate_source, execute_bytecode_source, export_ast_json, export_ast_json_v2,
@@ -238,19 +238,18 @@ fn main() {
         return;
     }
     if command == "audit-languages" {
-        let problems = audit_profiles();
-        // Match the legacy CLI's machine-readable summary before diagnostics.
-        // The Rust profile table has one canonical spelling per token, so
-        // alias notes are not applicable to this native representation.
+        let issues = audit_profile_issues();
+        let errors = issues.iter().filter(|item| item.severity == AuditSeverity::Error).count();
+        let warnings = issues.iter().filter(|item| item.severity == AuditSeverity::Warning).count();
+        let notes = issues.iter().filter(|item| item.severity == AuditSeverity::Note).count();
         println!(
-            "{{\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": 0,\n  \"notes\": 0\n}}",
-            PROFILES.len(),
-            problems.len()
+            "{{\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": {},\n  \"notes\": {}\n}}",
+            PROFILES.len(), errors, warnings, notes
         );
-        for problem in &problems {
-            eprintln!("{problem}");
+        for issue in &issues {
+            eprintln!("{}: {:?}: {}", issue.language, issue.severity, issue.detail);
         }
-        if !problems.is_empty() {
+        if errors > 0 {
             process::exit(1);
         }
         return;
