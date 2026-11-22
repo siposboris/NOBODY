@@ -239,12 +239,24 @@ fn main() {
     }
     if command == "audit-languages" {
         let issues = audit_profile_issues();
-        let errors = issues.iter().filter(|item| item.severity == AuditSeverity::Error).count();
-        let warnings = issues.iter().filter(|item| item.severity == AuditSeverity::Warning).count();
-        let notes = issues.iter().filter(|item| item.severity == AuditSeverity::Note).count();
+        let errors = issues
+            .iter()
+            .filter(|item| item.severity == AuditSeverity::Error)
+            .count();
+        let warnings = issues
+            .iter()
+            .filter(|item| item.severity == AuditSeverity::Warning)
+            .count();
+        let notes = issues
+            .iter()
+            .filter(|item| item.severity == AuditSeverity::Note)
+            .count();
         println!(
             "{{\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": {},\n  \"notes\": {}\n}}",
-            PROFILES.len(), errors, warnings, notes
+            PROFILES.len(),
+            errors,
+            warnings,
+            notes
         );
         for issue in &issues {
             eprintln!("{}: {:?}: {}", issue.language, issue.severity, issue.detail);

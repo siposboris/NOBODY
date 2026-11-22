@@ -100,21 +100,32 @@ pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
     let mut seen_codes = BTreeSet::new();
     for profile in PROFILES {
         let mut report = |severity, detail: String| {
-            issues.push(ProfileAuditIssue { language: profile.code, severity, detail });
+            issues.push(ProfileAuditIssue {
+                language: profile.code,
+                severity,
+                detail,
+            });
         };
         if !seen_codes.insert(profile.code) {
             report(AuditSeverity::Error, "duplicate profile code".to_owned());
         }
         let words: Vec<_> = profile.words.split_whitespace().collect();
         if words.len() != CANONICAL.len() {
-            report(AuditSeverity::Error, format!("expected {} keywords, got {}", CANONICAL.len(), words.len()));
+            report(
+                AuditSeverity::Error,
+                format!("expected {} keywords, got {}", CANONICAL.len(), words.len()),
+            );
         }
         let mut seen_words = BTreeSet::new();
         for word in words {
             if !seen_words.insert(word) {
                 report(AuditSeverity::Error, format!("duplicate keyword {word:?}"));
             }
-            if word.is_empty() || word.chars().any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace()) {
+            if word.is_empty()
+                || word
+                    .chars()
+                    .any(|ch| ch.is_uppercase() || ch.is_control() || ch.is_whitespace())
+            {
                 report(AuditSeverity::Error, format!("invalid keyword {word:?}"));
             }
             if word.nfc().collect::<String>() != word {
@@ -129,7 +140,8 @@ pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
 }
 /// Compatibility API for callers that only need structural failures.
 pub fn audit_profiles() -> Vec<String> {
-    audit_profile_issues().into_iter()
+    audit_profile_issues()
+        .into_iter()
         .filter(|issue| issue.severity == AuditSeverity::Error)
         .map(|issue| format!("{}: {}", issue.language, issue.detail))
         .collect()
