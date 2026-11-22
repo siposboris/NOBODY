@@ -98,8 +98,12 @@ pub struct ProfileAuditIssue {
 fn valid_keyword_identifier(word: &str) -> bool {
     use unicode_normalization::char::canonical_combining_class;
     let mut chars = word.chars();
-    let Some(first) = chars.next() else { return false; };
-    if first != '_' && !first.is_alphabetic() { return false; }
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if first != '_' && !first.is_alphabetic() {
+        return false;
+    }
     chars.all(|ch| ch == '_' || ch.is_alphanumeric() || canonical_combining_class(ch) != 0)
 }
 pub fn audit_profile_issues() -> Vec<ProfileAuditIssue> {
