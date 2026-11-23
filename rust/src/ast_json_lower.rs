@@ -2,7 +2,7 @@
 //! This is deliberately NON-EXECUTING: JSON never invokes the evaluator or VM.
 //! The importer validates structure; this layer validates profile-specific names,
 //! decimal numeric literals and return/loop context before creating a Program.
-use crate::ast_json_import::{import_ast_json_v2, AstNode, AstValue};
+use crate::ast_json_import::{import_ast_json_v1, import_ast_json_v2, AstNode, AstValue};
 use crate::syntax::{Expr, Language, Program, Statement};
 use crate::{parse_validated, profiles, scan, validate_program, Diagnostic, TokenKind};
 
@@ -214,6 +214,19 @@ fn statement(node: &AstNode, profile: &str) -> Result<Statement, Diagnostic> {
 pub fn lower_ast_json_v2(json: &str, profile: &str) -> Result<Program, Diagnostic> {
     let language = Language::from_code(profile)?;
     let tree = import_ast_json_v2(json)?;
+    let program = Program {
+        language,
+        statements: statements(&tree.root.children, profile)?,
+    };
+    validate_program(&program)?;
+    Ok(program)
+}
+
+/// Lower the legacy Python nobody.ast.v1 document without executing it.
+/// Reuses the same validated syntax construction as the v2 importer.
+pub fn lower_ast_json_v1(json: &str, profile: &str) -> Result<Program, Diagnostic> {
+    let language = Language::from_code(profile)?;
+    let tree = import_ast_json_v1(json)?;
     let program = Program {
         language,
         statements: statements(&tree.root.children, profile)?,
