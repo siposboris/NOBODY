@@ -252,7 +252,9 @@ fn main() {
             .filter(|item| item.severity == AuditSeverity::Note)
             .count();
         println!(
-            "{{\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": {},\n  \"notes\": {}\n}}",
+            "{{\n  \"summary\": \"{} active syntax profiles; {} structural errors\",\n  \"profiles\": {},\n  \"errors\": {},\n  \"warnings\": {},\n  \"notes\": {}\n}}",
+            PROFILES.len(),
+            errors,
             PROFILES.len(),
             errors,
             warnings,
