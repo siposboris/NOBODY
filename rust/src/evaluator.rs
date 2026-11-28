@@ -790,17 +790,51 @@ impl Evaluator {
                 iterable,
                 body,
             } => {
-                // Only the canonical, unshadowed range built-in is supported
-                // in the initial Rust for-loop slice. Range arguments are
-                // evaluated once, in the enclosing lexical environment.
-                let IrExpr::Call { callee, args } = iterable else {
-                    return Err(unsupported("For loops currently require range(...)"));
+                // Preserve the lazy range path; other iterables are evaluated once.
+                let range_args = match iterable {
+                    IrExpr::Call { callee, args }
+                        if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) =>
+                    {
+                        Some(args)
+                    }
+                    _ => None,
                 };
-                if !matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) {
-                    return Err(unsupported(
-                        "For loops currently require unshadowed range(...)",
-                    ));
-                }
+                let Some(args) = range_args else {
+                    let values = match self.eval(iterable, 1)? {
+                        RuntimeValue::List(items) => items,
+                        RuntimeValue::Text(text) => {
+                            if text.chars().count() > MAX_STEPS {
+                                return Err(error(
+                                    4005,
+                                    "Text iteration exceeds the evaluator item budget",
+                                    "Use a shorter string.",
+                                ));
+                            }
+                            std::rc::Rc::new(
+                                text.chars()
+                                    .map(|ch| RuntimeValue::Text(ch.to_string()))
+                                    .collect(),
+                            )
+                        }
+                        _ => return Err(unsupported("For loops require a list, text or range")),
+                    };
+                    for value in values.iter() {
+                        self.tick(0)?;
+                        let saved = self.current;
+                        self.current = self.new_scope(saved);
+                        self.scopes[self.current]
+                            .bindings
+                            .insert(variable.clone(), (value.clone(), None));
+                        let result = self.statements(body);
+                        self.current = saved;
+                        match result? {
+                            Flow::Break => break,
+                            Flow::Next | Flow::Continue => {}
+                            Flow::Return(value) => return Ok(Flow::Return(value)),
+                        }
+                    }
+                    return Ok(Flow::Next);
+                };
                 if !(1..=3).contains(&args.len()) {
                     return Err(unsupported(
                         "range requires one, two or three integer arguments",
@@ -1178,5 +1212,31 @@ mod sequence_operation_tests {
             evaluate_source("sum([1, \"x\"])", "ai").unwrap_err().code,
             4004
         );
+    }
+}
+
+#[cfg(test)]
+mod sequence_iteration_tests {
+    use super::*;
+
+    #[test]
+    fn list_iteration_and_loop_control() {
+        let source = "let total = 0\nfor x in [1, 2, 3, 4] { if x == 2 { continue } if x == 4 { break } total = total + x }\nprint(total)";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "4\n");
+    }
+
+    #[test]
+    fn text_iteration_uses_unicode_scalars() {
+        let source = "for ch in \"Ža\" { print(ch) }";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "Ž\na\n");
+    }
+
+    #[test]
+    fn empty_list_and_invalid_iterable() {
+        assert_eq!(
+            evaluate_source("for x in [] { print(x) }", "ai").unwrap(),
+            ""
+        );
+        assert!(evaluate_source("for x in 3 { print(x) }", "ai").is_err());
     }
 }
