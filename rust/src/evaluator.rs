@@ -694,10 +694,86 @@ impl Evaluator {
                                 .map_err(|_| unsupported("Invalid float conversion"))?,
                         ),
                         _ => float_value(
-                            as_float(&value).ok_or_else(|| unsupported("Invalid float conversion"))?,
+                            as_float(&value)
+                                .ok_or_else(|| unsupported("Invalid float conversion"))?,
                         ),
                     },
                     _ => unreachable!(),
+                }
+            }
+            IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("round"))) =>
+            {
+                if !(1..=2).contains(&args.len()) {
+                    return Err(error(
+                        4007,
+                        "round expects one or two arguments",
+                        "Pass a number and optionally an integer precision.",
+                    ));
+                }
+                let value = self.eval(&args[0], depth + 1)?;
+                let precision = if args.len() == 2 {
+                    let RuntimeValue::Int(n) = self.eval(&args[1], depth + 1)? else {
+                        return Err(unsupported("round precision must be an integer"));
+                    };
+                    Some(n)
+                } else {
+                    None
+                };
+                if let RuntimeValue::Int(n) = value {
+                    let digits = precision.unwrap_or(0);
+                    if digits >= 0 {
+                        return Ok(RuntimeValue::Int(n));
+                    }
+                    if digits < -38 {
+                        return Ok(RuntimeValue::Int(0));
+                    }
+                    let factor = 10_i128.pow((-digits) as u32);
+                    let quotient = n / factor;
+                    let remainder = (n % factor).abs();
+                    let half = factor / 2;
+                    let adjustment = if remainder > half
+                        || (remainder == half && quotient % 2 != 0)
+                    {
+                        n.signum()
+                    } else {
+                        0
+                    };
+                    return quotient
+                        .checked_add(adjustment)
+                        .and_then(|q| q.checked_mul(factor))
+                        .map(RuntimeValue::Int)
+                        .ok_or_else(|| {
+                            error(4003, "Rounded integer overflow", "Use a smaller number.")
+                        });
+                }
+                let n = as_float(&value).ok_or_else(|| unsupported("round requires a number"))?;
+                match precision {
+                    None => {
+                        let rounded = n.round_ties_even();
+                        if rounded >= 2.0_f64.powi(127) || rounded < -2.0_f64.powi(127) {
+                            return Err(error(
+                                4003,
+                                "Rounded integer overflow",
+                                "Use a smaller number.",
+                            ));
+                        }
+                        Ok(RuntimeValue::Int(rounded as i128))
+                    }
+                    Some(digits) if digits >= 324 => float_value(n),
+                    Some(digits) if digits <= -309 => float_value(0.0),
+                    Some(digits) if digits >= 0 => {
+                        // Rust's decimal formatter rounds the actual binary value,
+                        // avoiding the double rounding caused by multiplying first.
+                        let text = format!("{:.*}", digits as usize, n);
+                        float_value(text.parse::<f64>().map_err(|_| {
+                            unsupported("Invalid rounded floating-point result")
+                        })?)
+                    }
+                    Some(digits) => {
+                        let factor = 10_f64.powi((-digits) as i32);
+                        float_value((n / factor).round_ties_even() * factor)
+                    }
                 }
             }
             IrExpr::Call { callee, args }
@@ -1355,5 +1431,33 @@ mod legacy_numeric_operations {
             evaluate_source("print(int(3.9), float(\"2.5\"), str(42), bool([]))", "ai").unwrap(),
             "3 2.5 42 false\n"
         );
+    }
+}
+
+#[cfg(test)]
+mod rounding_tests {
+    use super::*;
+
+    #[test]
+    fn ties_round_to_even() {
+        assert_eq!(
+            evaluate_source("print(round(2.5), round(3.5), round(-2.5))", "ai").unwrap(),
+            "2 4 -2\n"
+        );
+    }
+
+    #[test]
+    fn decimal_precision_and_integer_rounding() {
+        assert_eq!(
+            evaluate_source("print(round(2.675, 2), round(125, -1), round(135, -1))", "ai")
+                .unwrap(),
+            "2.67 120 140\n"
+        );
+    }
+
+    #[test]
+    fn invalid_round_arguments() {
+        assert_eq!(evaluate_source("round()", "ai").unwrap_err().code, 4007);
+        assert_eq!(evaluate_source("round(1, 0.5)", "ai").unwrap_err().code, 4004);
     }
 }
