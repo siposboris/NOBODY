@@ -604,6 +604,51 @@ impl Evaluator {
                         items.extend(b.iter().cloned());
                         Ok(RuntimeValue::List(std::rc::Rc::new(items)))
                     }
+                    (RuntimeValue::Text(a), RuntimeValue::Int(b))
+                    | (RuntimeValue::Int(b), RuntimeValue::Text(a))
+                        if op == "*" =>
+                    {
+                        if b <= 0 || a.is_empty() {
+                            return Ok(RuntimeValue::Text(String::new()));
+                        }
+                        let count = usize::try_from(b)
+                            .ok()
+                            .filter(|count| a.len().saturating_mul(*count) <= MAX_OUTPUT)
+                            .ok_or_else(|| {
+                                error(4005, "Text repetition exceeds budget", "Use a smaller count.")
+                            })?;
+                        Ok(RuntimeValue::Text(a.repeat(count)))
+                    }
+                    (RuntimeValue::List(a), RuntimeValue::Int(b))
+                    | (RuntimeValue::Int(b), RuntimeValue::List(a))
+                        if op == "*" =>
+                    {
+                        if b <= 0 || a.is_empty() {
+                            return Ok(RuntimeValue::List(std::rc::Rc::new(Vec::new())));
+                        }
+                        let count = usize::try_from(b)
+                            .ok()
+                            .filter(|count| a.len().saturating_mul(*count) <= MAX_STEPS)
+                            .ok_or_else(|| {
+                                error(4005, "List repetition exceeds budget", "Use a smaller count.")
+                            })?;
+                        let mut items = Vec::with_capacity(a.len() * count);
+                        for _ in 0..count {
+                            items.extend(a.iter().cloned());
+                        }
+                        Ok(RuntimeValue::List(std::rc::Rc::new(items)))
+                    }
+                    (RuntimeValue::Text(a), RuntimeValue::Text(b))
+                        if matches!(op.as_str(), "<" | ">" | "<=" | ">=") =>
+                    {
+                        let order = a.cmp(&b);
+                        Ok(RuntimeValue::Bool(match op.as_str() {
+                            "<" => order.is_lt(),
+                            ">" => order.is_gt(),
+                            "<=" => !order.is_gt(),
+                            _ => !order.is_lt(),
+                        }))
+                    }
                     (RuntimeValue::Text(a), RuntimeValue::Text(b)) if op == "+" => {
                         if a.len().saturating_add(b.len()) > MAX_OUTPUT {
                             return Err(error(
@@ -692,7 +737,11 @@ impl Evaluator {
                                     return Ok(RuntimeValue::Int(total));
                                 }
                                 current = current.checked_add(step).ok_or_else(|| {
-                                    error(4003, "Range arithmetic overflow", "Use smaller integers.")
+                                    error(
+                                        4003,
+                                        "Range arithmetic overflow",
+                                        "Use smaller integers.",
+                                    )
                                 })?;
                             }
                         }
@@ -1712,5 +1761,29 @@ mod range_operations_tests {
     fn range_indexing_handles_full_signed_domain() {
         assert_eq!(range_at(i128::MIN, i128::MAX, 1, -1), Some(i128::MAX - 1));
         assert_eq!(range_at(i128::MAX, i128::MIN, -1, -1), Some(i128::MIN + 1));
+    }
+}
+
+#[cfg(test)]
+mod sequence_repetition_tests {
+    use super::*;
+
+    #[test]
+    fn repeat_sequences_in_both_operand_orders() {
+        let source = "print(\"ab\" * 3, 2 * \"x\", len([1, 2] * 3), len(0 * [1]))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "ababab xx 6 0\n");
+    }
+
+    #[test]
+    fn oversized_sequence_repetition_is_rejected() {
+        assert_eq!(evaluate_source("[1] * 10001", "ai").unwrap_err().code, 4005);
+    }
+
+    #[test]
+    fn text_ordering() {
+        assert_eq!(
+            evaluate_source("print(\"a\" < \"b\", \"z\" >= \"z\")", "ai").unwrap(),
+            "true true\n"
+        );
     }
 }
