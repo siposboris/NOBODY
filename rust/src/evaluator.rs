@@ -759,6 +759,16 @@ impl Evaluator {
                 if *name != "abs" && values.len() == 1 {
                     match &values[0] {
                         RuntimeValue::List(items) => values = items.as_ref().clone(),
+                        RuntimeValue::Text(text) if *name == "min" || *name == "max" => {
+                            let selected = if *name == "min" {
+                                text.chars().min()
+                            } else {
+                                text.chars().max()
+                            };
+                            return selected
+                                .map(|ch| RuntimeValue::Text(ch.to_string()))
+                                .ok_or_else(|| unsupported("Aggregate requires nonempty text"));
+                        }
                         RuntimeValue::Range(start, stop, step) => {
                             let (start, stop, step) = (*start, *stop, *step);
                             let count = range_len(start, stop, step);
@@ -803,7 +813,9 @@ impl Evaluator {
                         _ => {}
                     }
                 }
-                if values.iter().any(|value| as_float(value).is_none()) {
+                if matches!(*name, "abs" | "sum")
+                    && values.iter().any(|value| as_float(value).is_none())
+                {
                     return Err(unsupported(format!("{name} requires numeric arguments")));
                 }
                 if values.is_empty() {
@@ -849,8 +861,18 @@ impl Evaluator {
                                 float_value(as_float(&result).unwrap() + as_float(&value).unwrap())?
                             }
                         },
-                        "min" if numeric_cmp(&value, &result).is_some_and(|o| o.is_lt()) => value,
-                        "max" if numeric_cmp(&value, &result).is_some_and(|o| o.is_gt()) => value,
+                        "min" | "max" => {
+                            let order = self
+                                .values_order(&value, &result, depth + 1)?
+                                .ok_or_else(|| unsupported("Aggregate values cannot be ordered"))?;
+                            if (*name == "min" && order.is_lt())
+                                || (*name == "max" && order.is_gt())
+                            {
+                                value
+                            } else {
+                                result
+                            }
+                        }
                         _ => result,
                     };
                 }
@@ -1879,5 +1901,22 @@ mod sequence_order_tests {
     #[test]
     fn incomparable_elements_are_rejected() {
         assert!(evaluate_source("[1] < [\"a\"]", "ai").is_err());
+    }
+}
+
+#[cfg(test)]
+mod ordered_aggregate_tests {
+    use super::*;
+
+    #[test]
+    fn extrema_support_text_and_nested_lists() {
+        let source = "print(min(\"zba\"), max([\"a\", \"z\"]), min([[2], [1]])[0])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "a z 1\n");
+    }
+
+    #[test]
+    fn extrema_reject_incomparable_values() {
+        assert!(evaluate_source("min([1, \"a\"])", "ai").is_err());
+        assert!(evaluate_source("max(\"\")", "ai").is_err());
     }
 }
