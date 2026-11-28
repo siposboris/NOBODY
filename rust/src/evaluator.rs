@@ -13,6 +13,7 @@ pub enum RuntimeValue {
     Int(i128),
     Bool(bool),
     Text(String),
+    Function(usize),
     Null,
 }
 impl RuntimeValue {
@@ -21,6 +22,7 @@ impl RuntimeValue {
             Self::Int(n) => n.to_string(),
             Self::Bool(b) => b.to_string(),
             Self::Text(s) => s.clone(),
+            Self::Function(_) => "<function>".into(),
             Self::Null => "null".into(),
         }
     }
@@ -113,10 +115,19 @@ struct Function {
     parameter_types: Vec<Option<String>>,
     return_type: Option<String>,
     body: Vec<IrStatement>,
+    closure: usize,
+}
+#[derive(Default)]
+struct Scope {
+    parent: Option<usize>,
+    bindings: BTreeMap<String, (RuntimeValue, Option<String>)>,
 }
 struct Evaluator {
-    scopes: Vec<BTreeMap<String, RuntimeValue>>,
-    functions: BTreeMap<String, Function>,
+    // Arena indices avoid reference cycles between closures and their environments.
+    // The entire arena is released at the end of one bounded evaluation.
+    scopes: Vec<Scope>,
+    current: usize,
+    functions: Vec<Function>,
     active_calls: Vec<String>,
     steps: usize,
     max_steps: usize,
@@ -134,22 +145,54 @@ impl Evaluator {
         }
         Ok(())
     }
-    fn lookup(&self, name: &str) -> Option<&RuntimeValue> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(name))
-    }
-    fn assign(&mut self, name: &str, value: RuntimeValue) -> bool {
-        for scope in self.scopes.iter_mut().rev() {
-            if scope.contains_key(name) {
-                scope.insert(name.to_string(), value);
-                return true;
+    fn owner(&self, name: &str) -> Option<usize> {
+        let mut current = Some(self.current);
+        while let Some(index) = current {
+            let scope = &self.scopes[index];
+            if scope.bindings.contains_key(name) {
+                return Some(index);
             }
+            current = scope.parent;
         }
-        false
+        None
+    }
+    fn lookup(&self, name: &str) -> Option<&RuntimeValue> {
+        self.owner(name)
+            .and_then(|index| self.scopes[index].bindings.get(name))
+            .map(|(value, _)| value)
+    }
+    fn assign(&mut self, name: &str, value: RuntimeValue) -> Result<(), Diagnostic> {
+        let index = self.owner(name).ok_or_else(|| {
+            error(4001, format!("Unknown variable {name:?}"), "Declare the variable first.")
+        })?;
+        let (old, annotation) = self.scopes[index]
+            .bindings
+            .get_mut(name)
+            .expect("owner contains binding");
+        if annotation
+            .as_deref()
+            .is_some_and(|kind| !matches_explicit_type(&value, kind))
+        {
+            return Err(unsupported(format!(
+                "Assignment to {name:?} violates its explicit type annotation"
+            )));
+        }
+        *old = value;
+        Ok(())
+    }
+    fn new_scope(&mut self, parent: usize) -> usize {
+        let index = self.scopes.len();
+        self.scopes.push(Scope {
+            parent: Some(parent),
+            bindings: BTreeMap::new(),
+        });
+        index
     }
     fn block(&mut self, statements: &[IrStatement]) -> Result<Flow, Diagnostic> {
-        self.scopes.push(BTreeMap::new());
+        let saved = self.current;
+        self.current = self.new_scope(saved);
         let result = self.statements(statements);
-        self.scopes.pop();
+        self.current = saved;
         result
     }
     fn statements(&mut self, statements: &[IrStatement]) -> Result<Flow, Diagnostic> {
@@ -329,20 +372,16 @@ impl Evaluator {
                 Ok(RuntimeValue::Int(text.chars().count() as i128))
             }
             IrExpr::Call { callee, args } => {
-                let IrExpr::Name(Name::User(name)) = callee.as_ref() else {
-                    return Err(unsupported("Only named declared functions can be called"));
+                let label = match callee.as_ref() {
+                    IrExpr::Name(Name::User(name)) => name.as_str(),
+                    _ => "<expression>",
                 };
-                // A variable may shadow a function, but callable values and
-                // closures are deliberately not implemented in this slice.
-                if self.lookup(name).is_some() {
-                    return Err(unsupported("Variable values are not callable"));
-                }
-                let function = self.functions.get(name).cloned().ok_or_else(|| {
-                    error(
-                        4001,
-                        format!("Unknown function {name:?}"),
-                        "Declare the function before calling it.",
-                    )
+                let name = label;
+                let RuntimeValue::Function(id) = self.eval(callee, depth + 1)? else {
+                    return Err(unsupported("Value is not callable"));
+                };
+                let function = self.functions.get(id).cloned().ok_or_else(|| {
+                    unsupported("Invalid function reference")
                 })?;
                 if args.len() != function.parameters.len() {
                     return Err(error(
@@ -378,17 +417,16 @@ impl Evaluator {
                             "Function {name:?} argument {parameter:?} violates its explicit type annotation"
                         )));
                     }
-                    parameters.insert(parameter.clone(), value);
+                    parameters.insert(parameter.clone(), (value, annotation.clone()));
                 }
-                // Explicit lexical boundary: caller-local variables cannot
-                // leak into a function. The captured global values are
-                // read-only snapshots until closures are specified.
-                let globals = self.scopes.first().cloned().unwrap_or_default();
-                let saved_scopes = std::mem::replace(&mut self.scopes, vec![globals, parameters]);
-                self.active_calls.push(name.clone());
+                // Use the declaration environment, never the caller environment.
+                let saved = self.current;
+                self.current = self.new_scope(function.closure);
+                self.scopes[self.current].bindings = parameters;
+                self.active_calls.push(name.to_string());
                 let result = self.statements(&function.body);
                 self.active_calls.pop();
-                self.scopes = saved_scopes;
+                self.current = saved;
                 let returned = match result? {
                     Flow::Next => RuntimeValue::Null,
                     Flow::Return(value) => value,
@@ -417,11 +455,7 @@ impl Evaluator {
                 type_name,
                 expr,
             } => {
-                if self
-                    .scopes
-                    .last()
-                    .is_some_and(|scope| scope.contains_key(name))
-                {
+                if self.scopes[self.current].bindings.contains_key(name) {
                     return Err(unsupported(format!("Duplicate declaration {name:?}")));
                 }
                 let value = self.eval(expr, 1)?;
@@ -433,10 +467,9 @@ impl Evaluator {
                         "Declaration {name:?} violates its explicit type annotation"
                     )));
                 }
-                self.scopes
-                    .last_mut()
-                    .expect("root scope exists")
-                    .insert(name.clone(), value);
+                self.scopes[self.current]
+                    .bindings
+                    .insert(name.clone(), (value, type_name.clone()));
                 Ok(Flow::Next)
             }
             IrStatement::Assign { name, expr } => {
@@ -449,7 +482,7 @@ impl Evaluator {
                     ));
                 }
                 let value = self.eval(expr, 1)?;
-                self.assign(name, value);
+                self.assign(name, value)?;
                 Ok(Flow::Next)
             }
             IrStatement::Expression(expr) => {
@@ -544,13 +577,13 @@ impl Evaluator {
                 } {
                     // An empty body is still charged for each iteration.
                     self.tick(0)?;
-                    self.scopes.push(BTreeMap::new());
-                    self.scopes
-                        .last_mut()
-                        .expect("loop iteration scope exists")
-                        .insert(variable.clone(), RuntimeValue::Int(current));
-                    let result = self.block(body);
-                    self.scopes.pop();
+                    let saved = self.current;
+                    self.current = self.new_scope(saved);
+                    self.scopes[self.current]
+                        .bindings
+                        .insert(variable.clone(), (RuntimeValue::Int(current), None));
+                    let result = self.statements(body);
+                    self.current = saved;
                     match result? {
                         Flow::Break => break,
                         Flow::Next | Flow::Continue => {}
@@ -573,25 +606,22 @@ impl Evaluator {
                 return_type,
                 body,
             } => {
-                if self.scopes.len() != 1 {
-                    return Err(unsupported(
-                        "Nested function definitions and closures are not yet supported",
-                    ));
-                }
-                if self.functions.contains_key(name) || self.lookup(name).is_some() {
+                if self.scopes[self.current].bindings.contains_key(name) {
                     return Err(unsupported(format!(
                         "Duplicate function declaration {name:?}"
                     )));
                 }
-                self.functions.insert(
-                    name.clone(),
-                    Function {
-                        parameters: parameters.clone(),
-                        parameter_types: parameter_types.clone(),
-                        return_type: return_type.clone(),
-                        body: body.clone(),
-                    },
-                );
+                let id = self.functions.len();
+                self.functions.push(Function {
+                    parameters: parameters.clone(),
+                    parameter_types: parameter_types.clone(),
+                    return_type: return_type.clone(),
+                    body: body.clone(),
+                    closure: self.current,
+                });
+                self.scopes[self.current]
+                    .bindings
+                    .insert(name.clone(), (RuntimeValue::Function(id), None));
                 Ok(Flow::Next)
             }
             IrStatement::Return(expr) => Ok(Flow::Return(self.eval(expr, 1)?)),
@@ -607,8 +637,9 @@ pub fn evaluate_ir(module: &Module) -> Result<String, Diagnostic> {
 
 pub fn evaluate_ir_with_max_steps(module: &Module, max_steps: usize) -> Result<String, Diagnostic> {
     let mut evaluator = Evaluator {
-        scopes: vec![BTreeMap::new()],
-        functions: BTreeMap::new(),
+        scopes: vec![Scope::default()],
+        current: 0,
+        functions: Vec::new(),
         active_calls: Vec::new(),
         steps: 0,
         max_steps,
