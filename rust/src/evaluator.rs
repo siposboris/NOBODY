@@ -11,6 +11,7 @@ const MAX_OUTPUT: usize = 1_048_576;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RuntimeValue {
     List(std::rc::Rc<Vec<RuntimeValue>>),
+    Range(i128, i128, i128),
     Int(i128),
     Float(u64),
     Bool(bool),
@@ -30,6 +31,7 @@ impl RuntimeValue {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Self::Range(start, stop, step) => format!("range({start}, {stop}, {step})"),
             Self::Int(n) => n.to_string(),
             Self::Float(bits) => {
                 let value = f64::from_bits(*bits);
@@ -69,6 +71,17 @@ fn float_value(value: f64) -> Result<RuntimeValue, Diagnostic> {
     } else {
         value.to_bits()
     }))
+}
+
+fn range_len(start: i128, stop: i128, step: i128) -> u128 {
+    let distance = if step > 0 && start < stop {
+        stop.abs_diff(start)
+    } else if step < 0 && start > stop {
+        start.abs_diff(stop)
+    } else {
+        return 0;
+    };
+    (distance - 1) / step.unsigned_abs() + 1
 }
 
 fn as_float(value: &RuntimeValue) -> Option<f64> {
@@ -712,6 +725,7 @@ impl Evaluator {
                         RuntimeValue::Float(bits) => f64::from_bits(bits) != 0.0,
                         RuntimeValue::Text(text) => !text.is_empty(),
                         RuntimeValue::List(items) => !items.is_empty(),
+                        RuntimeValue::Range(start, stop, step) => range_len(start, stop, step) != 0,
                         RuntimeValue::Function(_) | RuntimeValue::Builtin(_) => true,
                     })),
                     "int" => match value {
@@ -823,6 +837,34 @@ impl Evaluator {
                 }
             }
             IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) =>
+            {
+                if !(1..=3).contains(&args.len()) {
+                    return Err(unsupported("range requires one to three integer arguments"));
+                }
+                let mut numbers = Vec::with_capacity(args.len());
+                for arg in args {
+                    let RuntimeValue::Int(value) = self.eval(arg, depth + 1)? else {
+                        return Err(unsupported("range arguments must be integers"));
+                    };
+                    numbers.push(value);
+                }
+                let (start, stop, step) = match numbers.as_slice() {
+                    [stop] => (0, *stop, 1),
+                    [start, stop] => (*start, *stop, 1),
+                    [start, stop, step] => (*start, *stop, *step),
+                    _ => unreachable!("range arity validated"),
+                };
+                if step == 0 {
+                    return Err(error(
+                        4006,
+                        "range step cannot be zero",
+                        "Use a nonzero step argument.",
+                    ));
+                }
+                Ok(RuntimeValue::Range(start, stop, step))
+            }
+            IrExpr::Call { callee, args }
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
             {
                 if args.len() != 1 {
@@ -839,6 +881,12 @@ impl Evaluator {
                 match value {
                     RuntimeValue::Text(text) => Ok(RuntimeValue::Int(text.chars().count() as i128)),
                     RuntimeValue::List(items) => Ok(RuntimeValue::Int(items.len() as i128)),
+                    RuntimeValue::Range(start, stop, step) => {
+                        let count = i128::try_from(range_len(start, stop, step)).map_err(|_| {
+                            error(4003, "Range length overflow", "Use a shorter range.")
+                        })?;
+                        Ok(RuntimeValue::Int(count))
+                    }
                     _ => Err(unsupported("len requires a list or string")),
                 }
             }
@@ -859,8 +907,18 @@ impl Evaluator {
                         // Reject other names instead of recursively redispatching them.
                         if !matches!(
                             builtin,
-                            "print" | "len" | "abs" | "sum" | "min" | "max"
-                                | "int" | "float" | "str" | "bool" | "round"
+                            "print"
+                                | "len"
+                                | "abs"
+                                | "sum"
+                                | "min"
+                                | "max"
+                                | "int"
+                                | "float"
+                                | "str"
+                                | "bool"
+                                | "round"
+                                | "range"
                         ) {
                             return Err(unsupported("Builtin is not callable as a value yet"));
                         }
@@ -1024,76 +1082,46 @@ impl Evaluator {
                 iterable,
                 body,
             } => {
-                // Preserve the lazy range path; other iterables are evaluated once.
-                let range_args = match iterable {
-                    IrExpr::Call { callee, args }
-                        if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("range"))) =>
-                    {
-                        Some(args)
-                    }
-                    _ => None,
-                };
-                let Some(args) = range_args else {
-                    let values = match self.eval(iterable, 1)? {
-                        RuntimeValue::List(items) => items,
-                        RuntimeValue::Text(text) => {
-                            if text.chars().count() > MAX_STEPS {
-                                return Err(error(
-                                    4005,
-                                    "Text iteration exceeds the evaluator item budget",
-                                    "Use a shorter string.",
-                                ));
+                let iterable = self.eval(iterable, 1)?;
+                let (mut current, stop, step) = match iterable {
+                    RuntimeValue::Range(start, stop, step) => (start, stop, step),
+                    other => {
+                        let values = match other {
+                            RuntimeValue::List(items) => items,
+                            RuntimeValue::Text(text) => {
+                                if text.chars().count() > MAX_STEPS {
+                                    return Err(error(
+                                        4005,
+                                        "Text iteration exceeds the evaluator item budget",
+                                        "Use a shorter string.",
+                                    ));
+                                }
+                                std::rc::Rc::new(
+                                    text.chars()
+                                        .map(|ch| RuntimeValue::Text(ch.to_string()))
+                                        .collect(),
+                                )
                             }
-                            std::rc::Rc::new(
-                                text.chars()
-                                    .map(|ch| RuntimeValue::Text(ch.to_string()))
-                                    .collect(),
-                            )
+                            _ => return Err(unsupported("For loops require a list, text or range")),
+                        };
+                        for value in values.iter() {
+                            self.tick(0)?;
+                            let saved = self.current;
+                            self.current = self.new_scope(saved);
+                            self.scopes[self.current]
+                                .bindings
+                                .insert(variable.clone(), (value.clone(), None));
+                            let result = self.statements(body);
+                            self.current = saved;
+                            match result? {
+                                Flow::Break => break,
+                                Flow::Next | Flow::Continue => {}
+                                Flow::Return(value) => return Ok(Flow::Return(value)),
+                            }
                         }
-                        _ => return Err(unsupported("For loops require a list, text or range")),
-                    };
-                    for value in values.iter() {
-                        self.tick(0)?;
-                        let saved = self.current;
-                        self.current = self.new_scope(saved);
-                        self.scopes[self.current]
-                            .bindings
-                            .insert(variable.clone(), (value.clone(), None));
-                        let result = self.statements(body);
-                        self.current = saved;
-                        match result? {
-                            Flow::Break => break,
-                            Flow::Next | Flow::Continue => {}
-                            Flow::Return(value) => return Ok(Flow::Return(value)),
-                        }
+                        return Ok(Flow::Next);
                     }
-                    return Ok(Flow::Next);
                 };
-                if !(1..=3).contains(&args.len()) {
-                    return Err(unsupported(
-                        "range requires one, two or three integer arguments",
-                    ));
-                }
-                let mut numbers = Vec::with_capacity(args.len());
-                for arg in args {
-                    let RuntimeValue::Int(value) = self.eval(arg, 1)? else {
-                        return Err(unsupported("range arguments must be integers"));
-                    };
-                    numbers.push(value);
-                }
-                let (mut current, stop, step) = match numbers.as_slice() {
-                    [stop] => (0, *stop, 1),
-                    [start, stop] => (*start, *stop, 1),
-                    [start, stop, step] => (*start, *stop, *step),
-                    _ => unreachable!("range argument count validated"),
-                };
-                if step == 0 {
-                    return Err(error(
-                        4006,
-                        "range step cannot be zero",
-                        "Use a nonzero step argument for range(start, stop, step).",
-                    ));
-                }
                 while if step > 0 {
                     current < stop
                 } else {
@@ -1573,5 +1601,28 @@ mod builtin_value_tests {
     fn builtin_can_be_stored_and_indexed() {
         let source = "let f = len\nlet ops = [abs, f]\nprint(ops[0](-3), ops[1]([1, 2]))";
         assert_eq!(evaluate_source(source, "ai").unwrap(), "3 2\n");
+    }
+}
+
+#[cfg(test)]
+mod range_value_tests {
+    use super::*;
+
+    #[test]
+    fn stored_range_and_alias_remain_lazy() {
+        let source = "let f = range\nlet r = f(5, 0, -2)\nfor x in r { print(x) }";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "5\n3\n1\n");
+    }
+
+    #[test]
+    fn range_length_and_empty_range() {
+        let source = "print(len(range(10)), len(range(5, 0, -2)), bool(range(0)))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "10 3 false\n");
+    }
+
+    #[test]
+    fn huge_range_can_break_without_allocation() {
+        let source = "let r = range(1000000000000)\nfor x in r { print(x) break }";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "0\n");
     }
 }
