@@ -483,6 +483,18 @@ impl Evaluator {
                             )
                         })
                     }
+                    (RuntimeValue::List(a), RuntimeValue::List(b)) if op == "+" => {
+                        if a.len().saturating_add(b.len()) > MAX_STEPS {
+                            return Err(error(
+                                4005,
+                                "List exceeds the evaluator item budget",
+                                "Use shorter lists.",
+                            ));
+                        }
+                        let mut items = a.as_ref().clone();
+                        items.extend(b.iter().cloned());
+                        Ok(RuntimeValue::List(std::rc::Rc::new(items)))
+                    }
                     (RuntimeValue::Text(a), RuntimeValue::Text(b)) if op == "+" => {
                         if a.len().saturating_add(b.len()) > MAX_OUTPUT {
                             return Err(error(
@@ -533,10 +545,25 @@ impl Evaluator {
                 let mut values = Vec::with_capacity(args.len());
                 for arg in args {
                     let value = self.eval(arg, depth + 1)?;
-                    if as_float(&value).is_none() {
-                        return Err(unsupported(format!("{name} requires numeric arguments")));
-                    }
                     values.push(value);
+                }
+                if *name != "abs" && values.len() == 1 {
+                    if let RuntimeValue::List(items) = &values[0] {
+                        values = items.as_ref().clone();
+                    }
+                }
+                if values.iter().any(|value| as_float(value).is_none()) {
+                    return Err(unsupported(format!("{name} requires numeric arguments")));
+                }
+                if values.is_empty() {
+                    if *name == "sum" {
+                        return Ok(RuntimeValue::Int(0));
+                    }
+                    return Err(error(
+                        4007,
+                        format!("{name} requires a nonempty sequence"),
+                        "Pass at least one numeric value.",
+                    ));
                 }
                 if *name == "abs" {
                     return match values.remove(0) {
@@ -1125,5 +1152,31 @@ mod list_tests {
         assert!(evaluate_source("print([][0])", "ai").is_err());
         assert!(evaluate_source("print([1][-2])", "ai").is_err());
         assert_eq!(evaluate_source("print(\"Ža\"[0])", "ai").unwrap(), "Ž\n");
+    }
+}
+
+#[cfg(test)]
+mod sequence_operation_tests {
+    use super::*;
+
+    #[test]
+    fn concatenate_lists_without_mutating_inputs() {
+        let source = "let a = [1, 2]\nlet b = a + [3]\nprint(len(a), len(b), b[2])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "2 3 3\n");
+    }
+
+    #[test]
+    fn numeric_aggregates_accept_lists() {
+        let source = "print(sum([1, 2, 3]), min([4, 2]), max([1, 7]), sum([]))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "6 2 7 0\n");
+    }
+
+    #[test]
+    fn invalid_aggregates_reject_empty_or_nonnumeric_sequences() {
+        assert_eq!(evaluate_source("min([])", "ai").unwrap_err().code, 4007);
+        assert_eq!(
+            evaluate_source("sum([1, \"x\"])", "ai").unwrap_err().code,
+            4004
+        );
     }
 }
