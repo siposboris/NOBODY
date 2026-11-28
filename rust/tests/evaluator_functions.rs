@@ -76,12 +76,14 @@ fn escaping_closure_keeps_mutable_capture_and_instances_are_independent() {
 
 #[test]
 fn captured_typed_binding_rejects_invalid_assignment() {
-    let source = "fn maker() { let n: int = 1 fn bad() { n = \"wrong\" } return bad }\nlet f = maker()\nf()";
+    let source =
+        "fn maker() { let n: int = 1 fn bad() { n = \"wrong\" } return bad }\nlet f = maker()\nf()";
     assert_eq!(evaluate_source(source, "ai").unwrap_err().code, 4004);
 }
 
 #[test]
 fn first_class_function_can_be_passed_as_argument() {
-    let source = "fn twice(n) { return n * 2 }\nfn apply(f, x) { return f(x) }\nprint(apply(twice, 6))";
+    let source =
+        "fn twice(n) { return n * 2 }\nfn apply(f, x) { return f(x) }\nprint(apply(twice, 6))";
     assert_eq!(evaluate_source(source, "ai").unwrap(), "12\n");
 }

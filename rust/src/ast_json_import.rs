@@ -424,7 +424,9 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
         | "break"
         | "continue"
         | "expression_statement"
-        | "list" | "index" | "call" => {
+        | "list"
+        | "index"
+        | "call" => {
             if raw_value != Json::Null {
                 return Err(invalid("AST node requires null value"));
             }

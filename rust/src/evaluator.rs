@@ -21,7 +21,14 @@ pub enum RuntimeValue {
 impl RuntimeValue {
     fn display(&self) -> String {
         match self {
-            Self::List(items) => format!("[{}]", items.iter().map(Self::display).collect::<Vec<_>>().join(", ")),
+            Self::List(items) => format!(
+                "[{}]",
+                items
+                    .iter()
+                    .map(Self::display)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             Self::Int(n) => n.to_string(),
             Self::Float(bits) => {
                 let value = f64::from_bits(*bits);
@@ -50,9 +57,17 @@ fn matches_explicit_type(value: &RuntimeValue, annotation: &str) -> bool {
 
 fn float_value(value: f64) -> Result<RuntimeValue, Diagnostic> {
     if !value.is_finite() {
-        return Err(error(4003, "Non-finite floating-point result", "Use smaller finite numeric operands."));
+        return Err(error(
+            4003,
+            "Non-finite floating-point result",
+            "Use smaller finite numeric operands.",
+        ));
     }
-    Ok(RuntimeValue::Float(if value == 0.0 { 0.0_f64.to_bits() } else { value.to_bits() }))
+    Ok(RuntimeValue::Float(if value == 0.0 {
+        0.0_f64.to_bits()
+    } else {
+        value.to_bits()
+    }))
 }
 
 fn as_float(value: &RuntimeValue) -> Option<f64> {
@@ -67,8 +82,12 @@ fn as_float(value: &RuntimeValue) -> Option<f64> {
 fn numeric_cmp(left: &RuntimeValue, right: &RuntimeValue) -> Option<std::cmp::Ordering> {
     use std::cmp::Ordering;
     fn int_float(n: i128, f: f64) -> Ordering {
-        if f >= 2.0_f64.powi(127) { return Ordering::Less; }
-        if f < -2.0_f64.powi(127) { return Ordering::Greater; }
+        if f >= 2.0_f64.powi(127) {
+            return Ordering::Less;
+        }
+        if f < -2.0_f64.powi(127) {
+            return Ordering::Greater;
+        }
         let truncated = f as i128;
         match n.cmp(&truncated) {
             Ordering::Equal if f.fract() > 0.0 => Ordering::Less,
@@ -79,8 +98,12 @@ fn numeric_cmp(left: &RuntimeValue, right: &RuntimeValue) -> Option<std::cmp::Or
     match (left, right) {
         (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Some(a.cmp(b)),
         (RuntimeValue::Int(a), RuntimeValue::Float(b)) => Some(int_float(*a, f64::from_bits(*b))),
-        (RuntimeValue::Float(a), RuntimeValue::Int(b)) => Some(int_float(*b, f64::from_bits(*a)).reverse()),
-        (RuntimeValue::Float(a), RuntimeValue::Float(b)) => f64::from_bits(*a).partial_cmp(&f64::from_bits(*b)),
+        (RuntimeValue::Float(a), RuntimeValue::Int(b)) => {
+            Some(int_float(*b, f64::from_bits(*a)).reverse())
+        }
+        (RuntimeValue::Float(a), RuntimeValue::Float(b)) => {
+            f64::from_bits(*a).partial_cmp(&f64::from_bits(*b))
+        }
         _ => None,
     }
 }
@@ -212,7 +235,11 @@ impl Evaluator {
     }
     fn assign(&mut self, name: &str, value: RuntimeValue) -> Result<(), Diagnostic> {
         let index = self.owner(name).ok_or_else(|| {
-            error(4001, format!("Unknown variable {name:?}"), "Declare the variable first.")
+            error(
+                4001,
+                format!("Unknown variable {name:?}"),
+                "Declare the variable first.",
+            )
         })?;
         let (old, annotation) = self.scopes[index]
             .bindings
@@ -269,23 +296,32 @@ impl Evaluator {
                     return Err(unsupported("Index must be an integer"));
                 };
                 let position = |len: usize| {
-                    let i = if index < 0 { index + len as i128 } else { index };
-                    usize::try_from(i).ok().filter(|i| *i < len).ok_or_else(|| {
-                        unsupported("Index outside sequence bounds")
-                    })
+                    let i = if index < 0 {
+                        index + len as i128
+                    } else {
+                        index
+                    };
+                    usize::try_from(i)
+                        .ok()
+                        .filter(|i| *i < len)
+                        .ok_or_else(|| unsupported("Index outside sequence bounds"))
                 };
                 match target {
                     RuntimeValue::List(items) => Ok(items[position(items.len())?].clone()),
                     RuntimeValue::Text(text) => {
                         let i = position(text.chars().count())?;
-                        Ok(RuntimeValue::Text(text.chars().nth(i).expect("validated index").to_string()))
+                        Ok(RuntimeValue::Text(
+                            text.chars().nth(i).expect("validated index").to_string(),
+                        ))
                     }
                     _ => Err(unsupported("Indexing requires a list or text")),
                 }
             }
             IrExpr::Number(text) => {
                 if !text.bytes().all(|b| b.is_ascii_digit() || b == b'_') {
-                    let value = text.replace('_', "").parse::<f64>()
+                    let value = text
+                        .replace('_', "")
+                        .parse::<f64>()
                         .map_err(|_| unsupported("Invalid floating-point literal"))?;
                     return float_value(value);
                 }
@@ -354,7 +390,8 @@ impl Evaluator {
                 let left = self.eval(lhs, depth + 1)?;
                 let right = self.eval(rhs, depth + 1)?;
                 if op == "==" || op == "!=" {
-                    let equal = numeric_cmp(&left, &right).map_or_else(|| left == right, |order| order.is_eq());
+                    let equal = numeric_cmp(&left, &right)
+                        .map_or_else(|| left == right, |order| order.is_eq());
                     return Ok(RuntimeValue::Bool(if op == "==" { equal } else { !equal }));
                 }
                 if let Some(order) = numeric_cmp(&left, &right) {
@@ -369,10 +406,17 @@ impl Evaluator {
                         return Ok(RuntimeValue::Bool(value));
                     }
                 }
-                if op == "/" || matches!(&left, RuntimeValue::Float(_)) || matches!(&right, RuntimeValue::Float(_)) {
+                if op == "/"
+                    || matches!(&left, RuntimeValue::Float(_))
+                    || matches!(&right, RuntimeValue::Float(_))
+                {
                     if let (Some(a), Some(b)) = (as_float(&left), as_float(&right)) {
                         if b == 0.0 && matches!(op.as_str(), "/" | "//" | "%") {
-                            return Err(error(4002, "Division by zero at runtime", "Ensure the divisor is nonzero before dividing."));
+                            return Err(error(
+                                4002,
+                                "Division by zero at runtime",
+                                "Ensure the divisor is nonzero before dividing.",
+                            ));
                         }
                         let value = match op.as_str() {
                             "+" => a + b,
@@ -382,9 +426,17 @@ impl Evaluator {
                             "//" => (a / b).floor(),
                             "%" => {
                                 let r = a % b;
-                                if r != 0.0 && r.is_sign_negative() != b.is_sign_negative() { r + b } else { r }
+                                if r != 0.0 && r.is_sign_negative() != b.is_sign_negative() {
+                                    r + b
+                                } else {
+                                    r
+                                }
                             }
-                            _ => return Err(unsupported(format!("Unsupported floating-point operator {op:?}"))),
+                            _ => {
+                                return Err(unsupported(format!(
+                                    "Unsupported floating-point operator {op:?}"
+                                )))
+                            }
                         };
                         return float_value(value);
                     }
@@ -463,13 +515,20 @@ impl Evaluator {
                 Ok(RuntimeValue::Null)
             }
             IrExpr::Call { callee, args }
-                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("abs" | "sum" | "min" | "max"))) =>
+                if matches!(
+                    callee.as_ref(),
+                    IrExpr::Name(Name::Builtin("abs" | "sum" | "min" | "max"))
+                ) =>
             {
                 let IrExpr::Name(Name::Builtin(name)) = callee.as_ref() else {
                     unreachable!()
                 };
                 if args.is_empty() || (*name == "abs" && args.len() != 1) {
-                    return Err(error(4007, format!("Invalid argument count for {name}"), "Pass numeric arguments."));
+                    return Err(error(
+                        4007,
+                        format!("Invalid argument count for {name}"),
+                        "Pass numeric arguments.",
+                    ));
                 }
                 let mut values = Vec::with_capacity(args.len());
                 for arg in args {
@@ -481,9 +540,15 @@ impl Evaluator {
                 }
                 if *name == "abs" {
                     return match values.remove(0) {
-                        RuntimeValue::Int(n) => n.checked_abs().map(RuntimeValue::Int).ok_or_else(|| {
-                            error(4003, "Integer absolute value overflow", "Use a smaller integer.")
-                        }),
+                        RuntimeValue::Int(n) => {
+                            n.checked_abs().map(RuntimeValue::Int).ok_or_else(|| {
+                                error(
+                                    4003,
+                                    "Integer absolute value overflow",
+                                    "Use a smaller integer.",
+                                )
+                            })
+                        }
                         RuntimeValue::Float(bits) => float_value(f64::from_bits(bits).abs()),
                         _ => unreachable!(),
                     };
@@ -495,10 +560,16 @@ impl Evaluator {
                         "sum" => match (&result, &value) {
                             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => {
                                 RuntimeValue::Int(a.checked_add(*b).ok_or_else(|| {
-                                    error(4003, "Integer sum overflow", "Use smaller integer operands.")
+                                    error(
+                                        4003,
+                                        "Integer sum overflow",
+                                        "Use smaller integer operands.",
+                                    )
                                 })?)
                             }
-                            _ => float_value(as_float(&result).unwrap() + as_float(&value).unwrap())?,
+                            _ => {
+                                float_value(as_float(&result).unwrap() + as_float(&value).unwrap())?
+                            }
                         },
                         "min" if numeric_cmp(&value, &result).is_some_and(|o| o.is_lt()) => value,
                         "max" if numeric_cmp(&value, &result).is_some_and(|o| o.is_gt()) => value,
@@ -536,9 +607,11 @@ impl Evaluator {
                 let RuntimeValue::Function(id) = self.eval(callee, depth + 1)? else {
                     return Err(unsupported("Value is not callable"));
                 };
-                let function = self.functions.get(id).cloned().ok_or_else(|| {
-                    unsupported("Invalid function reference")
-                })?;
+                let function = self
+                    .functions
+                    .get(id)
+                    .cloned()
+                    .ok_or_else(|| unsupported("Invalid function reference"))?;
                 if args.len() != function.parameters.len() {
                     return Err(error(
                         4007,
@@ -951,17 +1024,38 @@ print(choose(false, 7, 3))";
     }
     #[test]
     fn true_division_and_float_arithmetic() {
-        assert_eq!(evaluate_source("print(3 / 2, 1.5 + 2, -2.5 * 2)", "ai").unwrap(), "1.5 3.5 -5.0\n");
+        assert_eq!(
+            evaluate_source("print(3 / 2, 1.5 + 2, -2.5 * 2)", "ai").unwrap(),
+            "1.5 3.5 -5.0\n"
+        );
     }
     #[test]
     fn float_comparison_and_zero_divisor() {
-        assert_eq!(evaluate_source("print(2 == 2.0, 9007199254740993 > 9007199254740992.0)", "ai").unwrap(), "true true\n");
-        assert_eq!(evaluate_source("print(1.0 / 0.0)", "ai").unwrap_err().code, 4002);
+        assert_eq!(
+            evaluate_source(
+                "print(2 == 2.0, 9007199254740993 > 9007199254740992.0)",
+                "ai"
+            )
+            .unwrap(),
+            "true true\n"
+        );
+        assert_eq!(
+            evaluate_source("print(1.0 / 0.0)", "ai").unwrap_err().code,
+            4002
+        );
     }
     #[test]
     fn float_annotations_are_enforced() {
-        assert_eq!(evaluate_source("let x: float = 1.5\nprint(x)", "ai").unwrap(), "1.5\n");
-        assert_eq!(evaluate_source("let x: float = 1.5\nx = 2", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("let x: float = 1.5\nprint(x)", "ai").unwrap(),
+            "1.5\n"
+        );
+        assert_eq!(
+            evaluate_source("let x: float = 1.5\nx = 2", "ai")
+                .unwrap_err()
+                .code,
+            4004
+        );
     }
     #[test]
     fn integer_overflow_is_numbered() {
@@ -996,7 +1090,10 @@ mod numeric_builtin_tests {
     #[test]
     fn numeric_builtins_reject_invalid_arguments() {
         assert_eq!(evaluate_source("abs()", "ai").unwrap_err().code, 4007);
-        assert_eq!(evaluate_source("sum(1, \"x\")", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("sum(1, \"x\")", "ai").unwrap_err().code,
+            4004
+        );
         assert_eq!(evaluate_source("max()", "ai").unwrap_err().code, 4007);
     }
 
@@ -1014,7 +1111,14 @@ mod list_tests {
     use super::*;
     #[test]
     fn list_index_and_length() {
-        assert_eq!(evaluate_source("let x = [1, [2, 3], 4]\nprint(len(x), x[1][0], x[-1])", "ai").unwrap(), "3 2 4\n");
+        assert_eq!(
+            evaluate_source(
+                "let x = [1, [2, 3], 4]\nprint(len(x), x[1][0], x[-1])",
+                "ai"
+            )
+            .unwrap(),
+            "3 2 4\n"
+        );
     }
     #[test]
     fn index_bounds_and_unicode() {

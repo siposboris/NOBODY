@@ -40,8 +40,19 @@ fn expression(expr: &Expr, profile: &str, depth: usize) -> Result<String, Diagno
         return Err(invalid("Expression nesting exceeds emitter limit"));
     }
     match expr {
-        Expr::List(items) => Ok(format!("[{}]", items.iter().map(|item| expression(item, profile, depth + 1)).collect::<Result<Vec<_>, _>>()?.join(", "))),
-        Expr::Index { target, index } => Ok(format!("({})[{}]", expression(target, profile, depth + 1)?, expression(index, profile, depth + 1)?)),
+        Expr::List(items) => Ok(format!(
+            "[{}]",
+            items
+                .iter()
+                .map(|item| expression(item, profile, depth + 1))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(", ")
+        )),
+        Expr::Index { target, index } => Ok(format!(
+            "({})[{}]",
+            expression(target, profile, depth + 1)?,
+            expression(index, profile, depth + 1)?
+        )),
         Expr::Number(n) | Expr::String(n) | Expr::Name(n) => Ok(n.clone()),
         Expr::Boolean(value) => Ok(keyword(profile, if *value { "true" } else { "false" })?.into()),
         Expr::Null => Ok(keyword(profile, "none")?.into()),

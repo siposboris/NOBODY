@@ -75,7 +75,10 @@ impl Language {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     List(Vec<Expr>),
-    Index { target: Box<Expr>, index: Box<Expr> },
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
     Number(String),
     String(String),
     Boolean(bool),
@@ -302,7 +305,9 @@ impl Parser {
                 if !self.at_symbol("]") {
                     loop {
                         items.push(self.expression(0)?);
-                        if !self.take_symbol(",") { break; }
+                        if !self.take_symbol(",") {
+                            break;
+                        }
                     }
                 }
                 self.need("]")?;
@@ -333,10 +338,15 @@ impl Parser {
             if self.take_symbol("[") {
                 let index = self.expression(0)?;
                 self.need("]")?;
-                expr = Expr::Index { target: Box::new(expr), index: Box::new(index) };
+                expr = Expr::Index {
+                    target: Box::new(expr),
+                    index: Box::new(index),
+                };
                 continue;
             }
-            if !self.take_symbol("(") { break; }
+            if !self.take_symbol("(") {
+                break;
+            }
             let mut args = Vec::new();
             if !self.at_symbol(")") {
                 loop {

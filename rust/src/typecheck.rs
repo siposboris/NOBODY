@@ -166,7 +166,11 @@ fn exact_integer_constant(expr: &IrExpr) -> Option<i128> {
 /// Dynamic values are intentionally deferred.
 fn check_binary_types(expr: &IrExpr, env: &BTreeMap<String, Type>) -> Result<(), Diagnostic> {
     match expr {
-        IrExpr::List(items) => { for item in items { check_binary_types(item, env)?; } }
+        IrExpr::List(items) => {
+            for item in items {
+                check_binary_types(item, env)?;
+            }
+        }
         IrExpr::Index { target, index } => {
             check_binary_types(target, env)?;
             check_binary_types(index, env)?;
@@ -308,8 +312,15 @@ fn check_condition_type(
 /// Unknown and dynamic callees remain deferred.
 fn check_calls(expr: &IrExpr, functions: &BTreeMap<String, usize>) -> Result<(), Diagnostic> {
     match expr {
-        IrExpr::List(items) => { for item in items { check_calls(item, functions)?; } }
-        IrExpr::Index { target, index } => { check_calls(target, functions)?; check_calls(index, functions)?; }
+        IrExpr::List(items) => {
+            for item in items {
+                check_calls(item, functions)?;
+            }
+        }
+        IrExpr::Index { target, index } => {
+            check_calls(target, functions)?;
+            check_calls(index, functions)?;
+        }
         IrExpr::Call { callee, args } => {
             if let IrExpr::Name(Name::User(name)) = callee.as_ref() {
                 if let Some(expected) = functions.get(name) {

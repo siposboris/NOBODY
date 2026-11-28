@@ -147,7 +147,9 @@ impl Cursor<'_> {
                 let line = self.exact("[")?.line;
                 let mut children = Vec::new();
                 for (i, item) in items.iter().enumerate() {
-                    if i > 0 { self.exact(",")?; }
+                    if i > 0 {
+                        self.exact(",")?;
+                    }
                     children.push(self.expression(item)?);
                 }
                 self.exact("]")?;
