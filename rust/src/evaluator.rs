@@ -387,10 +387,36 @@ impl Evaluator {
             }
             (RuntimeValue::Range(a, b, c), RuntimeValue::Range(x, y, z)) => {
                 let len = range_len(*a, *b, *c);
-                Ok(len == range_len(*x, *y, *z)
-                    && (len == 0 || (a == x && (len == 1 || c == z))))
+                Ok(len == range_len(*x, *y, *z) && (len == 0 || (a == x && (len == 1 || c == z))))
             }
             _ => Ok(left == right),
+        }
+    }
+
+    fn values_order(
+        &mut self,
+        left: &RuntimeValue,
+        right: &RuntimeValue,
+        depth: usize,
+    ) -> Result<Option<std::cmp::Ordering>, Diagnostic> {
+        self.tick(depth)?;
+        if let Some(order) = numeric_cmp(left, right) {
+            return Ok(Some(order));
+        }
+        match (left, right) {
+            (RuntimeValue::Text(a), RuntimeValue::Text(b)) => Ok(Some(a.cmp(b))),
+            (RuntimeValue::List(a), RuntimeValue::List(b)) => {
+                if std::rc::Rc::ptr_eq(a, b) {
+                    return Ok(Some(std::cmp::Ordering::Equal));
+                }
+                for (x, y) in a.iter().zip(b.iter()) {
+                    if !self.values_equal(x, y, depth + 1)? {
+                        return self.values_order(x, y, depth + 1);
+                    }
+                }
+                Ok(Some(a.len().cmp(&b.len())))
+            }
+            _ => Ok(None),
         }
     }
 
@@ -508,17 +534,16 @@ impl Evaluator {
                     let equal = self.values_equal(&left, &right, depth + 1)?;
                     return Ok(RuntimeValue::Bool(if op == "==" { equal } else { !equal }));
                 }
-                if let Some(order) = numeric_cmp(&left, &right) {
-                    let comparison = match op.as_str() {
-                        "<" => Some(order.is_lt()),
-                        ">" => Some(order.is_gt()),
-                        "<=" => Some(!order.is_gt()),
-                        ">=" => Some(!order.is_lt()),
-                        _ => None,
-                    };
-                    if let Some(value) = comparison {
-                        return Ok(RuntimeValue::Bool(value));
-                    }
+                if matches!(op.as_str(), "<" | ">" | "<=" | ">=") {
+                    let order = self
+                        .values_order(&left, &right, depth + 1)?
+                        .ok_or_else(|| unsupported("Values cannot be ordered"))?;
+                    return Ok(RuntimeValue::Bool(match op.as_str() {
+                        "<" => order.is_lt(),
+                        ">" => order.is_gt(),
+                        "<=" => !order.is_gt(),
+                        _ => !order.is_lt(),
+                    }));
                 }
                 if op == "**" {
                     if let Some(exponent) = as_float(&right) {
@@ -678,17 +703,6 @@ impl Evaluator {
                             items.extend(a.iter().cloned());
                         }
                         Ok(RuntimeValue::List(std::rc::Rc::new(items)))
-                    }
-                    (RuntimeValue::Text(a), RuntimeValue::Text(b))
-                        if matches!(op.as_str(), "<" | ">" | "<=" | ">=") =>
-                    {
-                        let order = a.cmp(&b);
-                        Ok(RuntimeValue::Bool(match op.as_str() {
-                            "<" => order.is_lt(),
-                            ">" => order.is_gt(),
-                            "<=" => !order.is_gt(),
-                            _ => !order.is_lt(),
-                        }))
                     }
                     (RuntimeValue::Text(a), RuntimeValue::Text(b)) if op == "+" => {
                         if a.len().saturating_add(b.len()) > MAX_OUTPUT {
@@ -1843,5 +1857,27 @@ mod sequence_equality_tests {
     fn equivalent_ranges_compare_by_elements() {
         let source = "print(range(0) == range(4, 2), range(0, 3, 2) == range(0, 4, 2))";
         assert_eq!(evaluate_source(source, "ai").unwrap(), "true true\n");
+    }
+}
+
+#[cfg(test)]
+mod sequence_order_tests {
+    use super::*;
+
+    #[test]
+    fn lists_compare_lexicographically() {
+        let source = "print([1, 2] < [1, 3], [1] < [1, 0], [1.0] >= [1])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "true true true\n");
+    }
+
+    #[test]
+    fn nested_lists_and_text_are_ordered() {
+        let source = "print([[1], [2]] < [[1], [3]], [\"a\"] < [\"b\"])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "true true\n");
+    }
+
+    #[test]
+    fn incomparable_elements_are_rejected() {
+        assert!(evaluate_source("[1] < [\"a\"]", "ai").is_err());
     }
 }
