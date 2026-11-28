@@ -11,6 +11,7 @@ const MAX_OUTPUT: usize = 1_048_576;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RuntimeValue {
     Int(i128),
+    Float(u64),
     Bool(bool),
     Text(String),
     Function(usize),
@@ -20,6 +21,14 @@ impl RuntimeValue {
     fn display(&self) -> String {
         match self {
             Self::Int(n) => n.to_string(),
+            Self::Float(bits) => {
+                let value = f64::from_bits(*bits);
+                let mut text = value.to_string();
+                if !text.contains('.') && !text.contains('e') {
+                    text.push_str(".0");
+                }
+                text
+            }
             Self::Bool(b) => b.to_string(),
             Self::Text(s) => s.clone(),
             Self::Function(_) => "<function>".into(),
@@ -31,9 +40,47 @@ fn matches_explicit_type(value: &RuntimeValue, annotation: &str) -> bool {
     matches!(
         (annotation, value),
         ("int", RuntimeValue::Int(_))
+            | ("float", RuntimeValue::Float(_))
             | ("bool", RuntimeValue::Bool(_))
             | ("str", RuntimeValue::Text(_))
     )
+}
+
+fn float_value(value: f64) -> Result<RuntimeValue, Diagnostic> {
+    if !value.is_finite() {
+        return Err(error(4003, "Non-finite floating-point result", "Use smaller finite numeric operands."));
+    }
+    Ok(RuntimeValue::Float(if value == 0.0 { 0.0_f64.to_bits() } else { value.to_bits() }))
+}
+
+fn as_float(value: &RuntimeValue) -> Option<f64> {
+    match value {
+        RuntimeValue::Int(n) => Some(*n as f64),
+        RuntimeValue::Float(bits) => Some(f64::from_bits(*bits)),
+        _ => None,
+    }
+}
+
+// Compare mixed numbers without rounding the integer to f64.
+fn numeric_cmp(left: &RuntimeValue, right: &RuntimeValue) -> Option<std::cmp::Ordering> {
+    use std::cmp::Ordering;
+    fn int_float(n: i128, f: f64) -> Ordering {
+        if f >= 2.0_f64.powi(127) { return Ordering::Less; }
+        if f < -2.0_f64.powi(127) { return Ordering::Greater; }
+        let truncated = f as i128;
+        match n.cmp(&truncated) {
+            Ordering::Equal if f.fract() > 0.0 => Ordering::Less,
+            Ordering::Equal if f.fract() < 0.0 => Ordering::Greater,
+            order => order,
+        }
+    }
+    match (left, right) {
+        (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Some(a.cmp(b)),
+        (RuntimeValue::Int(a), RuntimeValue::Float(b)) => Some(int_float(*a, f64::from_bits(*b))),
+        (RuntimeValue::Float(a), RuntimeValue::Int(b)) => Some(int_float(*b, f64::from_bits(*a)).reverse()),
+        (RuntimeValue::Float(a), RuntimeValue::Float(b)) => f64::from_bits(*a).partial_cmp(&f64::from_bits(*b)),
+        _ => None,
+    }
 }
 
 fn error(code: u16, detail: impl Into<String>, repair: &'static str) -> Diagnostic {
@@ -209,9 +256,9 @@ impl Evaluator {
         match expr {
             IrExpr::Number(text) => {
                 if !text.bytes().all(|b| b.is_ascii_digit() || b == b'_') {
-                    return Err(unsupported(
-                        "The first evaluator slice supports integer literals only",
-                    ));
+                    let value = text.replace('_', "").parse::<f64>()
+                        .map_err(|_| unsupported("Invalid floating-point literal"))?;
+                    return float_value(value);
                 }
                 text.replace('_', "")
                     .parse::<i128>()
@@ -241,6 +288,8 @@ impl Evaluator {
                 let value = self.eval(value, depth + 1)?;
                 match (op.as_str(), value) {
                     ("+", RuntimeValue::Int(n)) => Ok(RuntimeValue::Int(n)),
+                    ("+", RuntimeValue::Float(bits)) => float_value(f64::from_bits(bits)),
+                    ("-", RuntimeValue::Float(bits)) => float_value(-f64::from_bits(bits)),
                     ("-", RuntimeValue::Int(n)) => {
                         n.checked_neg().map(RuntimeValue::Int).ok_or_else(|| {
                             error(
@@ -276,8 +325,40 @@ impl Evaluator {
                 let left = self.eval(lhs, depth + 1)?;
                 let right = self.eval(rhs, depth + 1)?;
                 if op == "==" || op == "!=" {
-                    let equal = left == right;
+                    let equal = numeric_cmp(&left, &right).map_or_else(|| left == right, |order| order.is_eq());
                     return Ok(RuntimeValue::Bool(if op == "==" { equal } else { !equal }));
+                }
+                if let Some(order) = numeric_cmp(&left, &right) {
+                    let comparison = match op.as_str() {
+                        "<" => Some(order.is_lt()),
+                        ">" => Some(order.is_gt()),
+                        "<=" => Some(!order.is_gt()),
+                        ">=" => Some(!order.is_lt()),
+                        _ => None,
+                    };
+                    if let Some(value) = comparison {
+                        return Ok(RuntimeValue::Bool(value));
+                    }
+                }
+                if op == "/" || matches!(&left, RuntimeValue::Float(_)) || matches!(&right, RuntimeValue::Float(_)) {
+                    if let (Some(a), Some(b)) = (as_float(&left), as_float(&right)) {
+                        if b == 0.0 && matches!(op.as_str(), "/" | "//" | "%") {
+                            return Err(error(4002, "Division by zero at runtime", "Ensure the divisor is nonzero before dividing."));
+                        }
+                        let value = match op.as_str() {
+                            "+" => a + b,
+                            "-" => a - b,
+                            "*" => a * b,
+                            "/" => a / b,
+                            "//" => (a / b).floor(),
+                            "%" => {
+                                let r = a % b;
+                                if r != 0.0 && r.is_sign_negative() != b.is_sign_negative() { r + b } else { r }
+                            }
+                            _ => return Err(unsupported(format!("Unsupported floating-point operator {op:?}"))),
+                        };
+                        return float_value(value);
+                    }
                 }
                 match (left, right) {
                     (RuntimeValue::Int(a), RuntimeValue::Int(b)) => {
@@ -794,11 +875,18 @@ print(choose(false, 7, 3))";
         );
     }
     #[test]
-    fn true_division_is_explicitly_deferred() {
-        assert_eq!(
-            evaluate_source("print(3 / 2)", "ai").unwrap_err().code,
-            4004
-        );
+    fn true_division_and_float_arithmetic() {
+        assert_eq!(evaluate_source("print(3 / 2, 1.5 + 2, -2.5 * 2)", "ai").unwrap(), "1.5 3.5 -5.0\n");
+    }
+    #[test]
+    fn float_comparison_and_zero_divisor() {
+        assert_eq!(evaluate_source("print(2 == 2.0, 9007199254740993 > 9007199254740992.0)", "ai").unwrap(), "true true\n");
+        assert_eq!(evaluate_source("print(1.0 / 0.0)", "ai").unwrap_err().code, 4002);
+    }
+    #[test]
+    fn float_annotations_are_enforced() {
+        assert_eq!(evaluate_source("let x: float = 1.5\nprint(x)", "ai").unwrap(), "1.5\n");
+        assert_eq!(evaluate_source("let x: float = 1.5\nx = 2", "ai").unwrap_err().code, 4004);
     }
     #[test]
     fn integer_overflow_is_numbered() {
