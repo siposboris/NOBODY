@@ -84,6 +84,26 @@ fn range_len(start: i128, stop: i128, step: i128) -> u128 {
     (distance - 1) / step.unsigned_abs() + 1
 }
 
+// Within a valid range the unsigned displacement fits in u128, even
+// when the signed difference between the endpoints exceeds i128::MAX.
+fn range_at(start: i128, stop: i128, step: i128, index: i128) -> Option<i128> {
+    let len = range_len(start, stop, step);
+    let offset = if index < 0 {
+        len.checked_sub(index.unsigned_abs())?
+    } else {
+        index as u128
+    };
+    if offset >= len {
+        return None;
+    }
+    let displacement = offset.checked_mul(step.unsigned_abs())?;
+    Some(if step > 0 {
+        (start as u128).wrapping_add(displacement) as i128
+    } else {
+        (start as u128).wrapping_sub(displacement) as i128
+    })
+}
+
 fn as_float(value: &RuntimeValue) -> Option<f64> {
     match value {
         RuntimeValue::Int(n) => Some(*n as f64),
@@ -374,7 +394,10 @@ impl Evaluator {
                             text.chars().nth(i).expect("validated index").to_string(),
                         ))
                     }
-                    _ => Err(unsupported("Indexing requires a list or text")),
+                    RuntimeValue::Range(start, stop, step) => range_at(start, stop, step, index)
+                        .map(RuntimeValue::Int)
+                        .ok_or_else(|| unsupported("Index outside sequence bounds")),
+                    _ => Err(unsupported("Indexing requires a list, text or range")),
                 }
             }
             IrExpr::Number(text) => {
@@ -634,8 +657,46 @@ impl Evaluator {
                     values.push(value);
                 }
                 if *name != "abs" && values.len() == 1 {
-                    if let RuntimeValue::List(items) = &values[0] {
-                        values = items.as_ref().clone();
+                    match &values[0] {
+                        RuntimeValue::List(items) => values = items.as_ref().clone(),
+                        RuntimeValue::Range(start, stop, step) => {
+                            let (start, stop, step) = (*start, *stop, *step);
+                            let count = range_len(start, stop, step);
+                            if count == 0 && *name == "sum" {
+                                return Ok(RuntimeValue::Int(0));
+                            }
+                            if count == 0 {
+                                return Err(error(
+                                    4007,
+                                    "Aggregate requires a nonempty range",
+                                    "Pass a nonempty range.",
+                                ));
+                            }
+                            let last = range_at(start, stop, step, -1)
+                                .expect("nonempty range has a last element");
+                            if *name == "min" {
+                                return Ok(RuntimeValue::Int(start.min(last)));
+                            }
+                            if *name == "max" {
+                                return Ok(RuntimeValue::Int(start.max(last)));
+                            }
+                            // Bound summation work, retaining checked integer addition.
+                            let mut total = 0_i128;
+                            let mut current = start;
+                            loop {
+                                self.tick(depth)?;
+                                total = total.checked_add(current).ok_or_else(|| {
+                                    error(4003, "Integer sum overflow", "Use smaller integers.")
+                                })?;
+                                if current == last {
+                                    return Ok(RuntimeValue::Int(total));
+                                }
+                                current = current.checked_add(step).ok_or_else(|| {
+                                    error(4003, "Range arithmetic overflow", "Use smaller integers.")
+                                })?;
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 if values.iter().any(|value| as_float(value).is_none()) {
@@ -1102,7 +1163,9 @@ impl Evaluator {
                                         .collect(),
                                 )
                             }
-                            _ => return Err(unsupported("For loops require a list, text or range")),
+                            _ => {
+                                return Err(unsupported("For loops require a list, text or range"))
+                            }
                         };
                         for value in values.iter() {
                             self.tick(0)?;
@@ -1624,5 +1687,30 @@ mod range_value_tests {
     fn huge_range_can_break_without_allocation() {
         let source = "let r = range(1000000000000)\nfor x in r { print(x) break }";
         assert_eq!(evaluate_source(source, "ai").unwrap(), "0\n");
+    }
+}
+
+#[cfg(test)]
+mod range_operations_tests {
+    use super::*;
+
+    #[test]
+    fn range_indexing_and_bounds() {
+        let source = "let r = range(10, 0, -2)\nprint(r[0], r[-1], r[2])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "10 2 6\n");
+        assert!(evaluate_source("range(0)[0]", "ai").is_err());
+        assert!(evaluate_source("range(3)[-4]", "ai").is_err());
+    }
+
+    #[test]
+    fn range_aggregates() {
+        let source = "print(sum(range(5)), min(range(8, 0, -2)), max(range(9)))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "10 2 8\n");
+    }
+
+    #[test]
+    fn range_indexing_handles_full_signed_domain() {
+        assert_eq!(range_at(i128::MIN, i128::MAX, 1, -1), Some(i128::MAX - 1));
+        assert_eq!(range_at(i128::MAX, i128::MIN, -1, -1), Some(i128::MIN + 1));
     }
 }
