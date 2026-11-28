@@ -125,7 +125,10 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     )
 }
 pub(crate) fn literal_text(raw: &str) -> Result<String, Diagnostic> {
-    let first = raw.chars().next().ok_or_else(|| unsupported("Empty text literal"))?;
+    let first = raw
+        .chars()
+        .next()
+        .ok_or_else(|| unsupported("Empty text literal"))?;
     if !matches!(first, '"' | '\'') {
         return Err(unsupported("Invalid string delimiter"));
     }
@@ -1525,6 +1528,12 @@ mod legacy_string_tests {
     #[test]
     fn multiline_literal_decoding() {
         assert_eq!(literal_text("\"\"\"one\ntwo\"\"\"").unwrap(), "one\ntwo");
+    }
+
+    #[test]
+    fn source_pipeline_decodes_multiline_and_unicode_strings() {
+        let source = "print(\"\"\"one\ntwo\"\"\")\nprint(\"\\u017d\\x61\")";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "one\ntwo\nŽa\n");
     }
 
     #[test]
