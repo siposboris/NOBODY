@@ -406,6 +406,34 @@ impl Evaluator {
                         return Ok(RuntimeValue::Bool(value));
                     }
                 }
+                if op == "**" {
+                    if let Some(exponent) = as_float(&right) {
+                        if exponent.abs() > 100.0 {
+                            return Err(error(
+                                4005,
+                                "Exponent exceeds the evaluator limit",
+                                "Use an exponent between -100 and 100.",
+                            ));
+                        }
+                    }
+                    if let (RuntimeValue::Int(a), RuntimeValue::Int(b)) = (&left, &right) {
+                        if *b >= 0 {
+                            return a.checked_pow(*b as u32).map(RuntimeValue::Int).ok_or_else(
+                                || error(4003, "Integer power overflow", "Use smaller operands."),
+                            );
+                        }
+                    }
+                    if let (Some(a), Some(b)) = (as_float(&left), as_float(&right)) {
+                        if a == 0.0 && b < 0.0 {
+                            return Err(error(
+                                4002,
+                                "Zero cannot be raised to a negative exponent",
+                                "Use a nonzero base.",
+                            ));
+                        }
+                        return float_value(a.powf(b));
+                    }
+                }
                 if op == "/"
                     || matches!(&left, RuntimeValue::Float(_))
                     || matches!(&right, RuntimeValue::Float(_))
@@ -604,6 +632,73 @@ impl Evaluator {
                     };
                 }
                 Ok(result)
+            }
+            IrExpr::Call { callee, args }
+                if matches!(
+                    callee.as_ref(),
+                    IrExpr::Name(Name::Builtin("int" | "float" | "str" | "bool"))
+                ) =>
+            {
+                let IrExpr::Name(Name::Builtin(name)) = callee.as_ref() else {
+                    unreachable!()
+                };
+                if args.len() > 1 {
+                    return Err(error(
+                        4007,
+                        format!("{name} expects zero or one argument"),
+                        "Pass at most one value.",
+                    ));
+                }
+                let value = match args.first() {
+                    Some(arg) => self.eval(arg, depth + 1)?,
+                    None => match *name {
+                        "int" => RuntimeValue::Int(0),
+                        "float" => return float_value(0.0),
+                        "str" => RuntimeValue::Text(String::new()),
+                        _ => RuntimeValue::Bool(false),
+                    },
+                };
+                match *name {
+                    "str" => Ok(RuntimeValue::Text(value.display())),
+                    "bool" => Ok(RuntimeValue::Bool(match value {
+                        RuntimeValue::Null => false,
+                        RuntimeValue::Bool(b) => b,
+                        RuntimeValue::Int(n) => n != 0,
+                        RuntimeValue::Float(bits) => f64::from_bits(bits) != 0.0,
+                        RuntimeValue::Text(text) => !text.is_empty(),
+                        RuntimeValue::List(items) => !items.is_empty(),
+                        RuntimeValue::Function(_) => true,
+                    })),
+                    "int" => match value {
+                        RuntimeValue::Int(n) => Ok(RuntimeValue::Int(n)),
+                        RuntimeValue::Bool(b) => Ok(RuntimeValue::Int(i128::from(b))),
+                        RuntimeValue::Float(bits) => {
+                            let n = f64::from_bits(bits);
+                            if n >= 2.0_f64.powi(127) || n < -2.0_f64.powi(127) {
+                                return Err(unsupported("Integer conversion outside i128 range"));
+                            }
+                            Ok(RuntimeValue::Int(n as i128))
+                        }
+                        RuntimeValue::Text(text) => text
+                            .trim()
+                            .parse::<i128>()
+                            .map(RuntimeValue::Int)
+                            .map_err(|_| unsupported("Invalid integer conversion")),
+                        _ => Err(unsupported("Invalid integer conversion")),
+                    },
+                    "float" => match value {
+                        RuntimeValue::Bool(b) => float_value(if b { 1.0 } else { 0.0 }),
+                        RuntimeValue::Text(text) => float_value(
+                            text.trim()
+                                .parse::<f64>()
+                                .map_err(|_| unsupported("Invalid float conversion"))?,
+                        ),
+                        _ => float_value(
+                            as_float(&value).ok_or_else(|| unsupported("Invalid float conversion"))?,
+                        ),
+                    },
+                    _ => unreachable!(),
+                }
             }
             IrExpr::Call { callee, args }
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
@@ -1238,5 +1333,27 @@ mod sequence_iteration_tests {
             ""
         );
         assert!(evaluate_source("for x in 3 { print(x) }", "ai").is_err());
+    }
+}
+
+#[cfg(test)]
+mod legacy_numeric_operations {
+    use super::*;
+
+    #[test]
+    fn bounded_powers() {
+        assert_eq!(
+            evaluate_source("print(2 ** 10, 2 ** -2, 4.0 ** 0.5)", "ai").unwrap(),
+            "1024 0.25 2.0\n"
+        );
+        assert_eq!(evaluate_source("2 ** 101", "ai").unwrap_err().code, 4005);
+    }
+
+    #[test]
+    fn basic_conversions() {
+        assert_eq!(
+            evaluate_source("print(int(3.9), float(\"2.5\"), str(42), bool([]))", "ai").unwrap(),
+            "3 2.5 42 false\n"
+        );
     }
 }
