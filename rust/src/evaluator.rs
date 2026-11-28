@@ -16,6 +16,7 @@ pub enum RuntimeValue {
     Bool(bool),
     Text(String),
     Function(usize),
+    Builtin(&'static str),
     Null,
 }
 impl RuntimeValue {
@@ -40,7 +41,7 @@ impl RuntimeValue {
             }
             Self::Bool(b) => b.to_string(),
             Self::Text(s) => s.clone(),
-            Self::Function(_) => "<function>".into(),
+            Self::Function(_) | Self::Builtin(_) => "<function>".into(),
             Self::Null => "null".into(),
         }
     }
@@ -392,9 +393,7 @@ impl Evaluator {
                     "Declare the variable before using it.",
                 )
             }),
-            IrExpr::Name(Name::Builtin(_)) => Err(unsupported(
-                "A built-in is not a first-class value in the initial evaluator",
-            )),
+            IrExpr::Name(Name::Builtin(name)) => Ok(RuntimeValue::Builtin(name)),
             IrExpr::Unary { op, value } => {
                 let value = self.eval(value, depth + 1)?;
                 match (op.as_str(), value) {
@@ -713,7 +712,7 @@ impl Evaluator {
                         RuntimeValue::Float(bits) => f64::from_bits(bits) != 0.0,
                         RuntimeValue::Text(text) => !text.is_empty(),
                         RuntimeValue::List(items) => !items.is_empty(),
-                        RuntimeValue::Function(_) => true,
+                        RuntimeValue::Function(_) | RuntimeValue::Builtin(_) => true,
                     })),
                     "int" => match value {
                         RuntimeValue::Int(n) => Ok(RuntimeValue::Int(n)),
@@ -849,8 +848,25 @@ impl Evaluator {
                     _ => "<expression>",
                 };
                 let name = label;
-                let RuntimeValue::Function(id) = self.eval(callee, depth + 1)? else {
-                    return Err(unsupported("Value is not callable"));
+                let id = match self.eval(callee, depth + 1)? {
+                    RuntimeValue::Function(id) => id,
+                    RuntimeValue::Builtin(builtin) => {
+                        let call = IrExpr::Call {
+                            callee: Box::new(IrExpr::Name(Name::Builtin(builtin))),
+                            args: args.clone(),
+                        };
+                        // Only dispatch builtins implemented by the direct call path.
+                        // Reject other names instead of recursively redispatching them.
+                        if !matches!(
+                            builtin,
+                            "print" | "len" | "abs" | "sum" | "min" | "max"
+                                | "int" | "float" | "str" | "bool" | "round"
+                        ) {
+                            return Err(unsupported("Builtin is not callable as a value yet"));
+                        }
+                        return self.eval(&call, depth + 1);
+                    }
+                    _ => return Err(unsupported("Value is not callable")),
                 };
                 let function = self
                     .functions
@@ -1540,5 +1556,22 @@ mod legacy_string_tests {
     fn invalid_unicode_escape_is_rejected() {
         assert!(literal_text(r#""\uD800""#).is_err());
         assert!(literal_text(r#""\xQ1""#).is_err());
+    }
+}
+
+#[cfg(test)]
+mod builtin_value_tests {
+    use super::*;
+
+    #[test]
+    fn builtin_can_be_passed_to_user_function() {
+        let source = "fn apply(f, x) { return f(x) }\nprint(apply(abs, -7))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "7\n");
+    }
+
+    #[test]
+    fn builtin_can_be_stored_and_indexed() {
+        let source = "let f = len\nlet ops = [abs, f]\nprint(ops[0](-3), ops[1]([1, 2]))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "3 2\n");
     }
 }
