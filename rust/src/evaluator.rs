@@ -125,41 +125,84 @@ fn unsupported(detail: impl Into<String>) -> Diagnostic {
     )
 }
 pub(crate) fn literal_text(raw: &str) -> Result<String, Diagnostic> {
-    if raw.len() < 2 {
-        return Err(unsupported("Invalid text literal"));
+    let first = raw.chars().next().ok_or_else(|| unsupported("Empty text literal"))?;
+    if !matches!(first, '"' | '\'') {
+        return Err(unsupported("Invalid string delimiter"));
     }
-    let first = raw.chars().next().unwrap_or('"');
-    if !matches!(first, '"' | '\'') || !raw.ends_with(first) {
-        return Err(unsupported(
-            "Multiline and nonstandard string delimiters are not supported yet",
-        ));
+    let triple = first.to_string().repeat(3);
+    let delimiter = if raw.starts_with(&triple) { 3 } else { 1 };
+    if raw.len() < delimiter * 2 || !raw.ends_with(&first.to_string().repeat(delimiter)) {
+        return Err(unsupported("Unterminated text literal"));
     }
-    if raw.starts_with("\"\"\"") || raw.starts_with("'''") {
-        return Err(unsupported("Triple-quoted strings are not yet supported"));
-    }
-    let inner = &raw[1..raw.len() - 1];
+    let inner = &raw[delimiter..raw.len() - delimiter];
     let mut result = String::new();
-    let mut chars = inner.chars();
+    let mut chars = inner.chars().peekable();
     while let Some(ch) = chars.next() {
-        if ch == '\\' {
-            let escape = chars
-                .next()
-                .ok_or_else(|| unsupported("Dangling string escape"))?;
-            result.push(match escape {
-                'n' => '\n',
-                't' => '\t',
-                '\\' => '\\',
-                '"' => '"',
-                '\'' => '\'',
-                _ => {
-                    return Err(unsupported(format!(
-                        "Unsupported string escape: {escape:?}"
-                    )))
-                }
-            });
-        } else {
+        if ch != '\\' {
             result.push(ch);
+            continue;
         }
+        let escape = chars
+            .next()
+            .ok_or_else(|| unsupported("Dangling string escape"))?;
+        match escape {
+            '\n' => continue,
+            '\r' if chars.peek() == Some(&'\n') => {
+                chars.next();
+                continue;
+            }
+            'n' => result.push('\n'),
+            't' => result.push('\t'),
+            'r' => result.push('\r'),
+            'a' => result.push('\u{7}'),
+            'b' => result.push('\u{8}'),
+            'f' => result.push('\u{c}'),
+            'v' => result.push('\u{b}'),
+            '\\' => result.push('\\'),
+            '"' => result.push('"'),
+            '\'' => result.push('\''),
+            'x' | 'u' | 'U' => {
+                let digits = match escape {
+                    'x' => 2,
+                    'u' => 4,
+                    _ => 8,
+                };
+                let mut value = 0_u32;
+                for _ in 0..digits {
+                    let digit = chars
+                        .next()
+                        .and_then(|ch| ch.to_digit(16))
+                        .ok_or_else(|| unsupported("Invalid hexadecimal string escape"))?;
+                    value = value * 16 + digit;
+                }
+                result.push(
+                    char::from_u32(value)
+                        .ok_or_else(|| unsupported("Escape is not a Unicode scalar value"))?,
+                );
+            }
+            '0'..='7' => {
+                let mut value = escape.to_digit(8).expect("octal digit");
+                for _ in 0..2 {
+                    let Some(digit) = chars.peek().and_then(|ch| ch.to_digit(8)) else {
+                        break;
+                    };
+                    chars.next();
+                    value = value * 8 + digit;
+                }
+                result.push(char::from_u32(value).expect("three octal digits fit in Unicode"));
+            }
+            _ => {
+                return Err(unsupported(format!(
+                    "Unsupported string escape: {escape:?}"
+                )))
+            }
+        }
+        if result.len() > MAX_OUTPUT {
+            return Err(unsupported("Text literal exceeds evaluator budget"));
+        }
+    }
+    if result.len() > MAX_OUTPUT {
+        return Err(unsupported("Text literal exceeds evaluator budget"));
     }
     Ok(result)
 }
@@ -1466,5 +1509,27 @@ mod rounding_tests {
             evaluate_source("round(1, 0.5)", "ai").unwrap_err().code,
             4004
         );
+    }
+}
+
+#[cfg(test)]
+mod legacy_string_tests {
+    use super::*;
+
+    #[test]
+    fn escaped_unicode_and_control_characters() {
+        assert_eq!(literal_text(r#""\u017d\x61\U0001f600""#).unwrap(), "Ža😀");
+        assert_eq!(literal_text(r#""\101\r\t""#).unwrap(), "A\r\t");
+    }
+
+    #[test]
+    fn multiline_literal_decoding() {
+        assert_eq!(literal_text("\"\"\"one\ntwo\"\"\"").unwrap(), "one\ntwo");
+    }
+
+    #[test]
+    fn invalid_unicode_escape_is_rejected() {
+        assert!(literal_text(r#""\uD800""#).is_err());
+        assert!(literal_text(r#""\xQ1""#).is_err());
     }
 }
