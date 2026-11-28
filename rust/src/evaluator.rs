@@ -732,8 +732,7 @@ impl Evaluator {
                     let quotient = n / factor;
                     let remainder = (n % factor).abs();
                     let half = factor / 2;
-                    let adjustment = if remainder > half
-                        || (remainder == half && quotient % 2 != 0)
+                    let adjustment = if remainder > half || (remainder == half && quotient % 2 != 0)
                     {
                         n.signum()
                     } else {
@@ -766,9 +765,11 @@ impl Evaluator {
                         // Rust's decimal formatter rounds the actual binary value,
                         // avoiding the double rounding caused by multiplying first.
                         let text = format!("{:.*}", digits as usize, n);
-                        float_value(text.parse::<f64>().map_err(|_| {
-                            unsupported("Invalid rounded floating-point result")
-                        })?)
+                        float_value(
+                            text.parse::<f64>().map_err(|_| {
+                                unsupported("Invalid rounded floating-point result")
+                            })?,
+                        )
                     }
                     Some(digits) => {
                         let factor = 10_f64.powi((-digits) as i32);
@@ -1449,8 +1450,11 @@ mod rounding_tests {
     #[test]
     fn decimal_precision_and_integer_rounding() {
         assert_eq!(
-            evaluate_source("print(round(2.675, 2), round(125, -1), round(135, -1))", "ai")
-                .unwrap(),
+            evaluate_source(
+                "print(round(2.675, 2), round(125, -1), round(135, -1))",
+                "ai"
+            )
+            .unwrap(),
             "2.67 120 140\n"
         );
     }
@@ -1458,6 +1462,9 @@ mod rounding_tests {
     #[test]
     fn invalid_round_arguments() {
         assert_eq!(evaluate_source("round()", "ai").unwrap_err().code, 4007);
-        assert_eq!(evaluate_source("round(1, 0.5)", "ai").unwrap_err().code, 4004);
+        assert_eq!(
+            evaluate_source("round(1, 0.5)", "ai").unwrap_err().code,
+            4004
+        );
     }
 }
