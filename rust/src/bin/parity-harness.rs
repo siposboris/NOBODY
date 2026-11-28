@@ -1,5 +1,4 @@
-//! Transitional differential harness: Rust owns fixture discovery, invocation and comparison.
-//! The Python reference remains test-only until checked-in golden outputs replace it.
+//! Rust regression harness against frozen historical reference outputs.
 use std::io::Read;
 use std::process::Stdio;
 use std::thread;
@@ -55,8 +54,8 @@ fn run(mut command: Command) -> Result<Output, String> {
     })
 }
 
-fn equal(reference: &Output, rust: &Output) -> bool {
-    reference.status.success() && rust.status.success() && reference.stdout == rust.stdout
+fn equal(reference: &[u8], rust: &Output) -> bool {
+    rust.status.success() && reference == rust.stdout.as_slice()
 }
 
 fn fixtures(dir: &Path, expected: usize) -> Result<Vec<PathBuf>, String> {
@@ -79,9 +78,9 @@ fn main() -> Result<(), String> {
     let mode = env::args()
         .nth(1)
         .ok_or("usage: cargo run --bin parity-harness -- runtime|ast")?;
-    let (folder, expected, bin, python_action, rust_action) = match mode.as_str() {
-        "runtime" => ("runtime_parity", 6, "nobody-rs", "ast-run", "run"),
-        "ast" => ("ast_json_parity", 13, "nobody", "ast-json", "ast-json"),
+    let (folder, expected, bin, rust_action) = match mode.as_str() {
+        "runtime" => ("runtime_parity", 6, "nobody-rs", "run"),
+        "ast" => ("ast_json_parity", 13, "nobody", "ast-json"),
         _ => return Err("expected runtime or ast".into()),
     };
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -96,32 +95,28 @@ fn main() -> Result<(), String> {
     for fixture in fixtures(&root.join("tests/fixtures").join(folder), expected)? {
         let name = fixture.file_name().unwrap().to_string_lossy();
         let profile = name.split('_').next().ok_or("missing language profile")?;
-        let mut python = Command::new("python3");
-        python
-            .current_dir(&root)
-            .env("PYTHONPATH", &root)
-            .args(["-m", "nobody", python_action])
-            .arg(&fixture)
-            .args(["--lang", profile]);
+        let reference = fs::read(fixture.with_extension("expected"))
+            .map_err(|e| format!("{name}: missing reference output: {e}"))?;
         let mut rust = Command::new(&executable);
         rust.current_dir(&root)
             .arg(rust_action)
             .arg(profile)
             .arg(&fixture);
-        let reference = run(python)?;
         let native = run(rust)?;
         if equal(&reference, &native) {
             println!("PASS {name}");
         } else {
             failures += 1;
-            eprintln!("FAIL {name}\n  Python: status={} stdout={:?} stderr={:?}\n  Rust: status={} stdout={:?} stderr={:?}",
-                reference.status, reference.stdout, reference.stderr, native.status, native.stdout, native.stderr);
+            eprintln!(
+                "FAIL {name}\n  Expected: {:?}\n  Rust: status={} stdout={:?} stderr={:?}",
+                reference, native.status, native.stdout, native.stderr
+            );
         }
     }
     if failures > 0 {
         return Err(format!("{failures}/{expected} fixtures disagree"));
     }
-    println!("{mode} differential parity passed for {expected} fixtures");
+    println!("{mode} reference regression passed for {expected} fixtures");
     Ok(())
 }
 
@@ -152,9 +147,8 @@ mod tests {
     }
 
     #[test]
-    fn rejects_failed_reference() {
+    fn rejects_failed_execution() {
         let failed = Command::new("false").output().unwrap();
-        let succeeded = Command::new("true").output().unwrap();
-        assert!(!equal(&failed, &succeeded));
+        assert!(!equal(b"", &failed));
     }
 }
