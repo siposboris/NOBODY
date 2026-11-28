@@ -434,6 +434,51 @@ impl Evaluator {
                 Ok(RuntimeValue::Null)
             }
             IrExpr::Call { callee, args }
+                if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("abs" | "sum" | "min" | "max"))) =>
+            {
+                let IrExpr::Name(Name::Builtin(name)) = callee.as_ref() else {
+                    unreachable!()
+                };
+                if args.is_empty() || (*name == "abs" && args.len() != 1) {
+                    return Err(error(4007, format!("Invalid argument count for {name}"), "Pass numeric arguments."));
+                }
+                let mut values = Vec::with_capacity(args.len());
+                for arg in args {
+                    let value = self.eval(arg, depth + 1)?;
+                    if as_float(&value).is_none() {
+                        return Err(unsupported(format!("{name} requires numeric arguments")));
+                    }
+                    values.push(value);
+                }
+                if *name == "abs" {
+                    return match values.remove(0) {
+                        RuntimeValue::Int(n) => n.checked_abs().map(RuntimeValue::Int).ok_or_else(|| {
+                            error(4003, "Integer absolute value overflow", "Use a smaller integer.")
+                        }),
+                        RuntimeValue::Float(bits) => float_value(f64::from_bits(bits).abs()),
+                        _ => unreachable!(),
+                    };
+                }
+                let mut iter = values.into_iter();
+                let mut result = iter.next().expect("nonempty arguments");
+                for value in iter {
+                    result = match *name {
+                        "sum" => match (&result, &value) {
+                            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => {
+                                RuntimeValue::Int(a.checked_add(*b).ok_or_else(|| {
+                                    error(4003, "Integer sum overflow", "Use smaller integer operands.")
+                                })?)
+                            }
+                            _ => float_value(as_float(&result).unwrap() + as_float(&value).unwrap())?,
+                        },
+                        "min" if numeric_cmp(&value, &result).is_some_and(|o| o.is_lt()) => value,
+                        "max" if numeric_cmp(&value, &result).is_some_and(|o| o.is_gt()) => value,
+                        _ => result,
+                    };
+                }
+                Ok(result)
+            }
+            IrExpr::Call { callee, args }
                 if matches!(callee.as_ref(), IrExpr::Name(Name::Builtin("len"))) =>
             {
                 if args.len() != 1 {
@@ -902,6 +947,34 @@ print(choose(false, 7, 3))";
         assert_eq!(
             evaluate_source("print(\"hello\", true, null)", "ai").unwrap(),
             "hello true null\n"
+        );
+    }
+}
+
+#[cfg(test)]
+mod numeric_builtin_tests {
+    use super::*;
+
+    #[test]
+    fn numeric_builtins() {
+        assert_eq!(
+            evaluate_source("print(abs(-7), sum(1, 2, 3), min(4, -2), max(1, 3))", "ai").unwrap(),
+            "7 6 -2 3\n"
+        );
+    }
+
+    #[test]
+    fn numeric_builtins_reject_invalid_arguments() {
+        assert_eq!(evaluate_source("abs()", "ai").unwrap_err().code, 4007);
+        assert_eq!(evaluate_source("sum(1, \"x\")", "ai").unwrap_err().code, 4004);
+        assert_eq!(evaluate_source("max()", "ai").unwrap_err().code, 4007);
+    }
+
+    #[test]
+    fn mixed_numeric_builtins() {
+        assert_eq!(
+            evaluate_source("print(sum(1, 2.5), min(2, 1.5), abs(-1.5))", "ai").unwrap(),
+            "3.5 1.5 1.5\n"
         );
     }
 }
