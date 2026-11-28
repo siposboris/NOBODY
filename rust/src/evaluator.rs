@@ -10,6 +10,7 @@ const MAX_OUTPUT: usize = 1_048_576;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RuntimeValue {
+    List(std::rc::Rc<Vec<RuntimeValue>>),
     Int(i128),
     Float(u64),
     Bool(bool),
@@ -20,6 +21,7 @@ pub enum RuntimeValue {
 impl RuntimeValue {
     fn display(&self) -> String {
         match self {
+            Self::List(items) => format!("[{}]", items.iter().map(Self::display).collect::<Vec<_>>().join(", ")),
             Self::Int(n) => n.to_string(),
             Self::Float(bits) => {
                 let value = f64::from_bits(*bits);
@@ -254,6 +256,33 @@ impl Evaluator {
     fn eval(&mut self, expr: &IrExpr, depth: usize) -> Result<RuntimeValue, Diagnostic> {
         self.tick(depth)?;
         match expr {
+            IrExpr::List(items) => {
+                let mut values = Vec::with_capacity(items.len());
+                for item in items {
+                    values.push(self.eval(item, depth + 1)?);
+                }
+                Ok(RuntimeValue::List(std::rc::Rc::new(values)))
+            }
+            IrExpr::Index { target, index } => {
+                let target = self.eval(target, depth + 1)?;
+                let RuntimeValue::Int(index) = self.eval(index, depth + 1)? else {
+                    return Err(unsupported("Index must be an integer"));
+                };
+                let position = |len: usize| {
+                    let i = if index < 0 { index + len as i128 } else { index };
+                    usize::try_from(i).ok().filter(|i| *i < len).ok_or_else(|| {
+                        unsupported("Index outside sequence bounds")
+                    })
+                };
+                match target {
+                    RuntimeValue::List(items) => Ok(items[position(items.len())?].clone()),
+                    RuntimeValue::Text(text) => {
+                        let i = position(text.chars().count())?;
+                        Ok(RuntimeValue::Text(text.chars().nth(i).expect("validated index").to_string()))
+                    }
+                    _ => Err(unsupported("Indexing requires a list or text")),
+                }
+            }
             IrExpr::Number(text) => {
                 if !text.bytes().all(|b| b.is_ascii_digit() || b == b'_') {
                     let value = text.replace('_', "").parse::<f64>()
@@ -492,10 +521,11 @@ impl Evaluator {
                     ));
                 }
                 let value = self.eval(&args[0], depth + 1)?;
-                let RuntimeValue::Text(text) = value else {
-                    return Err(unsupported("len currently requires a string argument"));
-                };
-                Ok(RuntimeValue::Int(text.chars().count() as i128))
+                match value {
+                    RuntimeValue::Text(text) => Ok(RuntimeValue::Int(text.chars().count() as i128)),
+                    RuntimeValue::List(items) => Ok(RuntimeValue::Int(items.len() as i128)),
+                    _ => Err(unsupported("len requires a list or string")),
+                }
             }
             IrExpr::Call { callee, args } => {
                 let label = match callee.as_ref() {
@@ -976,5 +1006,20 @@ mod numeric_builtin_tests {
             evaluate_source("print(sum(1, 2.5), min(2, 1.5), abs(-1.5))", "ai").unwrap(),
             "3.5 1.5 1.5\n"
         );
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+    #[test]
+    fn list_index_and_length() {
+        assert_eq!(evaluate_source("let x = [1, [2, 3], 4]\nprint(len(x), x[1][0], x[-1])", "ai").unwrap(), "3 2 4\n");
+    }
+    #[test]
+    fn index_bounds_and_unicode() {
+        assert!(evaluate_source("print([][0])", "ai").is_err());
+        assert!(evaluate_source("print([1][-2])", "ai").is_err());
+        assert_eq!(evaluate_source("print(\"Ža\"[0])", "ai").unwrap(), "Ž\n");
     }
 }

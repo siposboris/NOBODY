@@ -297,7 +297,7 @@ pub struct AstDocument {
 fn expression(node: &AstNode) -> bool {
     matches!(
         node.kind.as_str(),
-        "number" | "string" | "literal" | "name" | "call" | "unary" | "binary"
+        "number" | "string" | "literal" | "name" | "call" | "unary" | "binary" | "list" | "index"
     )
 }
 fn statement(node: &AstNode) -> bool {
@@ -424,7 +424,7 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
         | "break"
         | "continue"
         | "expression_statement"
-        | "call" => {
+        | "list" | "index" | "call" => {
             if raw_value != Json::Null {
                 return Err(invalid("AST node requires null value"));
             }
@@ -452,6 +452,8 @@ fn node(value: Json, depth: usize, count: &mut usize) -> Result<AstNode, Diagnos
         "break" | "continue" | "number" | "string" | "literal" | "name" => children.is_empty(),
         "unary" => children.len() == 1 && expr_at(&children, 0),
         "binary" => children.len() == 2 && expr_at(&children, 0) && expr_at(&children, 1),
+        "list" => children.iter().all(expression),
+        "index" => children.len() == 2 && expr_at(&children, 0) && expr_at(&children, 1),
         "call" => !children.is_empty() && children.iter().all(expression),
         _ => false,
     };

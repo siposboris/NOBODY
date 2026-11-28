@@ -143,6 +143,23 @@ impl Cursor<'_> {
             self.at = saved;
         }
         match input {
+            Expr::List(items) => {
+                let line = self.exact("[")?.line;
+                let mut children = Vec::new();
+                for (i, item) in items.iter().enumerate() {
+                    if i > 0 { self.exact(",")?; }
+                    children.push(self.expression(item)?);
+                }
+                self.exact("]")?;
+                Ok(Lines::new(line, children))
+            }
+            Expr::Index { target, index } => {
+                let first = self.expression(target)?;
+                let line = self.exact("[")?.line;
+                let second = self.expression(index)?;
+                self.exact("]")?;
+                Ok(Lines::new(line, vec![first, second]))
+            }
             Expr::Number(value) => {
                 let token = self.exact(value)?;
                 if token.kind != TokenKind::Number {

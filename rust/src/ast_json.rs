@@ -51,6 +51,8 @@ fn bare(kind: &str, children: Vec<String>) -> String {
 
 fn expr(input: &Expr) -> String {
     match input {
+        Expr::List(items) => bare("list", items.iter().map(expr).collect()),
+        Expr::Index { target, index } => bare("index", vec![expr(target), expr(index)]),
         Expr::Number(value) => node("number", quoted(value), vec![]),
         Expr::String(value) => node("string", quoted(value), vec![]),
         Expr::Boolean(value) => node(
