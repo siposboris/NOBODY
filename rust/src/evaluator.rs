@@ -360,6 +360,40 @@ impl Evaluator {
         }
         Ok(Flow::Next)
     }
+    fn values_equal(
+        &mut self,
+        left: &RuntimeValue,
+        right: &RuntimeValue,
+        depth: usize,
+    ) -> Result<bool, Diagnostic> {
+        self.tick(depth)?;
+        if let Some(order) = numeric_cmp(left, right) {
+            return Ok(order.is_eq());
+        }
+        match (left, right) {
+            (RuntimeValue::List(a), RuntimeValue::List(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
+                if std::rc::Rc::ptr_eq(a, b) {
+                    return Ok(true);
+                }
+                for (x, y) in a.iter().zip(b.iter()) {
+                    if !self.values_equal(x, y, depth + 1)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+            (RuntimeValue::Range(a, b, c), RuntimeValue::Range(x, y, z)) => {
+                let len = range_len(*a, *b, *c);
+                Ok(len == range_len(*x, *y, *z)
+                    && (len == 0 || (a == x && (len == 1 || c == z))))
+            }
+            _ => Ok(left == right),
+        }
+    }
+
     fn eval(&mut self, expr: &IrExpr, depth: usize) -> Result<RuntimeValue, Diagnostic> {
         self.tick(depth)?;
         match expr {
@@ -471,8 +505,7 @@ impl Evaluator {
                 let left = self.eval(lhs, depth + 1)?;
                 let right = self.eval(rhs, depth + 1)?;
                 if op == "==" || op == "!=" {
-                    let equal = numeric_cmp(&left, &right)
-                        .map_or_else(|| left == right, |order| order.is_eq());
+                    let equal = self.values_equal(&left, &right, depth + 1)?;
                     return Ok(RuntimeValue::Bool(if op == "==" { equal } else { !equal }));
                 }
                 if let Some(order) = numeric_cmp(&left, &right) {
@@ -615,7 +648,11 @@ impl Evaluator {
                             .ok()
                             .filter(|count| a.len().saturating_mul(*count) <= MAX_OUTPUT)
                             .ok_or_else(|| {
-                                error(4005, "Text repetition exceeds budget", "Use a smaller count.")
+                                error(
+                                    4005,
+                                    "Text repetition exceeds budget",
+                                    "Use a smaller count.",
+                                )
                             })?;
                         Ok(RuntimeValue::Text(a.repeat(count)))
                     }
@@ -630,7 +667,11 @@ impl Evaluator {
                             .ok()
                             .filter(|count| a.len().saturating_mul(*count) <= MAX_STEPS)
                             .ok_or_else(|| {
-                                error(4005, "List repetition exceeds budget", "Use a smaller count.")
+                                error(
+                                    4005,
+                                    "List repetition exceeds budget",
+                                    "Use a smaller count.",
+                                )
                             })?;
                         let mut items = Vec::with_capacity(a.len() * count);
                         for _ in 0..count {
@@ -1785,5 +1826,22 @@ mod sequence_repetition_tests {
             evaluate_source("print(\"a\" < \"b\", \"z\" >= \"z\")", "ai").unwrap(),
             "true true\n"
         );
+    }
+}
+
+#[cfg(test)]
+mod sequence_equality_tests {
+    use super::*;
+
+    #[test]
+    fn nested_numeric_lists_compare_by_value() {
+        let source = "print([1, [2]] == [1.0, [2.0]], [1] != [2])";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "true true\n");
+    }
+
+    #[test]
+    fn equivalent_ranges_compare_by_elements() {
+        let source = "print(range(0) == range(4, 2), range(0, 3, 2) == range(0, 4, 2))";
+        assert_eq!(evaluate_source(source, "ai").unwrap(), "true true\n");
     }
 }
