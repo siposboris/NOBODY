@@ -2,7 +2,7 @@
 //! A listed reference variant is not necessarily an implemented syntax profile.
 use std::collections::HashSet;
 
-const REFERENCE: &str = include_str!("../../nobody/data/google_translate_249.txt");
+const REFERENCE: &str = include_str!("../data/google_translate_249.txt");
 
 const REVIEWED: &[(&str, &str)] = &[
     ("Slovak", "sk"),

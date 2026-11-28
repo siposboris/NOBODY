@@ -24,6 +24,11 @@ pub enum Name {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum IrExpr {
+    List(Vec<IrExpr>),
+    Index {
+        target: Box<IrExpr>,
+        index: Box<IrExpr>,
+    },
     Number(String),
     String(String),
     Boolean(bool),
@@ -101,6 +106,16 @@ fn builtin(code: &str, name: &str) -> Option<&'static str> {
 
 fn expression(expr: &Expr, language: &str, visible: &BTreeSet<String>) -> IrExpr {
     match expr {
+        Expr::List(items) => IrExpr::List(
+            items
+                .iter()
+                .map(|x| expression(x, language, visible))
+                .collect(),
+        ),
+        Expr::Index { target, index } => IrExpr::Index {
+            target: Box::new(expression(target, language, visible)),
+            index: Box::new(expression(index, language, visible)),
+        },
         Expr::Number(n) => IrExpr::Number(n.clone()),
         Expr::String(s) => IrExpr::String(s.clone()),
         Expr::Boolean(b) => IrExpr::Boolean(*b),

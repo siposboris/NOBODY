@@ -87,7 +87,7 @@ fn expression(expr: &Expr, env: &Environment) -> ReturnType {
                 _ => Unknown,
             }
         }
-        Expr::Call { .. } => Unknown,
+        Expr::Call { .. } | Expr::List(_) | Expr::Index { .. } => Unknown,
     }
 }
 

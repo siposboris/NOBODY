@@ -1,5 +1,4 @@
-//! Focused tests for the initial Rust named-function execution subset.
-//! Functions are currently non-recursive and nested definitions are unsupported.
+//! Regression tests for lexical function execution and closures in Rust.
 use nobody::{evaluate_source, translate_source};
 
 #[test]
@@ -24,9 +23,9 @@ fn function_parameters_and_global_reads_do_not_capture_caller_locals() {
 }
 
 #[test]
-fn function_calls_do_not_mutate_global_snapshot() {
+fn function_calls_mutate_lexical_global_binding() {
     let ai = "let base=5\nfn f() { base=9 return base }\nprint(f())\nprint(base)";
-    assert_eq!(evaluate_source(ai, "ai").unwrap(), "9\n5\n");
+    assert_eq!(evaluate_source(ai, "ai").unwrap(), "9\n9\n");
 }
 
 #[test]
@@ -50,9 +49,9 @@ fn recursion_and_mutual_recursion_are_bounded() {
 }
 
 #[test]
-fn nested_functions_are_explicitly_unsupported() {
+fn nested_functions_can_be_called() {
     let ai = "fn f() { fn g() { return 2 } return g() }\nprint(f())";
-    assert_eq!(evaluate_source(ai, "ai").unwrap_err().code, 4004);
+    assert_eq!(evaluate_source(ai, "ai").unwrap(), "2\n");
 }
 
 #[test]
@@ -65,4 +64,26 @@ fn functions_without_return_produce_null() {
 fn calling_variable_value_is_rejected() {
     let ai = "fn f() { return 1 }\nif true { let f=5 print(f()) }";
     assert_eq!(evaluate_source(ai, "ai").unwrap_err().code, 4004);
+}
+
+#[test]
+fn escaping_closure_keeps_mutable_capture_and_instances_are_independent() {
+    let source = "fn maker(n: int) { fn inc() { n = n + 1 return n } return inc }\nlet a = maker(1)\nlet b = maker(10)\nprint(a(), a(), b(), a())";
+    assert_eq!(evaluate_source(source, "ai").unwrap(), "2 3 11 4\n");
+    let sk = translate_source(source, "ai", "sk").unwrap();
+    assert_eq!(evaluate_source(&sk, "sk").unwrap(), "2 3 11 4\n");
+}
+
+#[test]
+fn captured_typed_binding_rejects_invalid_assignment() {
+    let source =
+        "fn maker() { let n: int = 1 fn bad() { n = \"wrong\" } return bad }\nlet f = maker()\nf()";
+    assert_eq!(evaluate_source(source, "ai").unwrap_err().code, 4004);
+}
+
+#[test]
+fn first_class_function_can_be_passed_as_argument() {
+    let source =
+        "fn twice(n) { return n * 2 }\nfn apply(f, x) { return f(x) }\nprint(apply(twice, 6))";
+    assert_eq!(evaluate_source(source, "ai").unwrap(), "12\n");
 }

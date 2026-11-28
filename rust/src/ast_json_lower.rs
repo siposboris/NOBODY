@@ -81,6 +81,16 @@ fn child(node: &AstNode, index: usize) -> Result<&AstNode, Diagnostic> {
 
 fn expression(node: &AstNode, profile: &str) -> Result<Expr, Diagnostic> {
     match node.kind.as_str() {
+        "list" => Ok(Expr::List(
+            node.children
+                .iter()
+                .map(|n| expression(n, profile))
+                .collect::<Result<Vec<_>, _>>()?,
+        )),
+        "index" => Ok(Expr::Index {
+            target: Box::new(expression(child(node, 0)?, profile)?),
+            index: Box::new(expression(child(node, 1)?, profile)?),
+        }),
         "number" => Ok(Expr::Number(check_number(text(node)?)?)),
         "string" => Ok(Expr::String(text(node)?.to_owned())),
         "literal" => match text(node)? {

@@ -74,6 +74,11 @@ impl Language {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
+    List(Vec<Expr>),
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
     Number(String),
     String(String),
     Boolean(bool),
@@ -295,6 +300,19 @@ impl Parser {
                     Expr::Name(tok.value)
                 }
             }
+            TokenKind::Symbol if tok.value == "[" => {
+                let mut items = Vec::new();
+                if !self.at_symbol("]") {
+                    loop {
+                        items.push(self.expression(0)?);
+                        if !self.take_symbol(",") {
+                            break;
+                        }
+                    }
+                }
+                self.need("]")?;
+                Expr::List(items)
+            }
             TokenKind::Symbol if tok.value == "(" => {
                 let inner = self.expression(0)?;
                 self.need(")")?;
@@ -316,7 +334,19 @@ impl Parser {
                 ))
             }
         };
-        while self.take_symbol("(") {
+        loop {
+            if self.take_symbol("[") {
+                let index = self.expression(0)?;
+                self.need("]")?;
+                expr = Expr::Index {
+                    target: Box::new(expr),
+                    index: Box::new(index),
+                };
+                continue;
+            }
+            if !self.take_symbol("(") {
+                break;
+            }
             let mut args = Vec::new();
             if !self.at_symbol(")") {
                 loop {

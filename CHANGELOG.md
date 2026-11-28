@@ -1,3 +1,7 @@
+# Rust-only cutover candidate (unverified)
+
+Removed active Python sources and CI dependency; preserved 19 frozen regression outputs and relocated catalogue. Full parity remains open; see [cutover status](docs/RUST_ONLY_CUTOVER.md).
+
 # Changelog
 
 ## Unreleased — verified private-by-default v4 module exports (2026-11-10)

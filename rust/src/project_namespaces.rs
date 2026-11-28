@@ -91,6 +91,15 @@ fn rename_expr(
     locals: &BTreeSet<String>,
 ) {
     match expr {
+        Expr::List(items) => {
+            for item in items {
+                rename_expr(item, module, exports, locals);
+            }
+        }
+        Expr::Index { target, index } => {
+            rename_expr(target, module, exports, locals);
+            rename_expr(index, module, exports, locals);
+        }
         Expr::Name(name) => {
             if !locals.contains(name) && exports.contains(name) {
                 *name = private_name(module, name);

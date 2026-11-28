@@ -65,7 +65,7 @@ fn loop_control_outside_loop_still_invalid_at_parse_time() {
 }
 
 #[test]
-fn range_for_loops_are_supported_but_other_iterables_are_deferred() {
+fn range_and_sequence_loops_report_invalid_iterables() {
     assert_eq!(
         evaluate_source("for x in range(2) { print(x) }", "ai").unwrap(),
         "0\n1\n"
@@ -74,6 +74,16 @@ fn range_for_loops_are_supported_but_other_iterables_are_deferred() {
         evaluate_source("for x in unknown { print(x) }", "ai")
             .unwrap_err()
             .code,
+        4001
+    );
+    assert_eq!(
+        evaluate_source("for x in 3 { print(x) }", "ai")
+            .unwrap_err()
+            .code,
         4004
+    );
+    assert_eq!(
+        evaluate_source("for x in [2, 4] { print(x) }", "ai").unwrap(),
+        "2\n4\n"
     );
 }
